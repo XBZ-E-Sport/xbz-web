@@ -12,7 +12,7 @@ const links = [
   { href: "/support", label: "Support" },
 ];
 
-const DISCORD_URL = "https://discord.gg/w7s3rBPsZ6";
+const DISCORD_URL = process.env.DISCORD_URL;
 
 export default function Header() {
   const pathname = usePathname();

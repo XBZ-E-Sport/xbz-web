@@ -1,7 +1,7 @@
 export const metadata = { title: "Support — XBZ Esport" };
 
-const DISCORD_URL = "https://discord.gg/w7s3rBPsZ6";
-const MAIL = "xbzesport1@gmail.com";
+const DISCORD_URL = process.env.DISCORD_URL;
+const MAIL = process.env.MAIL;
 
 export default function SupportPage() {
   return (

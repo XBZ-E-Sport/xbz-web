@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-const DISCORD_URL = "https://discord.gg/w7s3rBPsZ6";
+const DISCORD_URL = process.env.DISCORD_URL;
 
 export default function Home() {
   return (
