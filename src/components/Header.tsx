@@ -12,7 +12,7 @@ const links = [
   { href: "/support", label: "Support" },
 ];
 
-const DISCORD_URL = process.env.DISCORD_URL;
+const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
 
 export default function Header() {
   const pathname = usePathname();

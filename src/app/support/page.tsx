@@ -1,7 +1,7 @@
 export const metadata = { title: "Support — XBZ Esport" };
 
-const DISCORD_URL = process.env.DISCORD_URL;
-const MAIL = process.env.MAIL;
+const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
+const MAIL = process.env.NEXT_PUBLIC_MAIL;
 
 export default function SupportPage() {
   return (
