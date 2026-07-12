@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type Payload = {
@@ -67,38 +67,44 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- 2) Notifier le staff sur Discord (best-effort) ---
+  // --- 2) Notifier le staff sur Discord EN ARRIÈRE-PLAN (ne bloque pas la réponse) ---
   const botUrl = process.env.BOT_RECRUTEMENT_URL;
   if (botUrl) {
-    try {
-      await fetch(botUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(process.env.BOT_SHARED_SECRET
-            ? { "x-xbz-secret": process.env.BOT_SHARED_SECRET }
-            : {}),
-        },
-        // On renvoie au bot le même format que l'ancien site pour son embed
-        body: JSON.stringify({
-          nom,
-          age,
-          pays1: body.pays1,
-          pays2: body.pays2,
-          discord,
-          pseudo,
-          jeu,
-          rang: body.rang,
-          exp: body.exp,
-          motiv: body.motiv,
-          rltracker: body.rltracker,
-        }),
-        signal: AbortSignal.timeout(8000),
-      });
-    } catch (e) {
-      // Le bot dort (cold start) ou est down : pas grave, la candidature est déjà sauvegardée.
-      console.error("[recrutement] notif Discord échouée:", e);
-    }
+    const notif = {
+      nom, 
+      age: String(age), 
+      pays1: body.pays1, 
+      pays2: body.pays2, 
+      discord, 
+      pseudo, 
+      jeu,
+      rang: body.rang, 
+      exp: body.exp, 
+      motiv: body.motiv, 
+      rltracker: body.rltracker,
+    };
+    after(async () => {
+      try {
+        const res = await fetch(botUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(process.env.BOT_SHARED_SECRET
+              ? { "x-xbz-secret": process.env.BOT_SHARED_SECRET }
+              : {}),
+          },
+          body: JSON.stringify(notif),
+          signal: AbortSignal.timeout(60000), // large : le bot Render peut être en cold start
+        });
+        if (!res.ok) {
+          console.error("[recrutement] le bot a répondu", res.status, await res.text().catch(() => ""));
+        } else {
+          console.log("[recrutement] notif Discord OK ✅");
+        }
+      } catch (e) {
+        console.error("[recrutement] notif Discord échouée:", e);
+      }
+    });
   }
 
   return NextResponse.json({ ok: true, id: data.id });
