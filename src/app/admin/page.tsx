@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { updateStatut } from "./actions";
 
 export const metadata = { title: "Candidatures — Back-office XBZ" };
 
@@ -8,6 +9,12 @@ const statutStyles: Record<string, string> = {
   refuse: "bg-red-500/15 text-red-300",
   entretien: "bg-blue-500/15 text-blue-300",
 };
+
+const actions = [
+  { statut: "accepte", label: "✅ Accepter", cls: "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" },
+  { statut: "entretien", label: "🟡 Entretien", cls: "bg-blue-500/15 text-blue-300 hover:bg-blue-500/25" },
+  { statut: "refuse", label: "❌ Refuser", cls: "bg-red-500/15 text-red-300 hover:bg-red-500/25" },
+];
 
 export default async function AdminCandidaturesPage() {
   const admin = createAdminClient();
@@ -32,6 +39,7 @@ export default async function AdminCandidaturesPage() {
               {c.statut}
             </span>
           </div>
+
           <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-neutral-300 sm:grid-cols-2">
             <p><span className="text-neutral-500">Nom :</span> {c.nom}</p>
             <p><span className="text-neutral-500">Âge :</span> {c.age}</p>
@@ -45,10 +53,28 @@ export default async function AdminCandidaturesPage() {
               </p>
             )}
           </div>
+
           {c.motivation && (
             <p className="mt-3 text-sm text-neutral-300"><span className="text-neutral-500">Motivation :</span> {c.motivation}</p>
           )}
-          <p className="mt-2 text-xs text-neutral-600">Reçue le {new Date(c.created_at).toLocaleString("fr-FR")}</p>
+
+          <p className="mt-2 text-xs text-neutral-600">Reçue le {new Date(c.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</p>
+
+          {/* Actions staff */}
+          <form action={updateStatut} className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+            <input type="hidden" name="id" value={c.id} />
+            {actions.map((a) => (
+              <button
+                key={a.statut}
+                name="statut"
+                value={a.statut}
+                disabled={c.statut === a.statut}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${a.cls}`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </form>
         </div>
       ))}
     </div>
