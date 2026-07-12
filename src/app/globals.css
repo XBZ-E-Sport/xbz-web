@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Palette XBZ */
+  --color-xbz-bg: #050509;
+  --color-xbz-bg-soft: #0f0f18;
+  --color-xbz-blue: #0066ff;
+  --color-xbz-cyan: #00bfff;
+
+  /* Police d'affichage (titres) */
+  --font-display: var(--font-orbitron);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-xbz-bg);
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: white;
+  min-height: 100vh;
+  overflow-x: hidden;
+  /* trame de points bleus + halo radial en haut */
+  background-image:
+    radial-gradient(rgba(0, 102, 255, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at top, var(--color-xbz-bg-soft), transparent 60%);
+  background-size: 35px 35px, 100% 100%;
+  background-repeat: repeat, no-repeat;
+}
+
+/* Halos bleus latéraux (ambiance) */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  width: 400px;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(0, 102, 255, 0.35), transparent 70%);
+  filter: blur(30px);
+}
+body::before { left: 0; }
+body::after { right: 0; }
+
+@media (max-width: 768px) {
+  body::before,
+  body::after { display: none; }
+}
+
+/* Bouton dégradé signature */
+.btn-xbz {
+  display: inline-block;
+  padding: 14px 30px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: #000;
+  text-decoration: none;
+  background: linear-gradient(90deg, var(--color-xbz-blue), var(--color-xbz-cyan));
+  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+.btn-xbz:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 25px rgba(0, 102, 255, 0.4);
+  filter: brightness(1.1);
+}
+
+/* Carte vitrée */
+.card-xbz {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 102, 255, 0.15);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+.card-xbz:hover {
+  transform: translateY(-5px);
+  border-color: rgba(0, 102, 255, 0.4);
 }
