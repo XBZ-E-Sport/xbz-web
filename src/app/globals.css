@@ -9,6 +9,12 @@
   --color-xbz-dark-red: #ff0f10;
 
   --font-display: var(--font-orbitron);
+
+  /* Courbe d'animation douce partagée par tout le site */
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Défauts appliqués à toutes les utilities `transition` de Tailwind */
+  --default-transition-timing-function: var(--ease-smooth);
+  --default-transition-duration: 220ms;
 }
 
 html {
@@ -56,12 +62,20 @@ body::after { right: 0; }
   color: #000;
   text-decoration: none;
   background: linear-gradient(90deg, var(--color-xbz-blue), var(--color-xbz-cyan));
-  transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
+  transition:
+    transform 0.3s var(--ease-smooth),
+    box-shadow 0.3s var(--ease-smooth),
+    filter 0.3s var(--ease-smooth);
+  will-change: transform;
 }
 .btn-xbz:hover {
   transform: translateY(-2px) scale(1.03);
   box-shadow: 0 0 25px rgba(0, 102, 255, 0.4);
   filter: brightness(1.1);
+}
+.btn-xbz:active {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(1.05);
 }
 
 .card-xbz {
@@ -69,11 +83,33 @@ body::after { right: 0; }
   border: 1px solid rgba(0, 102, 255, 0.15);
   border-radius: 18px;
   backdrop-filter: blur(12px);
-  transition: transform 0.3s ease, border-color 0.3s ease;
+  transition:
+    transform 0.4s var(--ease-smooth),
+    border-color 0.4s var(--ease-smooth),
+    box-shadow 0.4s var(--ease-smooth),
+    background-color 0.4s var(--ease-smooth);
+  will-change: transform;
 }
 .card-xbz:hover {
-  transform: translateY(-5px);
-  border-color: rgba(0, 102, 255, 0.4);
+  transform: translateY(-6px);
+  border-color: rgba(0, 102, 255, 0.45);
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 18px 40px -16px rgba(0, 102, 255, 0.45);
+}
+
+/* Entrée en fondu ascendant (cartes, sections) */
+@keyframes xbz-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: xbz-fade-up 0.5s var(--ease-smooth) both;
 }
 
 
@@ -111,6 +147,7 @@ main:focus {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }

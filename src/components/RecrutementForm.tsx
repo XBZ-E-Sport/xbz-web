@@ -94,7 +94,7 @@ export default function RecrutementForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="btn-xbz mt-2 w-full text-center disabled:opacity-60"
+        className="btn-xbz mt-2 w-full text-center disabled:opacity-60 hover:brightness-110 hover:cursor-pointer"
       >
         {submitting ? "Envoi..." : "Envoyer candidature"}
       </button>

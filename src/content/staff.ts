@@ -1,4 +1,4 @@
-export type RoleVariant = "founder" | "staff" | "member" | "creative" | "open" | "full" | "closed";
+export type RoleVariant = "founder" | "staff" | "member" | "creative";
 
 export type RoleTag = { label: string; variant: RoleVariant };
 
@@ -26,54 +26,36 @@ export const staffRoster: StaffEntry[] = [
     title: "🛡️ Modos",
     description: "Gestion Discord & Communauté",
     slots: "1/4",
-    tags: [
-      { label: "STAFF", variant: "staff" },
-      { label: "RECRUTEMENT OUVERT", variant: "open" },
-    ],
+    tags: [{ label: "STAFF", variant: "staff" }],
   },
   {
     title: "☕ Développeur",
     description: "Développement web & bot Discord",
     slots: "1/1",
-    tags: [
-      { label: "CRÉATIF", variant: "creative" },
-      { label: "RECRUTEMENT FERMÉ", variant: "closed" },
-    ],
+    tags: [{ label: "CRÉATIF", variant: "creative" }],
   },
   {
     title: "📢 Comm Manager",
     description: "Réseaux sociaux & animation",
     slots: "2/3",
-    tags: [
-      { label: "STAFF", variant: "staff" },
-      { label: "RECRUTEMENT OUVERT", variant: "open" },
-    ],
+    tags: [{ label: "STAFF", variant: "staff" }],
   },
   {
     title: "🎙️ Casters",
     description: "Commentaire & animation de matchs",
     slots: "1/2",
-    tags: [
-      { label: "CRÉATIF", variant: "creative" },
-      { label: "RECRUTEMENT OUVERT", variant: "open" },
-    ],
+    tags: [{ label: "CRÉATIF", variant: "creative" }],
   },
   {
     title: "🎬 Monteurs",
     description: "Montage clips & contenu",
     slots: "0/2",
-    tags: [
-      { label: "CRÉATIF", variant: "creative" },
-      { label: "RECRUTEMENT OUVERT", variant: "open" },
-    ],
+    tags: [{ label: "CRÉATIF", variant: "creative" }],
   },
   {
     title: "🎨 Graphistes",
     description: "Création visuelle & branding",
     slots: "1/2",
-    tags: [
-      { label: "CRÉATIF", variant: "creative" },
-      { label: "RECRUTEMENT OUVERT", variant: "open" },
-    ],
+    tags: [{ label: "CRÉATIF", variant: "creative" }],
   },
 ];
