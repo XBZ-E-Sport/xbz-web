@@ -74,7 +74,6 @@ export default function RecrutementForm() {
       >
         <option value="">Jeu</option>
         <option value="Rocket League">Rocket League</option>
-        <option value="Warzone">Warzone</option>
       </select>
 
       {/* Champ RL Tracker affiché uniquement pour Rocket League */}

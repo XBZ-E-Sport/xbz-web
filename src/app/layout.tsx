@@ -14,7 +14,7 @@ const orbitron = Orbitron({
 export const metadata: Metadata = {
   title: "XBZ Esport",
   description:
-    "XBZ Esport — structure compétitive Rocket League & Warzone. Rejoins une équipe motivée et ambitieuse.",
+    "XBZ Esport — structure compétitive Rocket League. Rejoins une équipe motivée et ambitieuse.",
 };
 
 export default function RootLayout({
@@ -23,8 +23,13 @@ export default function RootLayout({
   return (
     <html lang="fr" className={orbitron.variable}>
       <body className="font-sans antialiased">
+        <a href="#main" className="skip-link">
+          Aller au contenu principal
+        </a>
         <Header />
-        <main>{children}</main>
+        <main id="main" tabIndex={-1}>
+          {children}
+        </main>
         <Footer />
       </body>
     </html>

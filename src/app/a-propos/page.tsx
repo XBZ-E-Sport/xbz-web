@@ -12,9 +12,9 @@ export default function AProposPage() {
             performer dans l’esport.
           </p>
           <p>
-            Nous sommes actifs principalement sur <strong className="text-white">Rocket League</strong>{" "}
-            et <strong className="text-white">Warzone</strong>, avec une vision simple : construire des
-            équipes solides, régulières et capables de jouer à un niveau compétitif réel.
+            Nous sommes actifs principalement sur <strong className="text-white">Rocket League</strong>,
+            avec une vision simple : construire des équipes solides, régulières et capables de
+            jouer à un niveau compétitif réel.
           </p>
           <p>
             Ici, ce n’est pas juste une communauté. C’est une structure organisée avec des rôles, un

@@ -1,38 +1,64 @@
 import Image from "next/image";
+import Link from "next/link";
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
 
 export default function Home() {
   return (
-    <>
-      {/* HERO */}
-      <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 text-center">
-        <Image
-          src="/logo-xbz.png"
-          alt="Logo XBZ Esport"
-          width={220}
-          height={220}
-          priority
-          className="mb-6 drop-shadow-[0_0_8px_rgba(0,102,255,0.35)]"
-        />
-        <h1 className="font-display text-5xl font-black uppercase tracking-widest text-xbz-blue drop-shadow-[0_0_40px_rgba(0,102,255,0.3)] sm:text-7xl">
-          XBZ Esport
-        </h1>
-        <p className="mt-4 tracking-widest text-neutral-400">
-          Rejoindre XBZ • Discord ouvert aux joueurs motivés
-        </p>
-        <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="btn-xbz mt-8">
-          Rejoindre Discord
-        </a>
-      </section>
+    <section
+      aria-labelledby="hero-title"
+      className="relative z-10 flex min-h-svh flex-col items-center justify-center gap-7 px-6 py-28 text-center"
+    >
+      {/* Logo décoratif : le nom du club est déjà porté par le <h1> juste après */}
+      <Image
+        src="/logo-xbz.png"
+        alt=""
+        width={208}
+        height={208}
+        preload
+        className="h-32 w-32 drop-shadow-[0_0_25px_rgba(0,102,255,0.45)] sm:h-48 sm:w-48"
+      />
 
-      {/* ACCUEIL */}
-      <section className="relative z-10 px-[10%] py-20">
-        <div className="card-xbz mx-auto max-w-3xl p-10 text-center">
-          <h2 className="mb-4 font-display text-3xl font-bold sm:text-4xl">Bienvenue sur XBZ</h2>
-          <p className="text-neutral-300">Une structure esport en pleine évolution 🚀</p>
-        </div>
-      </section>
-    </>
+      <h1
+        id="hero-title"
+        className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_35px_rgba(0,102,255,0.55)] sm:text-6xl sm:tracking-widest md:text-7xl"
+      >
+        XBZ Esport
+      </h1>
+
+      <p className="max-w-xl text-balance text-lg leading-relaxed text-neutral-300 sm:text-xl">
+        Structure esport compétitive sur{" "}
+        <strong className="font-semibold text-white">Rocket League</strong>. Rejoins une
+        équipe motivée, sérieuse et ambitieuse.
+      </p>
+
+      {/* Statut recrutement */}
+      <p className="inline-flex items-center gap-2 rounded-full border border-xbz-cyan/30 bg-white/5 px-4 py-1.5 text-sm font-semibold text-xbz-cyan">
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full bg-xbz-cyan motion-safe:animate-pulse"
+        />
+        Recrutement ouvert
+      </p>
+
+      {/* Appels à l'action */}
+      <div className="mt-2 flex w-full max-w-md flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-center">
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl bg-[#5865F2] px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
+        >
+          Rejoindre le Discord
+          <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
+        </a>
+        <Link
+          href="/recrutement"
+          className="rounded-xl border border-white/25 px-7 py-3.5 text-center font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
+        >
+          Nous rejoindre
+        </Link>
+      </div>
+    </section>
   );
 }
