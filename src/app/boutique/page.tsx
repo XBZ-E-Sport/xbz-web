@@ -88,7 +88,7 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <li className="card-xbz flex flex-col overflow-hidden">
       {/* Visuel (emoji en attendant les vraies images) */}
-      <div className="flex h-40 items-center justify-center bg-gradient-to-br from-xbz-blue/20 to-xbz-cyan/10">
+      <div className="flex h-40 items-center justify-center bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
         <span aria-hidden="true" className="text-6xl">
           {product.icon}
         </span>
