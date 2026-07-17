@@ -1,0 +1,92 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { getArticles, getArticleBySlug, type ArticleCategory } from "@/lib/actualite";
+
+const categoryStyles: Record<ArticleCategory, string> = {
+  Compétition: "bg-xbz-blue/15 text-[#7fc8ff]",
+  Recrutement: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
+  Annonce: "bg-white/10 text-white",
+  Communauté: "bg-[rgba(88,101,242,0.18)] text-[#b6bdff]",
+  Création: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
+};
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Paris",
+  });
+}
+
+export async function generateStaticParams() {
+  const articles = await getArticles();
+  return articles.map((a) => ({ slug: a.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const article = await getArticleBySlug(slug);
+  if (!article) return { title: "Article introuvable — XBZ Esport" };
+  return { title: `${article.title} — XBZ Esport`, description: article.excerpt };
+}
+
+export default async function ArticlePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const article = await getArticleBySlug(slug);
+  if (!article) notFound();
+
+  return (
+    <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
+      <Link
+        href="/actualite"
+        className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
+      >
+        <span aria-hidden="true">←</span> Retour aux actualités
+      </Link>
+
+      <article className="mt-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${categoryStyles[article.category]}`}
+          >
+            {article.category}
+          </span>
+          <time dateTime={article.date} className="text-sm text-neutral-500">
+            {formatDate(article.date)}
+          </time>
+        </div>
+
+        <h1 className="mt-4 font-display text-3xl font-black leading-tight text-white sm:text-4xl">
+          {article.title}
+        </h1>
+        <p className="mt-3 text-sm text-neutral-500">Par {article.author}</p>
+
+        <div className="mt-8 space-y-5 text-lg leading-relaxed text-neutral-300">
+          {article.content.map((paragraph, i) => (
+            <p key={i}>{paragraph}</p>
+          ))}
+        </div>
+      </article>
+
+      <div className="mt-12 border-t border-white/10 pt-8 text-center">
+        <p className="text-neutral-300">Envie de rejoindre l’aventure ?</p>
+        <Link
+          href="/recrutement"
+          className="mt-4 inline-block rounded-xl border border-white/25 px-7 py-3 font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
+        >
+          Voir le recrutement
+        </Link>
+      </div>
+    </div>
+  );
+}
