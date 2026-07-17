@@ -108,17 +108,18 @@ function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number })
             {tag.label}
           </span>
         ))}
-        {isFull ? (
-          <span className={`${badgeClass} ${availabilityStyles.closed}`}>RECRUTEMENT FERMÉ</span>
-        ) : (
-          <Link
-            href="/recrutement"
-            aria-label={`${entry.title} : postuler — recrutement ouvert`}
-            className={`${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
-          >
-            RECRUTEMENT OUVERT
-          </Link>
-        )}
+        {!entry.fixed &&
+          (isFull ? (
+            <span className={`${badgeClass} ${availabilityStyles.closed}`}>RECRUTEMENT FERMÉ</span>
+          ) : (
+            <Link
+              href="/recrutement"
+              aria-label={`${entry.title} : postuler — recrutement ouvert`}
+              className={`${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
+            >
+              RECRUTEMENT OUVERT
+            </Link>
+          ))}
       </div>
     </li>
   );

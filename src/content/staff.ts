@@ -6,6 +6,7 @@ export type StaffEntry = {
   title: string;
   description: string;
   slots: string;
+  fixed?: boolean;
   tags: RoleTag[];
 };
 
@@ -14,12 +15,14 @@ export const staffRoster: StaffEntry[] = [
     title: "👑 Fondateurs",
     description: "Direction de la structure",
     slots: "3/3",
+    fixed: true,
     tags: [{ label: "FONDATEUR", variant: "founder" }],
   },
   {
     title: "🛠️ Admins",
     description: "Gestion Server & Staff",
     slots: "3/3",
+    fixed: true,
     tags: [{ label: "STAFF", variant: "staff" }],
   },
   {
@@ -32,6 +35,7 @@ export const staffRoster: StaffEntry[] = [
     title: "☕ Développeur",
     description: "Développement web & bot Discord",
     slots: "1/1",
+    fixed: true,
     tags: [{ label: "CRÉATIF", variant: "creative" }],
   },
   {

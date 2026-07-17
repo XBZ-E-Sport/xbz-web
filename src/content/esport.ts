@@ -6,6 +6,7 @@ export type EsportEntry = {
   title: string;
   description: string;
   slots: string;
+  fixed?: boolean;
   tags: RoleTag[];
 };
 
@@ -14,6 +15,7 @@ export const esportRoster: EsportEntry[] = [
     title: "⚙️ Gérant RL",
     description: "Direction de la section Rocket League",
     slots: "1/1",
+    fixed: true,
     tags: [{ label: "STAFF", variant: "staff" }],
   },
   {
@@ -49,7 +51,7 @@ export const esportRoster: EsportEntry[] = [
   {
     title: "🔴 Roster GC2",
     description: "Équipe Grand Champion II",
-    slots: "3/3",
+    slots: "2/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
   },
   {
