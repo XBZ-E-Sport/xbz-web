@@ -20,7 +20,7 @@ export default function RecrutementPage() {
           Rejoins XBZ
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-balance text-lg leading-relaxed text-neutral-300">
-          Envie de porter les couleurs de la XBZ ?<br />Remplis le formulaire ci-dessous — chaque
+          Envie de porter les couleurs XBZ ? Remplis le formulaire ci-dessous — chaque
           candidature est étudiée par le staff.
         </p>
         <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-xbz-cyan/30 bg-white/5 px-4 py-1.5 text-sm font-semibold text-xbz-cyan">

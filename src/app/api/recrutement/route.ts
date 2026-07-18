@@ -1,7 +1,10 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isValidRole } from "@/content/recrutement";
 
 type Payload = {
+  categorie?: string;
+  role?: string;
   nom?: string;
   age?: string | number;
   pays1?: string;
@@ -24,6 +27,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
   }
 
+  const categorie = String(body.categorie ?? "").trim();
+  const role = String(body.role ?? "").trim();
   const nom = String(body.nom ?? "").trim();
   const age = Number(body.age);
   const discord = String(body.discord ?? "").trim();
@@ -31,11 +36,21 @@ export async function POST(request: Request) {
   const jeu = String(body.jeu ?? "").trim();
 
   // --- Validation serveur (on ne fait JAMAIS confiance au navigateur) ---
-  if (!nom || !discord || !pseudo || !jeu || Number.isNaN(age)) {
+  if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
     return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
+  }
+  if (!isValidRole(categorie, role)) {
+    return NextResponse.json({ ok: false, error: "Catégorie ou rôle invalide." }, { status: 422 });
   }
   if (age < 16) {
     return NextResponse.json({ ok: false, error: "Âge minimum requis : 16 ans." }, { status: 422 });
+  }
+  // Le jeu n'est requis que pour une candidature Esport
+  if (categorie === "XBZ Esport" && !jeu) {
+    return NextResponse.json(
+      { ok: false, error: "Le jeu est requis pour une candidature Esport." },
+      { status: 422 },
+    );
   }
 
   const supabase = createAdminClient();
@@ -44,13 +59,15 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("candidatures")
     .insert({
+      categorie,
+      role,
       nom,
       age,
       pays_residence: String(body.pays1 ?? "").trim() || null,
       pays_naissance: String(body.pays2 ?? "").trim() || null,
       discord,
       pseudo,
-      jeu,
+      jeu: jeu || null,
       rltracker: String(body.rltracker ?? "").trim() || null,
       rang: String(body.rang ?? "").trim() || null,
       experience: String(body.exp ?? "").trim() || null,
@@ -71,16 +88,18 @@ export async function POST(request: Request) {
   const botUrl = process.env.BOT_RECRUTEMENT_URL;
   if (botUrl) {
     const notif = {
-      nom, 
-      age: String(age), 
-      pays1: body.pays1, 
-      pays2: body.pays2, 
-      discord, 
-      pseudo, 
+      categorie,
+      role,
+      nom,
+      age: String(age),
+      pays1: body.pays1,
+      pays2: body.pays2,
+      discord,
+      pseudo,
       jeu,
-      rang: body.rang, 
-      exp: body.exp, 
-      motiv: body.motiv, 
+      rang: body.rang,
+      exp: body.exp,
+      motiv: body.motiv,
       rltracker: body.rltracker,
     };
     after(async () => {
