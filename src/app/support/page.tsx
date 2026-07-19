@@ -64,6 +64,17 @@ const faq = [
   },
 ];
 
+// JSON-LD FAQPage (SEO : rich results Google sur les questions fréquentes).
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faq.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
+};
+
 function DemandeCard({ demande }: { demande: (typeof demandes)[number] }) {
   const inner = (
     <>
@@ -101,6 +112,10 @@ function DemandeCard({ demande }: { demande: (typeof demandes)[number] }) {
 export default function SupportPage() {
   return (
     <div className="relative z-10 mx-auto max-w-4xl px-6 pb-24 pt-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       {/* En-tête */}
       <header className="mb-14 text-center">
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">

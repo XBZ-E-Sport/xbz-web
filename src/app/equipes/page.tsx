@@ -5,7 +5,11 @@ import { esportRoster, type EsportEntry } from "@/content/esport";
 
 type TeamsEntry = StaffEntry | EsportEntry;
 
-export const metadata = { title: "Équipes & Staff — XBZ Esport" };
+export const metadata = {
+  title: "Équipes & Staff — XBZ Esport",
+  description:
+    "Le staff et les rosters compétitifs de XBZ Esport sur Rocket League, avec les postes actuellement ouverts au recrutement.",
+};
 
 // Couleurs des badges reprises de l'ancien site
 const roleStyles: Record<RoleVariant, string> = {
@@ -128,9 +132,17 @@ function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number })
 export default function EquipesPage() {
   return (
     <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-32">
-      <h1 className="mb-10 text-center font-display text-3xl font-bold tracking-[3px] sm:text-4xl">
-        PERSONNEL XBZ
-      </h1>
+      <header className="mb-14 text-center">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
+          Équipes
+        </p>
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+          Personnel XBZ
+        </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-balance text-lg leading-relaxed text-neutral-300">
+          Le staff et les rosters compétitifs de XBZ — et les postes actuellement ouverts.
+        </p>
+      </header>
 
       <section aria-labelledby="staff-heading">
         <SectionHeading id="staff-heading" title="STAFF" roster={staffRoster} />
