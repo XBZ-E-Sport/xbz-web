@@ -8,7 +8,6 @@ type Payload = {
   nom?: string;
   age?: string | number;
   pays1?: string;
-  pays2?: string;
   discord?: string;
   pseudo?: string;
   jeu?: string;
@@ -40,7 +39,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
   }
   if (!isValidRole(categorie, role)) {
-    return NextResponse.json({ ok: false, error: "Catégorie ou rôle invalide." }, { status: 422 });
+    return NextResponse.json(
+      { ok: false, error: "Ce rôle n'est pas disponible au recrutement." },
+      { status: 422 },
+    );
   }
   if (age < 16) {
     return NextResponse.json({ ok: false, error: "Âge minimum requis : 16 ans." }, { status: 422 });
@@ -64,7 +66,6 @@ export async function POST(request: Request) {
       nom,
       age,
       pays_residence: String(body.pays1 ?? "").trim() || null,
-      pays_naissance: String(body.pays2 ?? "").trim() || null,
       discord,
       pseudo,
       jeu: jeu || null,
@@ -93,7 +94,6 @@ export async function POST(request: Request) {
       nom,
       age: String(age),
       pays1: body.pays1,
-      pays2: body.pays2,
       discord,
       pseudo,
       jeu,

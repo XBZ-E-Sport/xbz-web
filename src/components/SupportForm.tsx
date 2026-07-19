@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none focus:ring-1 focus:ring-xbz-blue";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
 const labelCls = "mb-1.5 block text-sm font-semibold text-neutral-300";
 
 type Tone = "idle" | "loading" | "ok" | "error";
@@ -111,7 +111,7 @@ export default function SupportForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
+        className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
       >
         {submitting ? "Envoi..." : "Envoyer le message"}
       </button>

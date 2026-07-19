@@ -3,7 +3,7 @@ import { loginWithPassword, loginWithDiscord } from "./actions";
 export const metadata = { title: "Connexion staff — XBZ" };
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none focus:ring-1 focus:ring-xbz-blue";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
 
 export default async function LoginPage({
   searchParams,
@@ -26,7 +26,7 @@ export default async function LoginPage({
         <form action={loginWithPassword} className="flex flex-col gap-3">
           <input name="email" type="email" placeholder="Email" required className={inputCls} />
           <input name="password" type="password" placeholder="Mot de passe" required className={inputCls} />
-          <button type="submit" className="btn-xbz w-full text-center">Se connecter</button>
+          <button type="submit" className="btn-xbz w-full text-center hover:cursor-pointer">Se connecter</button>
         </form>
 
         <div className="my-5 flex items-center gap-3 text-xs text-neutral-500">
@@ -36,7 +36,7 @@ export default async function LoginPage({
         <form action={loginWithDiscord}>
           <button
             type="submit"
-            className="w-full rounded-xl bg-[#5865F2] px-4 py-3 font-bold text-white transition hover:brightness-110"
+            className="w-full rounded-xl bg-[#5865F2] px-4 py-3 font-bold text-white transition hover:brightness-110 hover:cursor-pointer"
           >
             Se connecter avec Discord
           </button>

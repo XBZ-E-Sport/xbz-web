@@ -8,6 +8,8 @@ export type StaffEntry = {
   slots: string;
   fixed?: boolean;
   tags: RoleTag[];
+  /** Rôle candidat alimenté par cette ligne (piloté par le recrutement). */
+  recrute?: string;
 };
 
 export const staffRoster: StaffEntry[] = [
@@ -30,6 +32,7 @@ export const staffRoster: StaffEntry[] = [
     description: "Gestion Discord & Communauté",
     slots: "1/4",
     tags: [{ label: "STAFF", variant: "staff" }],
+    recrute: "Modérateur",
   },
   {
     title: "☕ Développeur",
@@ -43,23 +46,27 @@ export const staffRoster: StaffEntry[] = [
     description: "Réseaux sociaux & animation",
     slots: "2/3",
     tags: [{ label: "STAFF", variant: "staff" }],
+    recrute: "Community Manager",
   },
   {
     title: "🎙️ Casters",
     description: "Commentaire & animation de matchs",
     slots: "1/2",
     tags: [{ label: "CRÉATIF", variant: "creative" }],
+    recrute: "Caster",
   },
   {
     title: "🎬 Monteurs",
     description: "Montage clips & contenu",
     slots: "0/2",
     tags: [{ label: "CRÉATIF", variant: "creative" }],
+    recrute: "Monteur",
   },
   {
     title: "🎨 Graphistes",
     description: "Création visuelle & branding",
     slots: "1/2",
     tags: [{ label: "CRÉATIF", variant: "creative" }],
+    recrute: "Graphiste",
   },
 ];

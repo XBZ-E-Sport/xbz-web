@@ -2,14 +2,10 @@
 
 import { useState } from "react";
 
-import {
-  recrutementCategories,
-  recrutementRoles,
-  type RecrutementCategory,
-} from "@/content/recrutement";
+import { recrutementCategories, openRoles } from "@/content/recrutement";
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none focus:ring-1 focus:ring-xbz-blue";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
 const labelCls = "mb-1.5 block text-sm font-semibold text-neutral-300";
 const optionalCls = "font-normal text-neutral-500";
 
@@ -30,7 +26,9 @@ export default function RecrutementForm() {
 
   const isEsport = categorie === "XBZ Esport";
   const showRL = isEsport && jeu === "Rocket League";
-  const roles = recrutementRoles[categorie as RecrutementCategory] ?? [];
+  // On ne propose que les rôles avec de la disponibilité (postes ouverts).
+  const roles = openRoles(categorie);
+  const noOpenRole = Boolean(categorie) && roles.length === 0;
 
   function handleCategorie(value: string) {
     setCategorie(value);
@@ -92,7 +90,9 @@ export default function RecrutementForm() {
             onChange={(e) => handleCategorie(e.target.value)}
             className={inputCls}
           >
-            <option value="">Choisis une catégorie</option>
+            <option value="" disabled hidden>
+              Choisis une catégorie
+            </option>
             {recrutementCategories.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -110,18 +110,29 @@ export default function RecrutementForm() {
             required
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            disabled={!categorie}
+            disabled={!categorie || noOpenRole}
+            aria-describedby={noOpenRole ? "rec-role-empty" : undefined}
             className={`${inputCls} disabled:cursor-not-allowed disabled:opacity-50`}
           >
-            <option value="">
-              {categorie ? "Choisis un rôle" : "Choisis d’abord une catégorie"}
+            <option value="" disabled hidden>
+              {!categorie
+                ? "Choisis d’abord une catégorie"
+                : noOpenRole
+                  ? "Aucun poste ouvert pour le moment"
+                  : "Choisis un rôle"}
             </option>
             {roles.map((r) => (
-              <option key={r} value={r}>
-                {r}
+              <option key={r.name} value={r.name}>
+                {r.name}
               </option>
             ))}
           </select>
+          {noOpenRole && (
+            <p id="rec-role-empty" className="mt-2 text-[13px] leading-relaxed text-neutral-400">
+              Aucun poste n’est ouvert dans cette catégorie actuellement. Reviens bientôt ou
+              contacte-nous sur Discord.
+            </p>
+          )}
         </div>
       </div>
 
@@ -157,34 +168,19 @@ export default function RecrutementForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="rec-pays1" className={labelCls}>
-            Pays de résidence
-          </label>
-          <input
-            id="rec-pays1"
-            name="pays1"
-            type="text"
-            required
-            autoComplete="country-name"
-            placeholder="France"
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label htmlFor="rec-pays2" className={labelCls}>
-            Pays de naissance
-          </label>
-          <input
-            id="rec-pays2"
-            name="pays2"
-            type="text"
-            required
-            placeholder="France"
-            className={inputCls}
-          />
-        </div>
+      <div>
+        <label htmlFor="rec-pays1" className={labelCls}>
+          Pays de résidence
+        </label>
+        <input
+          id="rec-pays1"
+          name="pays1"
+          type="text"
+          required
+          autoComplete="country-name"
+          placeholder="France"
+          className={inputCls}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -197,7 +193,7 @@ export default function RecrutementForm() {
             name="discord"
             type="text"
             required
-            placeholder="pseudo#0000"
+            placeholder="pseudo_discord"
             className={inputCls}
           />
         </div>
@@ -210,7 +206,7 @@ export default function RecrutementForm() {
             name="pseudo"
             type="text"
             required
-            placeholder="Ton pseudo"
+            placeholder="pseudo_perso"
             className={inputCls}
           />
         </div>
@@ -231,7 +227,9 @@ export default function RecrutementForm() {
               onChange={(e) => setJeu(e.target.value)}
               className={inputCls}
             >
-              <option value="">Sélectionne un jeu</option>
+              <option value="" disabled hidden>
+                Sélectionne un jeu
+              </option>
               <option value="Rocket League">Rocket League</option>
             </select>
           </div>
@@ -299,7 +297,7 @@ export default function RecrutementForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
+        className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
       >
         {submitting ? "Envoi..." : "Envoyer ma candidature"}
       </button>
