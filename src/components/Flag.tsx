@@ -7,7 +7,7 @@ import * as Flags from "country-flag-icons/react/3x2";
 export default function Flag({
   code,
   label,
-  className = "h-4 w-auto rounded-[2px]",
+  className = "h-4 w-auto rounded-xs",
 }: {
   code?: string | null;
   label?: string | null;
