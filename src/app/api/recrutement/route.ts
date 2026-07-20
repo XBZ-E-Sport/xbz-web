@@ -134,8 +134,6 @@ export async function POST(request: Request) {
         });
         if (!res.ok) {
           console.error("[recrutement] le bot a répondu", res.status, await res.text().catch(() => ""));
-        } else {
-          console.log("[recrutement] notif Discord OK ✅");
         }
       } catch (e) {
         console.error("[recrutement] notif Discord échouée:", e);

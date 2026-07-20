@@ -1,120 +1,105 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import ConfirmButton from "@/components/ConfirmButton";
-import PlayerForm, { type PlayerRow } from "../rosters/PlayerForm";
-import { upsertPlayer, deletePlayer } from "../rosters/actions";
+import PoleForm, { type PoleRow } from "./PoleForm";
+import { createPole, updatePole, deletePole } from "../rosters/actions";
 
+export const metadata = { title: "Pôles — Back-office XBZ" };
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  return { title: `Pôle ${slug} — Back-office XBZ` };
-}
+type PoleWithCount = PoleRow & { joueurs?: { count: number }[] };
 
-export default async function AdminPoleMembersPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+const CATEGORY_LABEL: Record<string, string> = {
+  staff: "Staff",
+  esport: "Esport",
+};
+
+export default async function AdminPolesPage() {
   const admin = createAdminClient();
-
-  const { data: pole } = await admin
-    .from("poles")
-    .select("id, name, slug, category, capacity")
-    .eq("slug", slug)
-    .maybeSingle();
-  if (!pole) notFound();
-
   const { data, error } = await admin
-    .from("joueurs")
-    .select("*")
-    .eq("pole_id", pole.id)
+    .from("poles")
+    .select(
+      "id, slug, name, description, category, capacity, recrute, fixed, variant, position, active, joueurs(count)",
+    )
+    .order("category", { ascending: true })
     .order("position", { ascending: true });
 
   if (error) {
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
-  const members = (data ?? []) as PlayerRow[];
+  const poles = (data ?? []) as PoleWithCount[];
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href="/admin/poles"
-          className="text-sm font-semibold text-neutral-400 transition hover:text-white"
-        >
-          ← Tous les pôles
-        </Link>
-        <h2 className="mt-2 font-display text-xl text-white">
-          {pole.name}{" "}
-          <span className="text-neutral-500">
-            · {members.length}/{pole.capacity} membre{members.length > 1 ? "s" : ""}
-          </span>
-        </h2>
-      </div>
-
-      {/* Ajouter un membre */}
+      {/* Ajouter un pôle */}
       <section className="card-xbz p-6">
-        <h3 className="mb-4 font-display text-lg text-white">➕ Ajouter un membre</h3>
-        <PlayerForm action={upsertPlayer} poleId={pole.id} submitLabel="Ajouter le membre" />
+        <h2 className="mb-4 font-display text-lg text-white">➕ Ajouter un pôle</h2>
+        <PoleForm action={createPole} submitLabel="Créer le pôle" />
       </section>
 
       {/* Liste */}
       <section>
-        <h3 className="mb-4 font-display text-lg text-white">
-          Membres <span className="text-neutral-500">({members.length})</span>
-        </h3>
+        <h2 className="mb-4 font-display text-lg text-white">
+          Pôles <span className="text-neutral-500">({poles.length})</span>
+        </h2>
 
-        {members.length === 0 ? (
-          <p className="text-neutral-400">Aucun membre dans ce pôle. Ajoute le premier ci-dessus.</p>
+        {poles.length === 0 ? (
+          <p className="text-neutral-400">Aucun pôle. Crée le premier ci-dessus.</p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {members.map((m) => (
-              <li key={m.id} className="card-xbz p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h4 className="font-display text-lg text-white">
-                      {m.pseudo}
-                      {!m.active && (
-                        <span className="ml-2 rounded bg-white/10 px-2 py-0.5 text-xs text-neutral-400">
-                          masqué
-                        </span>
-                      )}
-                    </h4>
-                    <p className="text-sm text-neutral-500">
-                      {m.nom ?? "—"} · {m.pays ?? "—"}
-                    </p>
+            {poles.map((p) => {
+              const count = p.joueurs?.[0]?.count ?? 0;
+              return (
+                <li key={p.id} className="card-xbz p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-display text-lg text-white">
+                        {p.name}
+                        {!p.active && (
+                          <span className="ml-2 rounded bg-white/10 px-2 py-0.5 text-xs text-neutral-400">
+                            masqué
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-sm text-neutral-500">
+                        /{p.slug} · {CATEGORY_LABEL[p.category] ?? p.category} · {count}/{p.capacity}{" "}
+                        membre{count > 1 ? "s" : ""}
+                        {p.fixed
+                          ? " · pas de recrutement"
+                          : p.recrute
+                            ? ` · recrute : ${p.recrute}`
+                            : ""}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/admin/poles/${p.slug}`}
+                      className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                    >
+                      Gérer les membres →
+                    </Link>
                   </div>
-                </div>
 
-                <details className="group mt-4 border-t border-white/10 pt-4">
-                  <summary className="cursor-pointer list-none text-sm font-semibold text-xbz-cyan">
-                    Modifier / supprimer
-                  </summary>
-                  <div className="mt-4">
-                    <PlayerForm
-                      action={upsertPlayer}
-                      poleId={pole.id}
-                      player={m}
-                      submitLabel="Enregistrer"
-                    />
-                    <form action={deletePlayer} className="mt-3">
-                      <input type="hidden" name="id" value={m.id} />
-                      <input type="hidden" name="pole_slug" value={pole.slug} />
-                      <ConfirmButton
-                        className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25"
-                        message={`Supprimer le membre "${m.pseudo}" ? Action irréversible.`}
-                      >
-                        Supprimer le membre
-                      </ConfirmButton>
-                    </form>
-                  </div>
-                </details>
-              </li>
-            ))}
+                  <details className="group mt-4 border-t border-white/10 pt-4">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-xbz-cyan">
+                      Modifier / supprimer
+                    </summary>
+                    <div className="mt-4">
+                      <PoleForm action={updatePole} pole={p} submitLabel="Enregistrer" />
+                      <form action={deletePole} className="mt-3">
+                        <input type="hidden" name="id" value={p.id} />
+                        <ConfirmButton
+                          className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25"
+                          message={`Supprimer le pôle "${p.name}" et détacher ses membres ? Action irréversible.`}
+                        >
+                          Supprimer le pôle
+                        </ConfirmButton>
+                      </form>
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

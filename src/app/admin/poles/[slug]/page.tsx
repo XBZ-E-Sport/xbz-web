@@ -8,9 +8,6 @@ import { upsertPlayer, deletePlayer } from "../../rosters/actions";
 
 export const dynamic = "force-dynamic";
 
-// Rôles proposés pour un membre de pôle (staff), distincts des rôles esport.
-const POLE_ROLES = ["Membre", "Responsable"];
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   return { title: `Pôle ${slug} — Back-office XBZ` };
@@ -59,15 +56,10 @@ export default async function AdminPoleMembersPage({
         </h2>
       </div>
 
-      {/* Ajouter un membre */}
+      {/* Ajouter un membre (un membre de pôle n'a pas de sous-rôle : le pôle EST le rôle) */}
       <section className="card-xbz p-6">
         <h3 className="mb-4 font-display text-lg text-white">➕ Ajouter un membre</h3>
-        <PlayerForm
-          action={upsertPlayer}
-          poleId={pole.id}
-          roles={POLE_ROLES}
-          submitLabel="Ajouter le membre"
-        />
+        <PlayerForm action={upsertPlayer} poleId={pole.id} submitLabel="Ajouter le membre" />
       </section>
 
       {/* Liste */}
@@ -93,7 +85,7 @@ export default async function AdminPoleMembersPage({
                       )}
                     </h4>
                     <p className="text-sm text-neutral-500">
-                      {m.role} · {m.nom ?? "—"} · {m.pays ?? "—"}
+                      {m.nom ?? "—"} · {m.pays ?? "—"}
                     </p>
                   </div>
                 </div>
@@ -106,7 +98,6 @@ export default async function AdminPoleMembersPage({
                     <PlayerForm
                       action={upsertPlayer}
                       poleId={pole.id}
-                      roles={POLE_ROLES}
                       player={m}
                       submitLabel="Enregistrer"
                     />
