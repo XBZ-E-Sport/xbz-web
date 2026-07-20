@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import ConfirmButton from "@/components/ConfirmButton";
-import PlayerForm, { type PlayerRow } from "../../rosters/PlayerForm";
-import { upsertPlayer, deletePlayer } from "../../rosters/actions";
+import PlayerForm, { type PlayerRow } from "../rosters/PlayerForm";
+import { upsertPlayer, deletePlayer } from "../rosters/actions";
 
 export const dynamic = "force-dynamic";
 
