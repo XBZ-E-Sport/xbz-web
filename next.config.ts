@@ -2,10 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Domaines autorisés pour les photos de joueurs (next/image).
+    // Photos des membres hébergées sur Supabase Storage (bucket public "joueurs").
+    // `*.supabase.co` couvre le sous-domaine du projet (ex: abcd1234.supabase.co).
     remotePatterns: [
-      { protocol: "https", hostname: "*.supabase.co" }, // Supabase Storage (<ref>.supabase.co)
-      { protocol: "https", hostname: "cdn.discordapp.com" }, // avatars Discord
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
   async redirects() {

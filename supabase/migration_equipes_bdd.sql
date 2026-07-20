@@ -51,3 +51,10 @@ on conflict (slug) do nothing;
 -- Note : le « rempli » de chaque roster/pôle = nombre de membres (joueurs)
 -- réellement en base. Les compteurs partent donc de 0 tant que le staff n'a
 -- pas ajouté les vrais membres via le back-office (/admin/rosters, /admin/poles).
+
+-- 5) Storage : bucket public pour les photos des membres ----
+--    (upload depuis le back-office via la clé service_role ;
+--     lecture publique car le site affiche les photos).
+insert into storage.buckets (id, name, public)
+values ('joueurs', 'joueurs', true)
+on conflict (id) do nothing;

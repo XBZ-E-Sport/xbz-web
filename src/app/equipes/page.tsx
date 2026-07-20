@@ -62,22 +62,21 @@ function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
 
   return (
     <li
-      className="card-xbz animate-fade-up flex h-48 w-72 flex-col overflow-hidden p-6 transition duration-300 hover:scale-103"
+      className="card-xbz animate-fade-up group relative flex h-48 w-72 flex-col overflow-hidden p-6 transition duration-300 hover:scale-103 hover:border-xbz-blue/40"
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        {group.isRoster ? (
-          <h3 className="font-display text-lg">
-            <Link
-              href={`/equipes/${group.slug}`}
-              className="text-xbz-blue transition hover:text-xbz-cyan hover:underline"
-            >
-              {group.name}
-            </Link>
-          </h3>
-        ) : (
-          <h3 className="font-display text-lg text-xbz-blue">{group.name}</h3>
-        )}
+        {/* Toute la carte (roster comme pôle) est cliquable vers sa page détail,
+            via un lien « étiré » (::after). Le bouton RECRUTEMENT reste cliquable
+            indépendamment grâce à son z-10. */}
+        <h3 className="font-display text-lg">
+          <Link
+            href={`/equipes/${group.slug}`}
+            className="text-xbz-blue transition after:absolute after:inset-0 after:content-[''] group-hover:text-xbz-cyan"
+          >
+            {group.name}
+          </Link>
+        </h3>
         <span
           className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-sm font-bold ${slotsStyle}`}
           aria-label={slotsLabel}
@@ -116,7 +115,7 @@ function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
             <Link
               href="/recrutement"
               aria-label={`${group.name} : postuler — recrutement ouvert`}
-              className={`${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
+              className={`relative z-10 ${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
             >
               RECRUTEMENT OUVERT
             </Link>

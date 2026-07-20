@@ -4,17 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
 
-// Rôles connus (rosters esport + membres de pôles staff). La liste sert de
-// garde-fou : un rôle inconnu retombe sur la valeur par défaut.
-const ROLES = [
-  "Joueur",
-  "Capitaine",
-  "Coach",
-  "Manager",
-  "Sub",
-  "Membre",
-  "Responsable",
-] as const;
+// Rôles d'un joueur de roster (garde-fou : un rôle inconnu retombe sur "Joueur").
+// Un membre de pôle n'a PAS de rôle propre : le pôle lui-même est le rôle.
+const ROSTER_ROLES = ["Joueur", "Capitaine", "Coach", "Manager", "Sub"] as const;
+const POLE_MEMBER_ROLE = "Membre"; // valeur interne, jamais affichée côté public
 const POLE_CATEGORIES = ["staff", "esport"] as const;
 const POLE_VARIANTS = ["founder", "staff", "member", "creative"] as const;
 
@@ -29,6 +22,38 @@ function intField(fd: FormData, key: string, def: number): number {
   if (raw === "") return def;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : def;
+}
+
+// --- Photos : upload vers Supabase Storage (bucket public "joueurs") ---
+const PHOTO_BUCKET = "joueurs";
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 Mo
+const EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/avif": "avif",
+};
+
+type AdminClient = Awaited<ReturnType<typeof assertStaff>>;
+
+/** Envoie une image dans le bucket et renvoie son URL publique. */
+async function uploadPhoto(admin: AdminClient, file: File, slug: string): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("Le fichier doit être une image.");
+  if (file.size > MAX_PHOTO_BYTES) throw new Error("Image trop lourde (5 Mo max).");
+
+  const ext = EXT_BY_TYPE[file.type] ?? (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${slug || "membre"}-${Date.now()}.${ext}`;
+
+  const { error } = await admin.storage.from(PHOTO_BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: true,
+  });
+  if (error) throw new Error(`Upload photo : ${error.message}`);
+
+  const { data } = admin.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
 /** Normalise un texte en slug URL-safe (ex: "Roster SSL" → "roster-ssl"). */
@@ -203,11 +228,13 @@ export async function upsertPlayer(formData: FormData) {
   if (!pseudo) throw new Error("Le pseudo est obligatoire.");
 
   const slug = slugify(field(formData, "slug") || pseudo);
+  // Un membre de pôle n'a pas de rôle propre (le pôle = le rôle) → valeur interne.
+  // Un joueur de roster a un rôle validé contre la liste connue.
   const roleRaw = field(formData, "role");
-  const role = (ROLES as readonly string[]).includes(roleRaw)
-    ? roleRaw
-    : poleId
-      ? "Membre"
+  const role = poleId
+    ? POLE_MEMBER_ROLE
+    : (ROSTER_ROLES as readonly string[]).includes(roleRaw)
+      ? roleRaw
       : "Joueur";
   const paysCode = field(formData, "pays_code");
   const mmrRaw = field(formData, "mmr");
@@ -216,13 +243,20 @@ export async function upsertPlayer(formData: FormData) {
     .map((line) => line.trim())
     .filter(Boolean);
 
+  // Photo : un fichier uploadé est prioritaire ; sinon on garde l'URL saisie.
+  let photoUrl = field(formData, "photo_url") || null;
+  const photoFile = formData.get("photo_file");
+  if (photoFile instanceof File && photoFile.size > 0) {
+    photoUrl = await uploadPhoto(admin, photoFile, slug);
+  }
+
   const row = {
     roster_id: rosterId || null,
     pole_id: poleId || null,
     slug,
     pseudo,
     nom: field(formData, "nom") || null,
-    photo_url: field(formData, "photo_url") || null,
+    photo_url: photoUrl,
     pays: field(formData, "pays") || null,
     pays_code: paysCode ? paysCode.toUpperCase() : null,
     role,

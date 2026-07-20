@@ -4,6 +4,7 @@
 // base ; le « total » = colonne `capacity`. Slots 100 % dynamiques.
 
 import { createClient } from "@/lib/supabase/server";
+import type { Player } from "@/lib/roster";
 import type { RecrutementCategory } from "@/content/recrutement";
 
 export type GroupVariant = "founder" | "staff" | "member" | "creative";
@@ -144,4 +145,37 @@ export async function isRoleOpen(categorie: string, role: string): Promise<boole
   if (categorie !== "XBZ Staff" && categorie !== "XBZ Esport") return false;
   const roles = (await getOpenRolesByCategory())[categorie];
   return roles.some((r) => r.name === role);
+}
+
+// ============ PAGE DÉTAIL D'UN PÔLE ============
+
+export type PoleDetail = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  category: "staff" | "esport";
+  members: Player[];
+};
+
+/** Un pôle + ses membres actifs (triés), ou null s'il n'existe pas. */
+export async function getPoleBySlug(slug: string): Promise<PoleDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("poles")
+    .select("id, slug, name, description, category, members:joueurs(*)")
+    .eq("slug", slug)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[pole] select:", error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  const pole = data as unknown as PoleDetail;
+  pole.category = pole.category === "esport" ? "esport" : "staff";
+  pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
+  return pole;
 }

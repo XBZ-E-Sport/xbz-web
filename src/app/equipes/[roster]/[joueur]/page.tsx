@@ -2,10 +2,35 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
-import { getPlayer } from "@/lib/roster";
+import { getPlayer, type Player } from "@/lib/roster";
+import { getPoleBySlug } from "@/lib/equipes";
 import Flag from "@/components/Flag";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Résout un membre par slug parent + slug membre : d'abord un joueur de roster,
+ * sinon un membre de pôle. `parent` porte le slug + le nom pour l'en-tête.
+ */
+type Parent = { slug: string; name: string; kind: "roster" | "pole" };
+
+async function resolveMember(
+  parentSlug: string,
+  memberSlug: string,
+): Promise<{ player: Player; parent: Parent } | null> {
+  const res = await getPlayer(parentSlug, memberSlug);
+  if (res) {
+    return { player: res.player, parent: { slug: res.roster.slug, name: res.roster.name, kind: "roster" } };
+  }
+
+  const pole = await getPoleBySlug(parentSlug);
+  const member = pole?.members.find((m) => m.slug === memberSlug);
+  if (pole && member) {
+    return { player: member, parent: { slug: pole.slug, name: pole.name, kind: "pole" } };
+  }
+
+  return null;
+}
 
 export async function generateMetadata({
   params,
@@ -13,12 +38,12 @@ export async function generateMetadata({
   params: Promise<{ roster: string; joueur: string }>;
 }) {
   const { roster, joueur } = await params;
-  const res = await getPlayer(roster, joueur);
-  if (!res) return { title: "Joueur introuvable — XBZ Esport" };
+  const res = await resolveMember(roster, joueur);
+  if (!res) return { title: "Membre introuvable — XBZ Esport" };
   const { player } = res;
   return {
     title: `${player.pseudo} — XBZ Esport`,
-    description: player.bio ?? `${player.pseudo}${player.nom ? ` (${player.nom})` : ""}, joueur XBZ Esport.`,
+    description: player.bio ?? `${player.pseudo}${player.nom ? ` (${player.nom})` : ""}, membre de XBZ Esport.`,
   };
 }
 
@@ -27,10 +52,10 @@ export default async function PlayerPage({
 }: {
   params: Promise<{ roster: string; joueur: string }>;
 }) {
-  const { roster: rosterSlug, joueur: playerSlug } = await params;
-  const res = await getPlayer(rosterSlug, playerSlug);
+  const { roster: parentSlug, joueur: memberSlug } = await params;
+  const res = await resolveMember(parentSlug, memberSlug);
   if (!res) notFound();
-  const { player, roster } = res;
+  const { player, parent } = res;
 
   const socials = [
     player.twitter && { label: "X / Twitter", href: player.twitter },
@@ -38,8 +63,8 @@ export default async function PlayerPage({
     player.rltracker && { label: "RL Tracker", href: player.rltracker },
   ].filter(Boolean) as { label: string; href: string }[];
 
+  // Le rôle est déjà affiché au-dessus du nom ({role} · {parent}) : pas de doublon ici.
   const stats = [
-    { label: "Rôle", value: player.role },
     player.rang && { label: "Rang", value: player.rang },
     player.mmr != null && { label: "MMR", value: String(player.mmr) },
     player.pays && { label: "Pays", value: player.pays },
@@ -48,10 +73,10 @@ export default async function PlayerPage({
   return (
     <div className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-32">
       <Link
-        href={`/equipes/${roster.slug}`}
+        href={`/equipes/${parent.slug}`}
         className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
       >
-        <span aria-hidden="true">←</span> {roster.name}
+        <span aria-hidden="true">←</span> {parent.name}
       </Link>
 
       <div className="mt-6 grid gap-8 md:grid-cols-[320px_1fr]">
@@ -72,7 +97,8 @@ export default async function PlayerPage({
         {/* Infos */}
         <div>
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
-            {player.role} · {roster.name}
+            {/* Pour un pôle, le pôle EST le rôle : on n'affiche pas de sous-rôle. */}
+            {parent.kind === "pole" ? parent.name : `${player.role} · ${parent.name}`}
           </p>
           <h1 className="flex items-center gap-3 font-display text-4xl font-black uppercase tracking-wide text-white sm:text-5xl">
             <Flag code={player.pays_code} label={player.pays} className="h-7 w-auto rounded-sm" />
@@ -84,15 +110,17 @@ export default async function PlayerPage({
             <p className="mt-6 leading-relaxed text-neutral-300">{player.bio}</p>
           )}
 
-          {/* Stats */}
-          <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="card-xbz p-4 text-center">
-                <dt className="text-xs uppercase tracking-wide text-neutral-500">{s.label}</dt>
-                <dd className="mt-1 font-display text-lg text-white">{s.value}</dd>
-              </div>
-            ))}
-          </dl>
+          {/* Stats (masquées s'il n'y a rien à montrer, ex : membre de pôle) */}
+          {stats.length > 0 && (
+            <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {stats.map((s) => (
+                <div key={s.label} className="card-xbz p-4 text-center">
+                  <dt className="text-xs uppercase tracking-wide text-neutral-500">{s.label}</dt>
+                  <dd className="mt-1 font-display text-lg text-white">{s.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
 
           {/* Palmarès */}
           {player.palmares && player.palmares.length > 0 && (

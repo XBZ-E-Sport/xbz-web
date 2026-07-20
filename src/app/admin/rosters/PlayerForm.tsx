@@ -26,26 +26,23 @@ export type PlayerRow = {
 
 /**
  * Formulaire membre, partagé entre rosters (joueurs esport) et pôles (staff).
- * On passe soit `rosterId`, soit `poleId`. Les champs spécifiques à l'esport
- * (rang, MMR, RL Tracker, palmarès) ne s'affichent que pour un roster.
+ * On passe soit `rosterId`, soit `poleId`. Un membre de pôle n'a pas de rôle
+ * propre (le pôle EST le rôle) : on masque alors le rôle + les champs esport.
  */
 export default function PlayerForm({
   action,
   rosterId,
   poleId,
-  roles = ROSTER_ROLES,
   player,
   submitLabel,
 }: {
   action: (formData: FormData) => void | Promise<void>;
   rosterId?: string;
   poleId?: string;
-  roles?: string[];
   player?: PlayerRow;
   submitLabel: string;
 }) {
   const isPole = Boolean(poleId);
-  const defaultRole = player?.role ?? roles[0] ?? "Joueur";
 
   return (
     <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -68,21 +65,51 @@ export default function PlayerForm({
         <input name="nom" defaultValue={player?.nom ?? ""} placeholder="Nassim Bali" className={inputCls} />
       </label>
 
-      <label className="block">
-        <span className={labelCls}>Rôle</span>
-        <select name="role" defaultValue={defaultRole} className={inputCls}>
-          {roles.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Rôle : uniquement pour un joueur de roster. Un membre de pôle n'a pas de
+          sous-rôle — le pôle lui-même définit la fonction. */}
+      {!isPole && (
+        <label className="block">
+          <span className={labelCls}>Rôle</span>
+          <select name="role" defaultValue={player?.role ?? "Joueur"} className={inputCls}>
+            {ROSTER_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
-      <label className="block sm:col-span-2">
-        <span className={labelCls}>Photo (URL)</span>
-        <input name="photo_url" type="url" defaultValue={player?.photo_url ?? ""} placeholder="https://…" className={inputCls} />
-      </label>
+      <div className="block sm:col-span-2">
+        <span className={labelCls}>Photo</span>
+        <div className="flex items-center gap-3">
+          {player?.photo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={player.photo_url}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-lg object-cover"
+            />
+          )}
+          <input
+            name="photo_file"
+            type="file"
+            accept="image/*"
+            className="w-full text-sm text-neutral-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-xbz-blue file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:brightness-110"
+          />
+        </div>
+        <input
+          name="photo_url"
+          type="url"
+          defaultValue={player?.photo_url ?? ""}
+          placeholder="…ou colle une URL d'image"
+          className={`${inputCls} mt-2`}
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          Upload une image (JPG / PNG / WebP, 5&nbsp;Mo max) ou colle une URL. L&apos;upload est
+          prioritaire sur l&apos;URL.
+        </p>
+      </div>
 
       <label className="block">
         <span className={labelCls}>Pays</span>
