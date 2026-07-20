@@ -66,6 +66,30 @@ function slugify(input: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Renvoie un slug libre pour la table `joueurs` (slug unique global).
+ * Si `base` est déjà pris par un AUTRE joueur, on suffixe -2, -3, …
+ * `excludeId` = l'id du joueur en cours d'édition (son propre slug ne compte pas).
+ */
+async function uniqueJoueurSlug(
+  admin: AdminClient,
+  base: string,
+  excludeId: string | null,
+): Promise<string> {
+  const root = base || "membre";
+  for (let n = 1; n < 1000; n += 1) {
+    const candidate = n === 1 ? root : `${root}-${n}`;
+    const { data, error } = await admin
+      .from("joueurs")
+      .select("id")
+      .eq("slug", candidate)
+      .maybeSingle();
+    // Libre, inexistant, ou c'est le joueur lui-même → on garde ce slug.
+    if (error || !data || data.id === excludeId) return candidate;
+  }
+  return `${root}-${Date.now()}`;
+}
+
 // ============ ROSTERS ============
 
 export async function createRoster(formData: FormData) {
@@ -229,7 +253,8 @@ export async function upsertPlayer(formData: FormData) {
   const pseudo = field(formData, "pseudo");
   if (!pseudo) throw new Error("Le pseudo est obligatoire.");
 
-  const slug = slugify(field(formData, "slug") || pseudo);
+  // Slug unique global : on suffixe automatiquement en cas de collision de pseudo.
+  const slug = await uniqueJoueurSlug(admin, slugify(field(formData, "slug") || pseudo), id || null);
   // Un membre de pôle n'a pas de rôle propre (le pôle = le rôle) → valeur interne.
   // Un joueur de roster a un rôle validé contre la liste connue.
   const roleRaw = field(formData, "role");
@@ -276,7 +301,13 @@ export async function upsertPlayer(formData: FormData) {
   const { error } = id
     ? await admin.from("joueurs").update(row).eq("id", id)
     : await admin.from("joueurs").insert(row);
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Filet de sécurité si une contrainte d'unicité saute malgré tout.
+    if (error.code === "23505") {
+      throw new Error("Un membre avec ce pseudo/slug existe déjà — change le slug.");
+    }
+    throw new Error(error.message);
+  }
 
   // Revalidation ciblée selon le parent.
   revalidatePath("/equipes");
