@@ -81,7 +81,18 @@ function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number })
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="font-display text-lg text-xbz-blue">{entry.title}</h3>
+        {entry.slug ? (
+          <h3 className="font-display text-lg">
+            <Link
+              href={`/equipes/${entry.slug}`}
+              className="text-xbz-blue transition hover:text-xbz-cyan hover:underline"
+            >
+              {entry.title}
+            </Link>
+          </h3>
+        ) : (
+          <h3 className="font-display text-lg text-xbz-blue">{entry.title}</h3>
+        )}
         <span
           className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-sm font-bold ${slotsStyle}`}
           aria-label={slotsLabel}

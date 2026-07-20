@@ -10,6 +10,8 @@ export type StaffEntry = {
   tags: RoleTag[];
   /** Rôle candidat alimenté par cette ligne (piloté par le recrutement). */
   recrute?: string;
+  /** Non utilisé côté staff (présent pour compat. avec la carte partagée). */
+  slug?: string;
 };
 
 export const staffRoster: StaffEntry[] = [

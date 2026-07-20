@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isValidRole } from "@/content/recrutement";
+import { checkSpam } from "@/lib/antispam";
 
 type Payload = {
   categorie?: string;
@@ -15,6 +16,9 @@ type Payload = {
   rang?: string;
   exp?: string;
   motiv?: string;
+  // Anti-spam
+  website?: string;
+  elapsed?: string;
 };
 
 export async function POST(request: Request) {
@@ -24,6 +28,19 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
+  }
+
+  // --- Anti-spam (honeypot + délai minimum) ---
+  const { spam, tooFast } = checkSpam(body);
+  if (spam) {
+    // Piège rempli : on répond OK sans rien enregistrer (le bot n'apprend rien).
+    return NextResponse.json({ ok: true });
+  }
+  if (tooFast) {
+    return NextResponse.json(
+      { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
+      { status: 429 },
+    );
   }
 
   const categorie = String(body.categorie ?? "").trim();

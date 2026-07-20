@@ -1,11 +1,15 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkSpam } from "@/lib/antispam";
 
 type Payload = {
   nom?: string;
   email?: string;
   sujet?: string;
   message?: string;
+  // Anti-spam
+  website?: string;
+  elapsed?: string;
 };
 
 const SUJETS = [
@@ -24,6 +28,19 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
+  }
+
+  // --- Anti-spam (honeypot + délai minimum) ---
+  const { spam, tooFast } = checkSpam(body);
+  if (spam) {
+    // Piège rempli : on répond OK sans rien enregistrer.
+    return NextResponse.json({ ok: true });
+  }
+  if (tooFast) {
+    return NextResponse.json(
+      { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
+      { status: 429 },
+    );
   }
 
   const nom = String(body.nom ?? "").trim();

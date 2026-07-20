@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
@@ -19,11 +19,18 @@ const SUJETS = ["Général", "Recrutement", "Partenariat", "Signalement", "Press
 export default function SupportForm() {
   const [status, setStatus] = useState<{ msg: string; tone: Tone }>({ msg: "", tone: "idle" });
   const [submitting, setSubmitting] = useState(false);
+  // Anti-spam : instant où le formulaire devient interactif.
+  const mountedAt = useRef<number | null>(null);
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
+    // Temps de remplissage (le serveur rejette un envoi trop rapide = bot).
+    data.elapsed = mountedAt.current ? String(Date.now() - mountedAt.current) : "";
 
     setSubmitting(true);
     setStatus({ msg: "⏳ Envoi en cours...", tone: "loading" });
@@ -50,6 +57,12 @@ export default function SupportForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* Anti-spam : piège invisible. Un humain ne remplit jamais ce champ. */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-[-9999px] h-0 w-0 overflow-hidden">
+        <label htmlFor="support-website">Ne pas remplir</label>
+        <input id="support-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
       <div>
         <label htmlFor="support-nom" className={labelCls}>
           Nom / Pseudo

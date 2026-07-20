@@ -1,24 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getArticles, getArticleBySlug, type ArticleCategory } from "@/lib/actualite";
-
-const categoryStyles: Record<ArticleCategory, string> = {
-  Compétition: "bg-xbz-blue/15 text-[#7fc8ff]",
-  Recrutement: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
-  Annonce: "bg-white/10 text-white",
-  Communauté: "bg-[rgba(88,101,242,0.18)] text-[#b6bdff]",
-  Création: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Paris",
-  });
-}
+import { getArticles, getArticleBySlug } from "@/lib/actualite";
+import { formatDate, articleCategoryStyles } from "@/lib/format";
+import { siteConfig, absoluteUrl } from "@/lib/site";
 
 export async function generateStaticParams() {
   const articles = await getArticles();
@@ -45,8 +30,31 @@ export default async function ArticlePage({
   const article = await getArticleBySlug(slug);
   if (!article) notFound();
 
+  // JSON-LD BlogPosting (SEO : rich results / Google Actualités).
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: article.title,
+    description: article.excerpt,
+    datePublished: article.date,
+    dateModified: article.date,
+    articleSection: article.category,
+    author: { "@type": "Organization", name: article.author },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      logo: { "@type": "ImageObject", url: absoluteUrl("/logo-xbz.png") },
+    },
+    mainEntityOfPage: absoluteUrl(`/actualite/${article.slug}`),
+  };
+
   return (
     <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <Link
         href="/actualite"
         className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
@@ -57,7 +65,7 @@ export default async function ArticlePage({
       <article className="mt-6">
         <div className="flex flex-wrap items-center gap-3">
           <span
-            className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${categoryStyles[article.category]}`}
+            className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${articleCategoryStyles[article.category]}`}
           >
             {article.category}
           </span>

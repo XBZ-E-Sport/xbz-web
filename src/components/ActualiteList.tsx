@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import type { Article, ArticleCategory } from "@/lib/actualite";
+import { formatDate, articleCategoryStyles } from "@/lib/format";
 
 // Nombre d'articles ajoutés à chaque « page » (pagination / lazy loading).
 const PAGE_SIZE = 6;
@@ -11,27 +12,10 @@ const PAGE_SIZE = 6;
 type SortKey = "recent" | "ancien";
 type Filter = ArticleCategory | "Tous";
 
-const categoryStyles: Record<ArticleCategory, string> = {
-  Compétition: "bg-xbz-blue/15 text-[#7fc8ff]",
-  Recrutement: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
-  Annonce: "bg-white/10 text-white",
-  Communauté: "bg-[rgba(88,101,242,0.18)] text-[#b6bdff]",
-  Création: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Paris",
-  });
-}
-
 function CategoryBadge({ category }: { category: ArticleCategory }) {
   return (
     <span
-      className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${categoryStyles[category]}`}
+      className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${articleCategoryStyles[category]}`}
     >
       {category}
     </span>
@@ -73,7 +57,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
   // Catégories réellement présentes dans les articles (+ « Tous »).
   const filters = useMemo<Filter[]>(() => {
     const present = new Set(articles.map((a) => a.category));
-    return ["Tous", ...(Object.keys(categoryStyles) as ArticleCategory[]).filter((c) => present.has(c))];
+    return ["Tous", ...(Object.keys(articleCategoryStyles) as ArticleCategory[]).filter((c) => present.has(c))];
   }, [articles]);
 
   const filteredSorted = useMemo(() => {

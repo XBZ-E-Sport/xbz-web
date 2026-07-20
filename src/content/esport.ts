@@ -10,6 +10,8 @@ export type EsportEntry = {
   tags: RoleTag[];
   /** Rôle candidat alimenté par cette ligne (piloté par le recrutement). */
   recrute?: string;
+  /** Slug du roster en base → lien vers /equipes/[slug] (page effectif). */
+  slug?: string;
 };
 
 export const esportRoster: EsportEntry[] = [
@@ -47,6 +49,7 @@ export const esportRoster: EsportEntry[] = [
     slots: "0/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
     recrute: "Joueur",
+    slug: "ssl",
   },
   {
     title: "🔴 Roster GC3",
@@ -54,6 +57,7 @@ export const esportRoster: EsportEntry[] = [
     slots: "2/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
     recrute: "Joueur",
+    slug: "gc3",
   },
   {
     title: "🔴 Roster GC2",
@@ -61,6 +65,7 @@ export const esportRoster: EsportEntry[] = [
     slots: "2/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
     recrute: "Joueur",
+    slug: "gc2",
   },
   {
     title: "🔴 Roster GC1",
@@ -68,6 +73,7 @@ export const esportRoster: EsportEntry[] = [
     slots: "1/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
     recrute: "Joueur",
+    slug: "gc1",
   },
   {
     title: "🎮 Roster C3",
@@ -75,5 +81,6 @@ export const esportRoster: EsportEntry[] = [
     slots: "1/3",
     tags: [{ label: "JOUEUR", variant: "member" }],
     recrute: "Joueur",
+    slug: "c3",
   },
 ];

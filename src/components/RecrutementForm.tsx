@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { recrutementCategories, openRoles } from "@/content/recrutement";
 
@@ -23,6 +23,11 @@ export default function RecrutementForm() {
   const [jeu, setJeu] = useState("");
   const [status, setStatus] = useState<{ msg: string; tone: Tone }>({ msg: "", tone: "idle" });
   const [submitting, setSubmitting] = useState(false);
+  // Anti-spam : instant où le formulaire devient interactif (mesure du temps de remplissage).
+  const mountedAt = useRef<number | null>(null);
+  useEffect(() => {
+    mountedAt.current = Date.now();
+  }, []);
 
   const isEsport = categorie === "XBZ Esport";
   const showRL = isEsport && jeu === "Rocket League";
@@ -48,6 +53,8 @@ export default function RecrutementForm() {
     }
 
     const data = Object.fromEntries(fd.entries());
+    // Temps de remplissage (le serveur rejette un envoi trop rapide = bot).
+    data.elapsed = mountedAt.current ? String(Date.now() - mountedAt.current) : "";
     setSubmitting(true);
     setStatus({ msg: "⏳ Envoi en cours...", tone: "loading" });
 
@@ -76,6 +83,12 @@ export default function RecrutementForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* Anti-spam : piège invisible. Un humain ne remplit jamais ce champ. */}
+      <div aria-hidden="true" className="pointer-events-none absolute left-[-9999px] h-0 w-0 overflow-hidden">
+        <label htmlFor="rec-website">Ne pas remplir</label>
+        <input id="rec-website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
       {/* Catégorie + rôle */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

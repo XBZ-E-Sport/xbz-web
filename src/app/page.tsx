@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getArticles } from "@/lib/actualite";
+import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { esportRoster } from "@/content/esport";
 import { staffRoster } from "@/content/staff";
 import { siteConfig, absoluteUrl } from "@/lib/site";
@@ -48,15 +49,6 @@ const orgJsonLd = {
   description: siteConfig.description,
   ...(siteConfig.discord ? { sameAs: [siteConfig.discord] } : {}),
 };
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Paris",
-  });
-}
 
 export default async function Home() {
   const latest = (await getArticles()).slice(0, 3);
@@ -176,7 +168,9 @@ export default async function Home() {
                     className="card-xbz group flex h-full flex-col p-6 transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
                   >
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="rounded-md bg-xbz-blue/15 px-2 py-0.5 font-bold uppercase tracking-wide text-[#7fc8ff]">
+                      <span
+                        className={`rounded-md px-2 py-0.5 font-bold uppercase tracking-wide ${articleCategoryStyles[article.category]}`}
+                      >
                         {article.category}
                       </span>
                       <time dateTime={article.date} className="text-neutral-500">
