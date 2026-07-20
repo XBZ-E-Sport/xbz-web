@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,6 +37,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </form>
         </div>
       </header>
+
+      <nav aria-label="Sections du back-office" className="mb-8 flex flex-wrap gap-2">
+        <Link
+          href="/admin"
+          className="rounded-lg bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+        >
+          📋 Candidatures
+        </Link>
+        <Link
+          href="/admin/rosters"
+          className="rounded-lg bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+        >
+          🎮 Rosters &amp; Joueurs
+        </Link>
+      </nav>
+
       {children}
     </div>
   );

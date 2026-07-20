@@ -56,7 +56,7 @@ export default async function PlayerPage({
 
       <div className="mt-6 grid gap-8 md:grid-cols-[320px_1fr]">
         {/* Photo */}
-        <div className="card-xbz relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-xbz-blue/25 to-xbz-cyan/10">
+        <div className="card-xbz relative aspect-3/4 overflow-hidden bg-linear-to-br from-xbz-blue/25 to-xbz-cyan/10">
           {player.photo_url ? (
             <Image src={player.photo_url} alt="" fill sizes="320px" className="object-cover" />
           ) : (
