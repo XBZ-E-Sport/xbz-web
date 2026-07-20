@@ -8,19 +8,20 @@ import { createRoster, updateRoster, deleteRoster } from "./actions";
 export const metadata = { title: "Rosters — Back-office XBZ" };
 export const dynamic = "force-dynamic";
 
-type RosterWithCount = RosterRow & { joueurs?: { count: number }[] };
+// On récupère l'`active` de chaque joueur pour compter comme le public (actifs).
+type RosterWithMembers = RosterRow & { joueurs?: { active: boolean }[] };
 
 export default async function AdminRostersPage() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("rosters")
-    .select("id, slug, name, rank, description, capacity, recrute, position, active, joueurs(count)")
+    .select("id, slug, name, rank, description, capacity, recrute, position, active, joueurs(active)")
     .order("position", { ascending: true });
 
   if (error) {
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
-  const rosters = (data ?? []) as RosterWithCount[];
+  const rosters = (data ?? []) as RosterWithMembers[];
 
   return (
     <div className="flex flex-col gap-8">
@@ -41,7 +42,8 @@ export default async function AdminRostersPage() {
         ) : (
           <ul className="flex flex-col gap-3">
             {rosters.map((r) => {
-              const count = r.joueurs?.[0]?.count ?? 0;
+              // Comme le public : on ne compte que les joueurs actifs (visibles).
+              const count = (r.joueurs ?? []).filter((j) => j.active).length;
               return (
                 <li key={r.id} className="card-xbz p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -78,7 +80,7 @@ export default async function AdminRostersPage() {
                         <input type="hidden" name="id" value={r.id} />
                         <ConfirmButton
                           className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25"
-                          message={`Supprimer le roster "${r.name}" et détacher ses joueurs ? Action irréversible.`}
+                          message={`Supprimer le roster "${r.name}" et TOUS ses joueurs ? Action irréversible.`}
                         >
                           Supprimer le roster
                         </ConfirmButton>

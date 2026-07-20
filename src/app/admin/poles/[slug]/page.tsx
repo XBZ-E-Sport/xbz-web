@@ -38,6 +38,8 @@ export default async function AdminPoleMembersPage({
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
   const members = (data ?? []) as PlayerRow[];
+  // Ratio « occupé » = membres actifs (comme le public) ; la liste montre tout.
+  const activeCount = members.filter((m) => m.active).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,7 +53,7 @@ export default async function AdminPoleMembersPage({
         <h2 className="mt-2 font-display text-xl text-white">
           {pole.name}{" "}
           <span className="text-neutral-500">
-            · {members.length}/{pole.capacity} membre{members.length > 1 ? "s" : ""}
+            · {activeCount}/{pole.capacity} membre{activeCount > 1 ? "s" : ""}
           </span>
         </h2>
       </div>

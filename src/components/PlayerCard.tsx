@@ -5,7 +5,7 @@ import type { Player } from "@/lib/roster";
 import Flag from "@/components/Flag";
 
 const roleBadge: Record<string, string> = {
-  Capitaine: "bg-gradient-to-r from-xbz-cyan to-xbz-blue text-[#04141f]",
+  Capitaine: "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#04141f]",
   Coach: "bg-[rgba(160,90,255,0.9)] text-white",
   Manager: "bg-[rgba(160,90,255,0.9)] text-white",
   Sub: "bg-white/15 text-white",

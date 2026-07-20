@@ -24,8 +24,8 @@ const variantLabel: Record<GroupVariant, string> = {
   creative: "CRÉATIF",
 };
 const availabilityStyles = {
-  open: "animate-pulse bg-gradient-to-r from-[#7ad7ff] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(0,102,255,0.6)]",
-  closed: "bg-gradient-to-r from-xbz-orange to-xbz-dark-red text-[#111] shadow-[0_0_25px_rgba(255,15,16,0.6)]",
+  open: "animate-pulse bg-linear-to-r from-[#7ad7ff] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(0,102,255,0.6)]",
+  closed: "bg-linear-to-r from-xbz-orange to-xbz-dark-red text-[#111] shadow-[0_0_25px_rgba(255,15,16,0.6)]",
 } as const;
 
 function countOpen(groups: Group[]) {
@@ -104,8 +104,8 @@ function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
       {group.description && <p className="text-sm text-neutral-400">{group.description}</p>}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <span className={`inline-block rounded-lg px-2.5 py-1 text-[11px] font-bold ${roleStyles[group.variant]}`}>
-          {variantLabel[group.variant]}
+        <span className={`inline-block rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase ${roleStyles[group.variant]}`}>
+          {group.badge || variantLabel[group.variant]}
         </span>
         {!group.fixed &&
           group.recrute &&

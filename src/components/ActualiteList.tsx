@@ -96,7 +96,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
 
   const chipBase =
     "rounded-full px-4 py-1.5 text-sm font-semibold transition focus-visible:outline-none";
-  const chipActive = "bg-gradient-to-r from-xbz-cyan to-xbz-blue text-[#04141f]";
+  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#04141f]";
   const chipIdle = "border border-white/15 text-neutral-300 hover:border-white/40 hover:text-white";
 
   return (

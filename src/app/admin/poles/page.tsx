@@ -8,7 +8,8 @@ import { createPole, updatePole, deletePole } from "../rosters/actions";
 export const metadata = { title: "Pôles — Back-office XBZ" };
 export const dynamic = "force-dynamic";
 
-type PoleWithCount = PoleRow & { joueurs?: { count: number }[] };
+// On récupère l'`active` de chaque membre pour compter comme le public (actifs).
+type PoleWithMembers = PoleRow & { joueurs?: { active: boolean }[] };
 
 const CATEGORY_LABEL: Record<string, string> = {
   staff: "Staff",
@@ -20,7 +21,7 @@ export default async function AdminPolesPage() {
   const { data, error } = await admin
     .from("poles")
     .select(
-      "id, slug, name, description, category, capacity, recrute, fixed, variant, position, active, joueurs(count)",
+      "id, slug, name, description, category, capacity, recrute, fixed, variant, badge, position, active, joueurs(active)",
     )
     .order("category", { ascending: true })
     .order("position", { ascending: true });
@@ -28,7 +29,7 @@ export default async function AdminPolesPage() {
   if (error) {
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
-  const poles = (data ?? []) as PoleWithCount[];
+  const poles = (data ?? []) as PoleWithMembers[];
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,7 +50,8 @@ export default async function AdminPolesPage() {
         ) : (
           <ul className="flex flex-col gap-3">
             {poles.map((p) => {
-              const count = p.joueurs?.[0]?.count ?? 0;
+              // Comme le public : on ne compte que les membres actifs (visibles).
+              const count = (p.joueurs ?? []).filter((j) => j.active).length;
               return (
                 <li key={p.id} className="card-xbz p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,7 +92,7 @@ export default async function AdminPolesPage() {
                         <input type="hidden" name="id" value={p.id} />
                         <ConfirmButton
                           className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25"
-                          message={`Supprimer le pôle "${p.name}" et détacher ses membres ? Action irréversible.`}
+                          message={`Supprimer le pôle "${p.name}" et TOUS ses membres ? Action irréversible.`}
                         >
                           Supprimer le pôle
                         </ConfirmButton>

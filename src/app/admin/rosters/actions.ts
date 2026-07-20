@@ -155,6 +155,7 @@ export async function createPole(formData: FormData) {
     recrute: field(formData, "recrute") || null,
     fixed: formData.get("fixed") === "on",
     variant,
+    badge: field(formData, "badge") || null,
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
   });
@@ -191,6 +192,7 @@ export async function updatePole(formData: FormData) {
       recrute: field(formData, "recrute") || null,
       fixed: formData.get("fixed") === "on",
       variant,
+      badge: field(formData, "badge") || null,
       position: intField(formData, "position", 0),
       active: formData.get("active") === "on",
     })

@@ -3,6 +3,8 @@
 // Le « rempli » de chaque groupe = nombre de membres (joueurs) réellement en
 // base ; le « total » = colonne `capacity`. Slots 100 % dynamiques.
 
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 import type { Player } from "@/lib/roster";
 import type { RecrutementCategory } from "@/content/recrutement";
@@ -20,6 +22,8 @@ export type Group = {
   recrute: string | null;
   fixed: boolean;
   variant: GroupVariant;
+  /** Texte du badge (pôles). Vide → texte auto dérivé du variant. */
+  badge: string | null;
   /** true → roster esport avec une page détail /equipes/[slug]. */
   isRoster: boolean;
 };
@@ -32,7 +36,7 @@ type RosterRow = {
 type PoleRow = {
   id: string; slug: string; name: string; description: string | null;
   category: string; capacity: number | null; recrute: string | null;
-  fixed: boolean; variant: string; joueurs: CountRel;
+  fixed: boolean; variant: string; badge: string | null; joueurs: CountRel;
 };
 
 function memberCount(rel: CountRel): number {
@@ -50,7 +54,7 @@ async function fetchGroups(): Promise<{ rosters: Group[]; poles: Group[] }> {
       .order("position", { ascending: true }),
     supabase
       .from("poles")
-      .select("id, slug, name, description, category, capacity, recrute, fixed, variant, position, joueurs(count)")
+      .select("id, slug, name, description, category, capacity, recrute, fixed, variant, badge, position, joueurs(count)")
       .eq("active", true)
       .order("position", { ascending: true }),
   ]);
@@ -69,6 +73,7 @@ async function fetchGroups(): Promise<{ rosters: Group[]; poles: Group[] }> {
     recrute: r.recrute ?? "Joueur",
     fixed: false,
     variant: "member",
+    badge: null,
     isRoster: true,
   }));
 
@@ -85,6 +90,7 @@ async function fetchGroups(): Promise<{ rosters: Group[]; poles: Group[] }> {
     variant: (["founder", "staff", "member", "creative"].includes(p.variant)
       ? p.variant
       : "staff") as GroupVariant,
+    badge: p.badge?.trim() || null,
     isRoster: false,
   }));
 
@@ -158,8 +164,11 @@ export type PoleDetail = {
   members: Player[];
 };
 
-/** Un pôle + ses membres actifs (triés), ou null s'il n'existe pas. */
-export async function getPoleBySlug(slug: string): Promise<PoleDetail | null> {
+/**
+ * Un pôle + ses membres actifs (triés), ou null s'il n'existe pas.
+ * Mémoïsé par requête (`cache`) : generateMetadata + la page ne font qu'un appel.
+ */
+export const getPoleBySlug = cache(async (slug: string): Promise<PoleDetail | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("poles")
@@ -178,4 +187,4 @@ export async function getPoleBySlug(slug: string): Promise<PoleDetail | null> {
   pole.category = pole.category === "esport" ? "esport" : "staff";
   pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
   return pole;
-}
+});

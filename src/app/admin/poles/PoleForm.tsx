@@ -6,11 +6,12 @@ const CATEGORIES = [
   { value: "staff", label: "Staff" },
   { value: "esport", label: "Esport (staff de section)" },
 ];
+// Les couleurs doivent correspondre à `roleStyles` dans src/app/equipes/page.tsx.
 const VARIANTS = [
-  { value: "founder", label: "Fondateur (or)" },
-  { value: "staff", label: "Staff (bleu)" },
-  { value: "member", label: "Membre (cyan)" },
-  { value: "creative", label: "Créatif (violet)" },
+  { value: "founder", label: "Fondateur (blanc)" },
+  { value: "staff", label: "Staff (violet)" },
+  { value: "member", label: "Joueur (bleu)" },
+  { value: "creative", label: "Créatif (cyan)" },
 ];
 
 export type PoleRow = {
@@ -23,6 +24,7 @@ export type PoleRow = {
   recrute: string | null;
   fixed: boolean;
   variant: string;
+  badge: string | null;
   position: number;
   active: boolean;
 };
@@ -62,7 +64,7 @@ export default function PoleForm({
       </label>
 
       <label className="block">
-        <span className={labelCls}>Style du badge</span>
+        <span className={labelCls}>Couleur du badge</span>
         <select name="variant" defaultValue={pole?.variant ?? "staff"} className={inputCls}>
           {VARIANTS.map((v) => (
             <option key={v.value} value={v.value}>
@@ -70,6 +72,16 @@ export default function PoleForm({
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="block">
+        <span className={labelCls}>Texte du badge (vide = auto)</span>
+        <input
+          name="badge"
+          defaultValue={pole?.badge ?? ""}
+          placeholder="STAFF"
+          className={inputCls}
+        />
       </label>
 
       <label className="block">

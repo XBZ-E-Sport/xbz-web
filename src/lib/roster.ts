@@ -2,6 +2,8 @@
 // Source : tables Supabase `rosters` et `joueurs` (lecture publique via RLS).
 // Voir supabase/rosters_joueurs.sql pour le schéma.
 
+import { cache } from "react";
+
 import { createClient } from "@/lib/supabase/server";
 
 export type Player = {
@@ -51,8 +53,11 @@ export async function getRosters(): Promise<Omit<Roster, "players">[]> {
   return (data ?? []) as Omit<Roster, "players">[];
 }
 
-/** Un roster + ses joueurs actifs (triés), ou null s'il n'existe pas. */
-export async function getRosterBySlug(slug: string): Promise<Roster | null> {
+/**
+ * Un roster + ses joueurs actifs (triés), ou null s'il n'existe pas.
+ * Mémoïsé par requête (`cache`) : generateMetadata + la page ne font qu'un appel.
+ */
+export const getRosterBySlug = cache(async (slug: string): Promise<Roster | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("rosters")
@@ -72,19 +77,21 @@ export async function getRosterBySlug(slug: string): Promise<Roster | null> {
     .slice()
     .sort((a, b) => a.position - b.position);
   return roster;
-}
+});
 
 /** Un joueur (via slug roster + slug joueur) accompagné de son roster. */
-export async function getPlayer(
-  rosterSlug: string,
-  playerSlug: string,
-): Promise<{ player: Player; roster: Roster } | null> {
-  const roster = await getRosterBySlug(rosterSlug);
-  if (!roster) return null;
-  const player = roster.players.find((p) => p.slug === playerSlug);
-  if (!player) return null;
-  return { player, roster };
-}
+export const getPlayer = cache(
+  async (
+    rosterSlug: string,
+    playerSlug: string,
+  ): Promise<{ player: Player; roster: Roster } | null> => {
+    const roster = await getRosterBySlug(rosterSlug);
+    if (!roster) return null;
+    const player = roster.players.find((p) => p.slug === playerSlug);
+    if (!player) return null;
+    return { player, roster };
+  },
+);
 
 /** Code pays ISO alpha-2 → emoji drapeau (ex: "FR" → 🇫🇷). "" si invalide. */
 export function flagEmoji(code?: string | null): string {
