@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { recrutementCategories, openRoles } from "@/content/recrutement";
+import { recrutementCategories, type RecrutementCategory } from "@/content/recrutement";
+
+type RolesByCategory = Record<RecrutementCategory, { name: string; free: number }[]>;
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
@@ -17,7 +19,7 @@ const toneColor: Record<Tone, string> = {
   error: "text-red-500",
 };
 
-export default function RecrutementForm() {
+export default function RecrutementForm({ rolesByCategory }: { rolesByCategory: RolesByCategory }) {
   const [categorie, setCategorie] = useState("");
   const [role, setRole] = useState("");
   const [jeu, setJeu] = useState("");
@@ -32,7 +34,7 @@ export default function RecrutementForm() {
   const isEsport = categorie === "XBZ Esport";
   const showRL = isEsport && jeu === "Rocket League";
   // On ne propose que les rôles avec de la disponibilité (postes ouverts).
-  const roles = openRoles(categorie);
+  const roles = rolesByCategory[categorie as RecrutementCategory] ?? [];
   const noOpenRole = Boolean(categorie) && roles.length === 0;
 
   function handleCategorie(value: string) {

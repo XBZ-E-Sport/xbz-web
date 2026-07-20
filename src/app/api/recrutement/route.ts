@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isValidRole } from "@/content/recrutement";
+import { isRoleOpen } from "@/lib/equipes";
 import { checkSpam } from "@/lib/antispam";
 
 type Payload = {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
     return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
   }
-  if (!isValidRole(categorie, role)) {
+  if (!(await isRoleOpen(categorie, role))) {
     return NextResponse.json(
       { ok: false, error: "Ce rôle n'est pas disponible au recrutement." },
       { status: 422 },

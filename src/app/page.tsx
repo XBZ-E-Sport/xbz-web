@@ -3,8 +3,7 @@ import Link from "next/link";
 
 import { getArticles } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
-import { esportRoster } from "@/content/esport";
-import { staffRoster } from "@/content/staff";
+import { getStructureStats } from "@/lib/equipes";
 import { siteConfig, absoluteUrl } from "@/lib/site";
 
 export const metadata = {
@@ -12,31 +11,10 @@ export const metadata = {
     "XBZ Esport, structure compétitive Rocket League : équipes, staff, recrutement, actualités et boutique. Rejoins une équipe motivée et ambitieuse.",
 };
 
+// Stats lues en base (slots dynamiques).
+export const dynamic = "force-dynamic";
+
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
-
-function sumSlots(rosters: { slots: string }[]) {
-  return rosters.reduce(
-    (acc, { slots }) => {
-      const [filled, total] = slots.split("/").map(Number);
-      if (Number.isFinite(filled)) acc.filled += filled;
-      if (Number.isFinite(total)) acc.total += total;
-      return acc;
-    },
-    { filled: 0, total: 0 },
-  );
-}
-
-const all = [...staffRoster, ...esportRoster];
-const { filled, total } = sumSlots(all);
-const openCount = Math.max(0, total - filled);
-const teamsCount = esportRoster.filter((e) => e.tags.some((t) => t.label === "JOUEUR")).length;
-
-const stats = [
-  { value: teamsCount, label: "Équipes compétitives" },
-  { value: staffRoster.length, label: "Pôles staff & création" },
-  { value: filled, label: "Membres dans la structure" },
-  { value: openCount, label: "Postes ouverts" },
-];
 
 // JSON-LD Organization (SEO : rich results Google).
 const orgJsonLd = {
@@ -51,7 +29,17 @@ const orgJsonLd = {
 };
 
 export default async function Home() {
-  const latest = (await getArticles()).slice(0, 3);
+  const [latest, structure] = await Promise.all([
+    getArticles().then((a) => a.slice(0, 3)),
+    getStructureStats(),
+  ]);
+  const openCount = structure.openSlots;
+  const stats = [
+    { value: structure.teams, label: "Équipes compétitives" },
+    { value: structure.poles, label: "Pôles staff & création" },
+    { value: structure.members, label: "Membres dans la structure" },
+    { value: structure.openSlots, label: "Postes ouverts" },
+  ];
 
   return (
     <>

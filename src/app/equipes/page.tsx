@@ -1,9 +1,6 @@
 import Link from "next/link";
 
-import { staffRoster, type RoleVariant, type StaffEntry } from "@/content/staff";
-import { esportRoster, type EsportEntry } from "@/content/esport";
-
-type TeamsEntry = StaffEntry | EsportEntry;
+import { getEquipes, type Group, type GroupVariant } from "@/lib/equipes";
 
 export const metadata = {
   title: "Équipes & Staff — XBZ Esport",
@@ -11,39 +8,32 @@ export const metadata = {
     "Le staff et les rosters compétitifs de XBZ Esport sur Rocket League, avec les postes actuellement ouverts au recrutement.",
 };
 
-// Couleurs des badges reprises de l'ancien site
-const roleStyles: Record<RoleVariant, string> = {
+// Données lues en base à chaque visite (slots dynamiques).
+export const dynamic = "force-dynamic";
+
+const roleStyles: Record<GroupVariant, string> = {
   founder: "bg-white/10 text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]",
   staff: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff] shadow-[0_0_12px_rgba(160,90,255,0.25)]",
   member: "bg-xbz-blue/10 text-[#7fc8ff] shadow-[0_0_12px_rgba(0,102,255,0.2)]",
   creative: "bg-[rgba(0,200,255,0.12)] text-[#7fe6ff] shadow-[0_0_12px_rgba(0,200,255,0.2)]",
 };
-
-// Badge de disponibilité dérivé du nombre de places (source unique : slots)
+const variantLabel: Record<GroupVariant, string> = {
+  founder: "FONDATEUR",
+  staff: "STAFF",
+  member: "JOUEUR",
+  creative: "CRÉATIF",
+};
 const availabilityStyles = {
   open: "animate-pulse bg-gradient-to-r from-[#7ad7ff] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(0,102,255,0.6)]",
   closed: "bg-gradient-to-r from-xbz-orange to-xbz-dark-red text-[#111] shadow-[0_0_25px_rgba(255,15,16,0.6)]",
 } as const;
 
-// Nombre de places libres (source unique : slots) pour l'en-tête de section
-function countOpenSlots(roster: TeamsEntry[]) {
-  return roster.reduce((sum, entry) => {
-    const [filled, total] = entry.slots.split("/").map(Number);
-    if (!Number.isFinite(filled) || !Number.isFinite(total)) return sum;
-    return sum + Math.max(0, total - filled);
-  }, 0);
+function countOpen(groups: Group[]) {
+  return groups.reduce((sum, g) => sum + Math.max(0, g.capacity - g.filled), 0);
 }
 
-function SectionHeading({
-  id,
-  title,
-  roster,
-}: {
-  id: string;
-  title: string;
-  roster: TeamsEntry[];
-}) {
-  const open = countOpenSlots(roster);
+function SectionHeading({ id, title, groups }: { id: string; title: string; groups: Group[] }) {
+  const open = countOpen(groups);
   return (
     <h2
       id={id}
@@ -57,41 +47,36 @@ function SectionHeading({
   );
 }
 
-function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number }) {
-  const [filled, total] = entry.slots.split("/").map(Number);
-  const isFull = Number.isFinite(filled) && Number.isFinite(total) && filled >= total;
-  const pct =
-    Number.isFinite(filled) && Number.isFinite(total) && total > 0
-      ? Math.min(100, Math.max(0, (filled / total) * 100))
-      : 0;
+function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
+  const { filled, capacity } = group;
+  const isFull = filled >= capacity;
+  const pct = capacity > 0 ? Math.min(100, Math.max(0, (filled / capacity) * 100)) : 0;
 
   const slotsStyle = isFull
     ? "border-[rgba(255,15,16,0.4)] bg-[rgba(255,15,16,0.12)] text-[#ff7a7a]"
     : "border-xbz-blue/30 bg-xbz-blue/10 text-[#7fc8ff]";
-
   const badgeClass = "inline-block rounded-lg px-2.5 py-1 text-[11px] font-black";
-
   const slotsLabel = isFull
-    ? `Complet, ${total} place${total > 1 ? "s" : ""} sur ${total}`
-    : `${filled} place${filled > 1 ? "s" : ""} occupée${filled > 1 ? "s" : ""} sur ${total}`;
+    ? `Complet, ${capacity} place${capacity > 1 ? "s" : ""} sur ${capacity}`
+    : `${filled} place${filled > 1 ? "s" : ""} occupée${filled > 1 ? "s" : ""} sur ${capacity}`;
 
   return (
     <li
-      className={`card-xbz animate-fade-up flex h-48 w-72 flex-col overflow-hidden p-6 transition duration-300 hover:scale-103`}
+      className="card-xbz animate-fade-up flex h-48 w-72 flex-col overflow-hidden p-6 transition duration-300 hover:scale-103"
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        {entry.slug ? (
+        {group.isRoster ? (
           <h3 className="font-display text-lg">
             <Link
-              href={`/equipes/${entry.slug}`}
+              href={`/equipes/${group.slug}`}
               className="text-xbz-blue transition hover:text-xbz-cyan hover:underline"
             >
-              {entry.title}
+              {group.name}
             </Link>
           </h3>
         ) : (
-          <h3 className="font-display text-lg text-xbz-blue">{entry.title}</h3>
+          <h3 className="font-display text-lg text-xbz-blue">{group.name}</h3>
         )}
         <span
           className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-sm font-bold ${slotsStyle}`}
@@ -102,34 +87,35 @@ function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number })
               <path d="M12 2a4 4 0 0 0-4 4v3H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V6a4 4 0 0 0-4-4Zm-2 7V6a2 2 0 1 1 4 0v3h-4Z" />
             </svg>
           )}
-          {entry.slots}
+          {filled}/{capacity}
         </span>
       </div>
+
       <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-white/10" aria-hidden="true">
         <div
           className={`h-full rounded-full transition-[width] duration-500 ${
-            isFull ? "bg-linear-to-r from-xbz-orange to-xbz-dark-red" : "bg-linear-to-r from-xbz-cyan to-xbz-blue"
+            isFull
+              ? "bg-linear-to-r from-xbz-orange to-xbz-dark-red"
+              : "bg-linear-to-r from-xbz-cyan to-xbz-blue"
           }`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-sm text-neutral-400">{entry.description}</p>
+
+      {group.description && <p className="text-sm text-neutral-400">{group.description}</p>}
+
       <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        {entry.tags.map((tag) => (
-          <span
-            key={tag.label}
-            className={`inline-block rounded-lg px-2.5 py-1 text-[11px] font-bold ${roleStyles[tag.variant]}`}
-          >
-            {tag.label}
-          </span>
-        ))}
-        {!entry.fixed &&
+        <span className={`inline-block rounded-lg px-2.5 py-1 text-[11px] font-bold ${roleStyles[group.variant]}`}>
+          {variantLabel[group.variant]}
+        </span>
+        {!group.fixed &&
+          group.recrute &&
           (isFull ? (
             <span className={`${badgeClass} ${availabilityStyles.closed}`}>RECRUTEMENT FERMÉ</span>
           ) : (
             <Link
               href="/recrutement"
-              aria-label={`${entry.title} : postuler — recrutement ouvert`}
+              aria-label={`${group.name} : postuler — recrutement ouvert`}
               className={`${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
             >
               RECRUTEMENT OUVERT
@@ -140,7 +126,9 @@ function RosterCard({ entry, index = 0 }: { entry: TeamsEntry; index?: number })
   );
 }
 
-export default function EquipesPage() {
+export default async function EquipesPage() {
+  const { staff, esport } = await getEquipes();
+
   return (
     <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-32">
       <header className="mb-14 text-center">
@@ -155,23 +143,33 @@ export default function EquipesPage() {
         </p>
       </header>
 
-      <section aria-labelledby="staff-heading">
-        <SectionHeading id="staff-heading" title="STAFF" roster={staffRoster} />
-        <ul className="flex flex-wrap justify-center gap-6">
-          {staffRoster.map((entry, i) => (
-            <RosterCard key={entry.title} entry={entry} index={i} />
-          ))}
-        </ul>
-      </section>
+      {staff.length > 0 && (
+        <section aria-labelledby="staff-heading">
+          <SectionHeading id="staff-heading" title="STAFF" groups={staff} />
+          <ul className="flex flex-wrap justify-center gap-6">
+            {staff.map((g, i) => (
+              <GroupCard key={g.id} group={g} index={i} />
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <section aria-labelledby="esport-heading" className="mt-20">
-        <SectionHeading id="esport-heading" title="ESPORT" roster={esportRoster} />
-        <ul className="flex flex-wrap justify-center gap-6">
-          {esportRoster.map((entry, i) => (
-            <RosterCard key={entry.title} entry={entry} index={i} />
-          ))}
-        </ul>
-      </section>
+      {esport.length > 0 && (
+        <section aria-labelledby="esport-heading" className="mt-20">
+          <SectionHeading id="esport-heading" title="ESPORT" groups={esport} />
+          <ul className="flex flex-wrap justify-center gap-6">
+            {esport.map((g, i) => (
+              <GroupCard key={g.id} group={g} index={i} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {staff.length === 0 && esport.length === 0 && (
+        <p className="card-xbz p-10 text-center text-neutral-400">
+          L’effectif arrive bientôt.
+        </p>
+      )}
     </section>
   );
 }

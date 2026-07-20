@@ -8,6 +8,8 @@ export type RosterRow = {
   name: string;
   rank: string | null;
   description: string | null;
+  capacity: number;
+  recrute: string | null;
   position: number;
   active: boolean;
 };
@@ -43,6 +45,28 @@ export default function RosterForm({
       <label className="block">
         <span className={labelCls}>Position (ordre)</span>
         <input name="position" type="number" defaultValue={roster?.position ?? 0} className={inputCls} />
+      </label>
+
+      <label className="block">
+        <span className={labelCls}>Capacité (places)</span>
+        <input
+          name="capacity"
+          type="number"
+          min={0}
+          defaultValue={roster?.capacity ?? 3}
+          placeholder="3"
+          className={inputCls}
+        />
+      </label>
+
+      <label className="block">
+        <span className={labelCls}>Rôle recruté (vide = pas de recrutement)</span>
+        <input
+          name="recrute"
+          defaultValue={roster?.recrute ?? "Joueur"}
+          placeholder="Joueur"
+          className={inputCls}
+        />
       </label>
 
       <label className="block sm:col-span-2">

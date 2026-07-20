@@ -2,7 +2,7 @@ const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-600 outline-none";
 const labelCls = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400";
 
-const ROLES = ["Joueur", "Capitaine", "Coach", "Manager", "Sub"];
+const ROSTER_ROLES = ["Joueur", "Capitaine", "Coach", "Manager", "Sub"];
 
 export type PlayerRow = {
   id: string;
@@ -24,21 +24,34 @@ export type PlayerRow = {
   active: boolean;
 };
 
+/**
+ * Formulaire membre, partagé entre rosters (joueurs esport) et pôles (staff).
+ * On passe soit `rosterId`, soit `poleId`. Les champs spécifiques à l'esport
+ * (rang, MMR, RL Tracker, palmarès) ne s'affichent que pour un roster.
+ */
 export default function PlayerForm({
   action,
   rosterId,
+  poleId,
+  roles = ROSTER_ROLES,
   player,
   submitLabel,
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  rosterId: string;
+  rosterId?: string;
+  poleId?: string;
+  roles?: string[];
   player?: PlayerRow;
   submitLabel: string;
 }) {
+  const isPole = Boolean(poleId);
+  const defaultRole = player?.role ?? roles[0] ?? "Joueur";
+
   return (
     <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {player && <input type="hidden" name="id" value={player.id} />}
-      <input type="hidden" name="roster_id" value={rosterId} />
+      {rosterId && <input type="hidden" name="roster_id" value={rosterId} />}
+      {poleId && <input type="hidden" name="pole_id" value={poleId} />}
 
       <label className="block">
         <span className={labelCls}>Pseudo</span>
@@ -57,8 +70,8 @@ export default function PlayerForm({
 
       <label className="block">
         <span className={labelCls}>Rôle</span>
-        <select name="role" defaultValue={player?.role ?? "Joueur"} className={inputCls}>
-          {ROLES.map((r) => (
+        <select name="role" defaultValue={defaultRole} className={inputCls}>
+          {roles.map((r) => (
             <option key={r} value={r}>
               {r}
             </option>
@@ -81,15 +94,19 @@ export default function PlayerForm({
         <input name="pays_code" maxLength={2} defaultValue={player?.pays_code ?? ""} placeholder="FR" className={inputCls} />
       </label>
 
-      <label className="block">
-        <span className={labelCls}>Rang</span>
-        <input name="rang" defaultValue={player?.rang ?? ""} placeholder="Supersonic Legend" className={inputCls} />
-      </label>
+      {!isPole && (
+        <>
+          <label className="block">
+            <span className={labelCls}>Rang</span>
+            <input name="rang" defaultValue={player?.rang ?? ""} placeholder="Supersonic Legend" className={inputCls} />
+          </label>
 
-      <label className="block">
-        <span className={labelCls}>MMR</span>
-        <input name="mmr" type="number" defaultValue={player?.mmr ?? ""} placeholder="1600" className={inputCls} />
-      </label>
+          <label className="block">
+            <span className={labelCls}>MMR</span>
+            <input name="mmr" type="number" defaultValue={player?.mmr ?? ""} placeholder="1600" className={inputCls} />
+          </label>
+        </>
+      )}
 
       <label className="block sm:col-span-2">
         <span className={labelCls}>Bio</span>
@@ -106,15 +123,19 @@ export default function PlayerForm({
         <input name="twitch" type="url" defaultValue={player?.twitch ?? ""} placeholder="https://twitch.tv/…" className={inputCls} />
       </label>
 
-      <label className="block sm:col-span-2">
-        <span className={labelCls}>RL Tracker (URL)</span>
-        <input name="rltracker" type="url" defaultValue={player?.rltracker ?? ""} placeholder="https://rocketleague.tracker.network/…" className={inputCls} />
-      </label>
+      {!isPole && (
+        <>
+          <label className="block sm:col-span-2">
+            <span className={labelCls}>RL Tracker (URL)</span>
+            <input name="rltracker" type="url" defaultValue={player?.rltracker ?? ""} placeholder="https://rocketleague.tracker.network/…" className={inputCls} />
+          </label>
 
-      <label className="block sm:col-span-2">
-        <span className={labelCls}>Palmarès (un par ligne)</span>
-        <textarea name="palmares" defaultValue={(player?.palmares ?? []).join("\n")} rows={3} placeholder="Vainqueur Coupe de France 2025" className={inputCls} />
-      </label>
+          <label className="block sm:col-span-2">
+            <span className={labelCls}>Palmarès (un par ligne)</span>
+            <textarea name="palmares" defaultValue={(player?.palmares ?? []).join("\n")} rows={3} placeholder="Vainqueur Coupe de France 2025" className={inputCls} />
+          </label>
+        </>
+      )}
 
       <label className="block">
         <span className={labelCls}>Position (ordre)</span>

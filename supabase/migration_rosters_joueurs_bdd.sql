@@ -85,3 +85,11 @@ join (values
 ) as v(roster_slug, slug, pseudo, nom, pays, pays_code, role, rang, bio, twitter, twitch, rltracker, palmares, position)
   on v.roster_slug = r.slug
 on conflict (slug) do nothing;
+
+-- 5) STORAGE : bucket public pour les photos de joueurs ------
+-- Upload via le back-office (clé service_role, contourne la RLS) ;
+-- lecture publique via l'URL du bucket. À exécuter une fois.
+
+insert into storage.buckets (id, name, public)
+values ('joueurs', 'joueurs', true)
+on conflict (id) do nothing;

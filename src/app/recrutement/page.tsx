@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import RecrutementForm from "@/components/RecrutementForm";
+import { getOpenRolesByCategory } from "@/lib/equipes";
 
 export const metadata = {
   title: "Recrutement — XBZ Esport",
@@ -8,7 +9,11 @@ export const metadata = {
     "Rejoins XBZ Esport : postes joueurs, staff et création ouverts. Candidate en ligne en quelques minutes.",
 };
 
-export default function RecrutementPage() {
+// Rôles ouverts lus en base à chaque visite.
+export const dynamic = "force-dynamic";
+
+export default async function RecrutementPage() {
+  const rolesByCategory = await getOpenRolesByCategory();
   return (
     <div className="relative z-10 mx-auto max-w-2xl px-6 pb-24 pt-32">
       {/* En-tête */}
@@ -38,7 +43,7 @@ export default function RecrutementPage() {
 
       {/* Formulaire */}
       <div className="card-xbz p-6 sm:p-8">
-        <RecrutementForm />
+        <RecrutementForm rolesByCategory={rolesByCategory} />
       </div>
     </div>
   );

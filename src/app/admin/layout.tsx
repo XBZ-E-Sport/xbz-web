@@ -51,6 +51,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           🎮 Rosters &amp; Joueurs
         </Link>
+        <Link
+          href="/admin/poles"
+          className="rounded-lg bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+        >
+          🧩 Pôles &amp; Staff
+        </Link>
       </nav>
 
       {children}
