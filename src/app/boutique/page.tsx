@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { getProducts, type Product, type ProductCategory } from "@/lib/boutique";
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
@@ -8,6 +10,9 @@ export const metadata = {
     "La boutique officielle XBZ Esport : maillots, textile et accessoires aux couleurs du club.",
   alternates: { canonical: "/boutique" },
 };
+
+// Produits lus en base à chaque visite (pilotés par le back-office).
+export const dynamic = "force-dynamic";
 
 const categoryStyles: Record<ProductCategory, string> = {
   Textile: "bg-xbz-blue/15 text-[#7fc8ff]",
@@ -22,6 +27,8 @@ const priceFormatter = new Intl.NumberFormat("fr-FR", {
 
 export default async function BoutiquePage() {
   const products = await getProducts();
+  // Bandeau « ouvre bientôt » tant qu'aucun produit n'est réellement achetable.
+  const anyAvailable = products.some((p) => p.available && p.url);
 
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
@@ -39,14 +46,16 @@ export default async function BoutiquePage() {
         </p>
       </header>
 
-      {/* Bandeau ouverture prochaine */}
-      <p
-        role="status"
-        className="mx-auto mb-12 flex max-w-xl items-center justify-center gap-2 rounded-xl border border-xbz-cyan/30 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-xbz-cyan"
-      >
-        <span aria-hidden="true">🛒</span>
-        La boutique ouvre bientôt — voici un aperçu de la collection.
-      </p>
+      {/* Bandeau ouverture prochaine (tant qu'aucun produit n'est achetable) */}
+      {!anyAvailable && (
+        <p
+          role="status"
+          className="mx-auto mb-12 flex max-w-xl items-center justify-center gap-2 rounded-xl border border-xbz-cyan/30 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-xbz-cyan"
+        >
+          <span aria-hidden="true">🛒</span>
+          La boutique ouvre bientôt — voici un aperçu de la collection.
+        </p>
+      )}
 
       {products.length === 0 ? (
         <p className="card-xbz p-10 text-center text-neutral-400">
@@ -88,11 +97,21 @@ export default async function BoutiquePage() {
 function ProductCard({ product }: { product: Product }) {
   return (
     <li className="card-xbz flex flex-col overflow-hidden">
-      {/* Visuel (emoji en attendant les vraies images) */}
-      <div className="flex h-40 items-center justify-center bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
-        <span aria-hidden="true" className="text-6xl">
-          {product.icon}
-        </span>
+      {/* Visuel : image produit si dispo, sinon emoji de repli */}
+      <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
+        {product.image ? (
+          <Image
+            src={product.image}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover"
+          />
+        ) : (
+          <span aria-hidden="true" className="text-6xl">
+            {product.icon}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

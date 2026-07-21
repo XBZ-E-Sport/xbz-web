@@ -1,12 +1,15 @@
 // Couche d'accès à la boutique.
+// Source : table Supabase `products` (lecture publique des produits actifs,
+// via RLS `active = true`). Les pages consomment ces fonctions sans savoir
+// d'où viennent les données.
 //
-// ⚠️ POINT DE BRANCHEMENT BACK-OFFICE / SUPABASE :
-// Aujourd'hui les produits proviennent d'un mock statique (MOCK_PRODUCTS).
-// Quand la table `products` existera, on remplace le corps de getProducts()
-// par une requête Supabase (voir l'exemple en commentaire) — la page ne
-// change pas.
+// Achat via lien externe (champ `url`) — AUCUN paiement géré sur le site.
+
+import { createClient } from "@/lib/supabase/server";
 
 export type ProductCategory = "Textile" | "Accessoire" | "Gaming";
+
+export const productCategories: ProductCategory[] = ["Textile", "Accessoire", "Gaming"];
 
 export type Product = {
   slug: string;
@@ -14,77 +17,60 @@ export type Product = {
   description: string;
   price: number; // en euros
   category: ProductCategory;
-  icon: string; // emoji en attendant les vraies images produits
-  image?: string; // URL (Supabase Storage) plus tard
-  available: boolean;
-  url?: string; // lien d'achat externe, utilisé si available === true
+  icon: string; // emoji de repli si pas d'image
+  image: string | null; // URL (Supabase Storage)
+  available: boolean; // true → bouton "Acheter" (nécessite `url`)
+  url: string | null; // lien d'achat externe
 };
 
-const MOCK_PRODUCTS: Product[] = [
-  {
-    slug: "maillot-officiel",
-    name: "Maillot officiel XBZ",
-    description: "Le maillot compétitif aux couleurs de la structure.",
-    price: 49.99,
-    category: "Textile",
-    icon: "👕",
-    available: false,
-  },
-  {
-    slug: "hoodie",
-    name: "Hoodie XBZ",
-    description: "Sweat à capuche premium, logo brodé sur la poitrine.",
-    price: 59.99,
-    category: "Textile",
-    icon: "🧥",
-    available: false,
-  },
-  {
-    slug: "casquette",
-    name: "Casquette XBZ",
-    description: "Casquette ajustable brodée, finition mate.",
-    price: 19.99,
-    category: "Accessoire",
-    icon: "🧢",
-    available: false,
-  },
-  {
-    slug: "tapis-souris-xl",
-    name: "Tapis de souris XL",
-    description: "Grand tapis gaming, surface optimisée pour la précision.",
-    price: 29.99,
-    category: "Gaming",
-    icon: "🖱️",
-    available: false,
-  },
-  {
-    slug: "mug",
-    name: "Mug XBZ",
-    description: "Mug céramique aux couleurs du club pour les sessions du matin.",
-    price: 14.99,
-    category: "Accessoire",
-    icon: "☕",
-    available: false,
-  },
-  {
-    slug: "sticker-pack",
-    name: "Pack de stickers",
-    description: "Lot de stickers XBZ pour customiser ton setup.",
-    price: 6.99,
-    category: "Accessoire",
-    icon: "🔖",
-    available: false,
-  },
-];
+const PRODUCT_COLS = "slug, name, description, price, category, icon, image, url, available";
 
-/** Liste des produits de la boutique. */
+/** Normalise une catégorie inconnue vers "Textile" (garde-fou d'affichage). */
+function normalizeCategory(value: string): ProductCategory {
+  return (productCategories as string[]).includes(value)
+    ? (value as ProductCategory)
+    : "Textile";
+}
+
+type ProductRow = {
+  slug: string;
+  name: string;
+  description: string | null;
+  price: number | string | null; // `numeric` peut revenir en string
+  category: string;
+  icon: string | null;
+  image: string | null;
+  url: string | null;
+  available: boolean | null;
+};
+
+function toProduct(row: ProductRow): Product {
+  return {
+    slug: row.slug,
+    name: row.name,
+    description: row.description ?? "",
+    price: Number(row.price ?? 0),
+    category: normalizeCategory(row.category),
+    icon: row.icon ?? "",
+    image: row.image ?? null,
+    available: Boolean(row.available),
+    url: row.url ?? null,
+  };
+}
+
+/** Liste des produits actifs, ordonnés pour l'affichage. */
 export async function getProducts(): Promise<Product[]> {
-  // TODO back-office : remplacer par une requête Supabase, par ex.
-  //   const supabase = await createClient();
-  //   const { data } = await supabase
-  //     .from("products")
-  //     .select("*")
-  //     .order("created_at", { ascending: false });
-  //   return (data ?? []) as Product[];
-  return MOCK_PRODUCTS;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLS)
+    .eq("active", true)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[boutique] select:", error.message);
+    return [];
+  }
+  return ((data ?? []) as ProductRow[]).map(toProduct);
 }
