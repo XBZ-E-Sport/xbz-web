@@ -27,8 +27,8 @@ const priceFormatter = new Intl.NumberFormat("fr-FR", {
 
 export default async function BoutiquePage() {
   const products = await getProducts();
-  // Bandeau « ouvre bientôt » tant qu'aucun produit n'est réellement achetable.
-  const anyAvailable = products.some((p) => p.available && p.url);
+  // Bandeau « ouvre bientôt » tant qu'aucun produit n'est achetable.
+  const anyAvailable = products.some((p) => p.available);
 
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
@@ -132,14 +132,15 @@ function ProductCard({ product }: { product: Product }) {
         </p>
 
         <div className="mt-4">
-          {product.available && product.url ? (
+          {product.available ? (
+            // Achetable : lien d'achat externe s'il existe, sinon commande via Discord.
             <a
-              href={product.url}
+              href={product.url || DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="block rounded-lg bg-xbz-blue px-4 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
             >
-              Acheter
+              {product.url ? "Acheter" : "Commander sur Discord"}
               <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
             </a>
           ) : (

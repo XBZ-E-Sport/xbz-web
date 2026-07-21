@@ -139,7 +139,8 @@ export default function ProductForm({
           className={inputCls}
         />
         <p className="mt-1 text-xs text-neutral-500">
-          Requis pour que le bouton « Acheter » s’affiche (avec « achetable » coché).
+          Lien vers un shop externe. Laissé vide, un produit « achetable » affiche un bouton
+          « Commander » qui renvoie vers le Discord.
         </p>
       </div>
 
@@ -167,7 +168,7 @@ export default function ProductForm({
       <div className="flex flex-col justify-end gap-2 text-sm text-neutral-300">
         <div className="flex items-center gap-2">
           <input id={`${uid}-available`} type="checkbox" name="available" defaultChecked={product?.available ?? false} className="h-4 w-4" />
-          <label htmlFor={`${uid}-available`}>Achetable (bouton « Acheter »)</label>
+          <label htmlFor={`${uid}-available`}>Achetable (affiche un bouton d’achat)</label>
         </div>
         <div className="flex items-center gap-2">
           <input id={`${uid}-active`} type="checkbox" name="active" defaultChecked={product?.active ?? true} className="h-4 w-4" />
