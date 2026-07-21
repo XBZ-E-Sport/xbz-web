@@ -1,32 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# XBZ Esport — site web
 
-## Getting Started
+Site officiel de la structure esport **XBZ Esport** (Rocket League) : pages publiques
+(présentation, équipes, recrutement, actualité, boutique, support) + un back-office
+staff pour gérer les rosters, les joueurs et les pôles.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript** (strict)
+- **Tailwind CSS v4**
+- **Supabase** (Postgres + Auth + Storage) — données dynamiques et espace staff
+- Déploiement **Vercel**
+
+## Prérequis
+
+- Node.js **22.x**
+- Un projet **Supabase**
+
+## Installation
 
 ```bash
 npm install
-&
-npm run dev
+cp .env.example .env.local   # puis renseigne les valeurs
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variables d'environnement
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Voir `.env.example`. Résumé :
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Rôle |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | URL publique du site (OG, sitemap, JSON-LD) |
+| `NEXT_PUBLIC_DISCORD_URL` | Lien d'invitation Discord |
+| `NEXT_PUBLIC_MAIL` | Adresse de contact |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clé anon/publishable (client, RLS) |
+| `SUPABASE_SECRET_KEY` | Clé service_role — **serveur uniquement** |
+| `BOT_RECRUTEMENT_URL` / `BOT_SUPPORT_URL` | Endpoints du bot Discord (notifs, optionnel) |
+| `BOT_SHARED_SECRET` | Secret partagé envoyé au bot (en-tête `x-xbz-secret`) |
 
-## Learn More
+> ⚠️ `SUPABASE_SECRET_KEY` et `BOT_SHARED_SECRET` ne doivent jamais être exposés côté client
+> ni committés. Sur Vercel, définis-les dans **Project Settings → Environment Variables**.
 
-To learn more about Next.js, take a look at the following resources:
+## Base de données (Supabase)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Exécute les migrations dans **Supabase → SQL Editor**, **dans cet ordre** :
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. `supabase/migration_rosters_joueurs_bdd.sql` — tables `rosters` + `joueurs`, RLS.
+2. `supabase/migration_equipes_bdd.sql` — table `poles`, colonnes `capacity`/`recrute`,
+   `joueurs.pole_id`, seed des pôles, et le **bucket Storage public `joueurs`** (photos).
+3. `supabase/migration_equipes_review.sql` — colonne `poles.badge` + contrainte
+   « roster XOR pôle » + `ON DELETE CASCADE`.
 
-## Deploy on Vercel
+Tables attendues en plus (côté Supabase) pour l'espace staff :
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `allow_staff_list(email)` — liste blanche des e-mails autorisés au back-office.
+- `candidatures` / `support_messages` — réceptacles des formulaires (écriture via service_role).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+L'accès à `/admin` exige d'être connecté **et** présent dans `allow_staff_list`.
+
+## Scripts
+
+```bash
+npm run dev      # développement
+npm run build    # build de production
+npm run start    # serveur de production
+npm run lint     # ESLint
+npx tsc --noEmit # vérification de types
+```
+
+L'intégration continue (`.github/workflows/xbz-web-ci.yml`) rejoue lint + typecheck + build
+sur chaque push/PR — lance donc `npm run build` en local avant de pousser.
+
+## Déploiement
+
+Le site se déploie sur **Vercel**. Pense à y renseigner toutes les variables d'environnement
+ci-dessus. `next.config.ts` autorise déjà les images Supabase Storage (`*.supabase.co`).

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { updateStatut } from "./actions";
 
 export const metadata = { title: "Candidatures — Back-office XBZ" };
+export const dynamic = "force-dynamic";
 
 const statutStyles: Record<string, string> = {
   en_attente: "bg-amber-500/15 text-amber-300",

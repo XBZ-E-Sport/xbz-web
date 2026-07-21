@@ -188,3 +188,35 @@ export const getPoleBySlug = cache(async (slug: string): Promise<PoleDetail | nu
   pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
   return pole;
 });
+
+// ============ SITEMAP ============
+
+/**
+ * Toutes les URLs /equipes/* dérivées de la base (pour le sitemap) :
+ * une par roster/pôle actif + une par joueur/membre actif.
+ */
+export async function getEquipesUrls(): Promise<string[]> {
+  const supabase = await createClient();
+  const [rostersRes, polesRes, joueursRes] = await Promise.all([
+    supabase.from("rosters").select("slug").eq("active", true),
+    supabase.from("poles").select("slug").eq("active", true),
+    supabase.from("joueurs").select("slug, rosters(slug), poles(slug)").eq("active", true),
+  ]);
+
+  const urls: string[] = [];
+  for (const r of (rostersRes.data ?? []) as { slug: string }[]) {
+    urls.push(`/equipes/${r.slug}`);
+  }
+  for (const p of (polesRes.data ?? []) as { slug: string }[]) {
+    urls.push(`/equipes/${p.slug}`);
+  }
+  for (const j of (joueursRes.data ?? []) as unknown as {
+    slug: string;
+    rosters: { slug: string } | null;
+    poles: { slug: string } | null;
+  }[]) {
+    const parent = j.rosters?.slug ?? j.poles?.slug;
+    if (parent) urls.push(`/equipes/${parent}/${j.slug}`);
+  }
+  return urls;
+}

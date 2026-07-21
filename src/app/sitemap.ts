@@ -1,7 +1,12 @@
 import type { MetadataRoute } from "next";
 
 import { getArticles } from "@/lib/actualite";
+import { getEquipesUrls } from "@/lib/equipes";
 import { siteConfig } from "@/lib/site";
+
+// Généré à la demande : le sitemap lit la base (rosters/pôles/joueurs) → pas de
+// dépendance BDD au build (cohérent avec les pages /equipes en force-dynamic).
+export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
@@ -16,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/actualite", priority: 0.7, changeFrequency: "weekly" },
     { path: "/boutique", priority: 0.6, changeFrequency: "monthly" },
     { path: "/support", priority: 0.5, changeFrequency: "monthly" },
+    { path: "/mentions-legales", priority: 0.3, changeFrequency: "monthly" },
   ];
 
   const staticEntries: MetadataRoute.Sitemap = routes.map(({ path, priority, changeFrequency }) => ({
@@ -34,5 +40,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticEntries, ...articleEntries];
+  // Pages /equipes/* (rosters, pôles, joueurs/membres) lues en base.
+  const equipesEntries: MetadataRoute.Sitemap = (await getEquipesUrls()).map((path) => ({
+    url: `${siteConfig.url}${path}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.4,
+  }));
+
+  return [...staticEntries, ...articleEntries, ...equipesEntries];
 }
