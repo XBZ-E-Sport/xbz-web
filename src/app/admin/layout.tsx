@@ -60,6 +60,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           🧩 Pôles &amp; Staff
         </Link>
+        <Link
+          href="/admin/articles"
+          className="rounded-lg bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+        >
+          📰 Actualité
+        </Link>
       </nav>
 
       {children}

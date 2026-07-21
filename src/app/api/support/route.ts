@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkSpam } from "@/lib/antispam";
+import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
   nom?: string;
@@ -28,6 +29,15 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
+  }
+
+  // --- Limite de débit (anti-flood par IP) ---
+  const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "support");
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Trop de tentatives. Réessaie dans une minute." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
   }
 
   // --- Anti-spam (honeypot + délai minimum) ---

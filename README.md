@@ -51,6 +51,9 @@ Exécute les migrations dans **Supabase → SQL Editor**, **dans cet ordre** :
    `joueurs.pole_id`, seed des pôles, et le **bucket Storage public `joueurs`** (photos).
 3. `supabase/migration_equipes_review.sql` — colonne `poles.badge` + contrainte
    « roster XOR pôle » + `ON DELETE CASCADE`.
+4. `supabase/migration_articles_bdd.sql` — table `articles` (actualité) + RLS + seed.
+5. `supabase/migration_ratelimit.sql` — table technique `rate_limit_hits` (anti-flood
+   des formulaires, écrite/lue via service_role uniquement).
 
 Tables attendues en plus (côté Supabase) pour l'espace staff :
 

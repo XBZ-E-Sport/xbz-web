@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getArticles, getArticleBySlug } from "@/lib/actualite";
+import { getArticleBySlug } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { siteConfig, absoluteUrl } from "@/lib/site";
 
-export async function generateStaticParams() {
-  const articles = await getArticles();
-  return articles.map((a) => ({ slug: a.slug }));
-}
+// Article lu en base à chaque visite (piloté par le back-office).
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

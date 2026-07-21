@@ -6,6 +6,9 @@ export const metadata = {
   description: "Les dernières news, résultats et annonces de la structure XBZ Esport.",
 };
 
+// Articles lus en base à chaque visite (pilotés par le back-office).
+export const dynamic = "force-dynamic";
+
 export default async function ActualitePage() {
   const articles = await getArticles();
 
