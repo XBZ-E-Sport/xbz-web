@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import sharp from "sharp";
 
 import { assertStaff } from "@/lib/adminguard";
 
@@ -26,28 +27,29 @@ function intField(fd: FormData, key: string, def: number): number {
 
 // --- Photos : upload vers Supabase Storage (bucket public "joueurs") ---
 const PHOTO_BUCKET = "joueurs";
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 Mo
-const EXT_BY_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/jpg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
-  "image/avif": "avif",
-};
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 Mo à l'entrée
+const MAX_DIMENSION = 800; // px : les cartes affichent ~300px → marge « retina »
 
 type AdminClient = Awaited<ReturnType<typeof assertStaff>>;
 
-/** Envoie une image dans le bucket et renvoie son URL publique. */
+/**
+ * Redimensionne + compresse l'image (WebP) avant de l'envoyer dans le bucket,
+ * et renvoie son URL publique. Évite de stocker des photos de plusieurs Mo.
+ */
 async function uploadPhoto(admin: AdminClient, file: File, slug: string): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error("Le fichier doit être une image.");
   if (file.size > MAX_PHOTO_BYTES) throw new Error("Image trop lourde (5 Mo max).");
 
-  const ext = EXT_BY_TYPE[file.type] ?? (file.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${slug || "membre"}-${Date.now()}.${ext}`;
+  const input = Buffer.from(await file.arrayBuffer());
+  const output = await sharp(input)
+    .rotate() // respecte l'orientation EXIF (photos de téléphone)
+    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
 
-  const { error } = await admin.storage.from(PHOTO_BUCKET).upload(path, file, {
-    contentType: file.type,
+  const path = `${slug || "membre"}-${Date.now()}.webp`;
+  const { error } = await admin.storage.from(PHOTO_BUCKET).upload(path, output, {
+    contentType: "image/webp",
     upsert: true,
   });
   if (error) throw new Error(`Upload photo : ${error.message}`);
