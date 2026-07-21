@@ -213,7 +213,7 @@ export default function PlayerForm({
       </div>
 
       <div className="sm:col-span-2">
-        <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110">
+        <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">
           {submitLabel}
         </button>
       </div>

@@ -49,8 +49,7 @@ export default async function AdminCandidaturesPage() {
             <p><span className="text-neutral-500">Pays :</span> {c.pays_residence ?? "—"}</p>
             {c.rltracker && (
               <p className="truncate">
-                <span className="text-neutral-500">RL Tracker :</span>{" "}
-                <a href={c.rltracker} target="_blank" rel="noopener noreferrer" className="text-xbz-blue hover:underline">lien</a>
+                <span className="text-neutral-500"><a href={c.rltracker} target="_blank" rel="noopener noreferrer" className="text-white hover:text-xbz-blue hover:underline ">RL Tracker</a></span>
               </p>
             )}
           </div>
@@ -70,7 +69,7 @@ export default async function AdminCandidaturesPage() {
                 name="statut"
                 value={a.statut}
                 disabled={c.statut === a.statut}
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${a.cls}`}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold hover:cursor-pointer transition disabled:cursor-not-allowed disabled:opacity-40 ${a.cls}`}
               >
                 {a.label}
               </button>

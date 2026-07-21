@@ -100,7 +100,7 @@ export default async function Home() {
             href={DISCORD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-xl bg-[#5865F2] px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
+            className="rounded-xl bg-[#5865F2] px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer motion-safe:hover:-translate-y-0.5"
           >
             Rejoindre le Discord
             <span className="sr-only"> (ouvre dans un nouvel onglet)</span>

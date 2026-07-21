@@ -34,7 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex items-center gap-3 text-sm text-neutral-400">
           <span className="hidden sm:inline">{user.email}</span>
           <form action={signOut}>
-            <button className="rounded-lg border border-white/15 px-3 py-1.5 transition hover:border-white/40">
+            <button className="rounded-lg border border-white/15 px-3 py-1.5 transition hover:border-red-400 hover:text-white hover:cursor-pointer">
               Déconnexion
             </button>
           </form>

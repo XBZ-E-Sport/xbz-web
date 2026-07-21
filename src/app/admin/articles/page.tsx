@@ -57,7 +57,7 @@ export default async function AdminArticlesPage() {
 
                 <details className="group mt-4 border-t border-white/10 pt-4">
                   <summary className="cursor-pointer list-none text-sm font-semibold text-xbz-cyan">
-                    Modifier / supprimer
+                    Modifier / Supprimer
                   </summary>
                   <div className="mt-4">
                     <ArticleForm action={updateArticle} article={a} submitLabel="Enregistrer" />
@@ -65,7 +65,7 @@ export default async function AdminArticlesPage() {
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="slug" value={a.slug} />
                       <ConfirmButton
-                        className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25"
+                        className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25 hover:cursor-pointer"
                         message={`Supprimer l'article "${a.title}" ? Action irréversible.`}
                       >
                         Supprimer l’article
