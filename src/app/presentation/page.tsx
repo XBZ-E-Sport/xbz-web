@@ -6,6 +6,7 @@ export const metadata = {
   title: "Présentation — XBZ Esport",
   description:
     "Qui est XBZ Esport : une structure compétitive, organisée et ambitieuse, active sur Rocket League.",
+  alternates: { canonical: "/presentation" },
 };
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

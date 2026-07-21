@@ -6,6 +6,7 @@ export const metadata = {
   title: "Équipes & Staff — XBZ Esport",
   description:
     "Le staff et les rosters compétitifs de XBZ Esport sur Rocket League, avec les postes actuellement ouverts au recrutement.",
+  alternates: { canonical: "/equipes" },
 };
 
 // Données lues en base à chaque visite (slots dynamiques).

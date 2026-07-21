@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getRosterBySlug } from "@/lib/roster";
 import { getPoleBySlug } from "@/lib/equipes";
+import { pageMetadata } from "@/lib/site";
 import PlayerCard from "@/components/PlayerCard";
 
 // Données lues en base à chaque requête (back-office pilote rosters et pôles).
@@ -18,17 +19,19 @@ export async function generateMetadata({
   const { roster: slug } = await params;
   const roster = await getRosterBySlug(slug);
   if (roster) {
-    return {
+    return pageMetadata({
       title: `${roster.name} — XBZ Esport`,
       description: roster.description ?? `L'effectif du ${roster.name} de XBZ Esport.`,
-    };
+      path: `/equipes/${roster.slug}`,
+    });
   }
   const pole = await getPoleBySlug(slug);
   if (pole) {
-    return {
+    return pageMetadata({
       title: `${pole.name} — XBZ Esport`,
       description: pole.description ?? `Les membres du pôle ${pole.name} de XBZ Esport.`,
-    };
+      path: `/equipes/${pole.slug}`,
+    });
   }
   return { title: "Page introuvable — XBZ Esport" };
 }

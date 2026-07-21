@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getPlayer, type Player } from "@/lib/roster";
 import { getPoleBySlug } from "@/lib/equipes";
+import { pageMetadata } from "@/lib/site";
 import Flag from "@/components/Flag";
 
 export const dynamic = "force-dynamic";
@@ -40,11 +41,12 @@ export async function generateMetadata({
   const { roster, joueur } = await params;
   const res = await resolveMember(roster, joueur);
   if (!res) return { title: "Membre introuvable — XBZ Esport" };
-  const { player } = res;
-  return {
+  const { player, parent } = res;
+  return pageMetadata({
     title: `${player.pseudo} — XBZ Esport`,
     description: player.bio ?? `${player.pseudo}${player.nom ? ` (${player.nom})` : ""}, membre de XBZ Esport.`,
-  };
+    path: `/equipes/${parent.slug}/${player.slug}`,
+  });
 }
 
 export default async function PlayerPage({

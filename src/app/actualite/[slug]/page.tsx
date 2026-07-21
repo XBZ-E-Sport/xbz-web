@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getArticleBySlug } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
-import { siteConfig, absoluteUrl } from "@/lib/site";
+import { siteConfig, absoluteUrl, pageMetadata } from "@/lib/site";
 
 // Article lu en base à chaque visite (piloté par le back-office).
 export const dynamic = "force-dynamic";
@@ -16,7 +16,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
   if (!article) return { title: "Article introuvable — XBZ Esport" };
-  return { title: `${article.title} — XBZ Esport`, description: article.excerpt };
+  return pageMetadata({
+    title: `${article.title} — XBZ Esport`,
+    description: article.excerpt,
+    path: `/actualite/${article.slug}`,
+    ogType: "article",
+  });
 }
 
 export default async function ArticlePage({

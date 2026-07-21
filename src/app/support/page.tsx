@@ -5,6 +5,7 @@ import SupportForm from "@/components/SupportForm";
 export const metadata = {
   title: "Support — XBZ Esport",
   description: "Besoin d’aide ? Contacte le staff XBZ via Discord, email ou le formulaire de contact.",
+  alternates: { canonical: "/support" },
 };
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";

@@ -4,6 +4,7 @@ export const metadata = {
   title: "Le club — XBZ Esport",
   description:
     "Le club XBZ Esport en un coup d’œil : ses pôles et tous les accès (équipes, recrutement, actualité, boutique, communauté).",
+  alternates: { canonical: "/le-club" },
 };
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

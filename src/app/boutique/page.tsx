@@ -6,6 +6,7 @@ export const metadata = {
   title: "Boutique — XBZ Esport",
   description:
     "La boutique officielle XBZ Esport : maillots, textile et accessoires aux couleurs du club.",
+  alternates: { canonical: "/boutique" },
 };
 
 const categoryStyles: Record<ProductCategory, string> = {

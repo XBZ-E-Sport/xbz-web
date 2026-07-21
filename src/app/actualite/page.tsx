@@ -4,6 +4,7 @@ import { getArticles } from "@/lib/actualite";
 export const metadata = {
   title: "Actualité — XBZ Esport",
   description: "Les dernières news, résultats et annonces de la structure XBZ Esport.",
+  alternates: { canonical: "/actualite" },
 };
 
 // Articles lus en base à chaque visite (pilotés par le back-office).

@@ -6,6 +6,7 @@ import { siteConfig } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Mentions légales — XBZ Esport",
   description: "Mentions légales et informations sur l'éditeur du site XBZ Esport.",
+  alternates: { canonical: "/mentions-legales" },
 };
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

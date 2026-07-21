@@ -1,6 +1,7 @@
 import { loginWithPassword, loginWithDiscord } from "./actions";
 
-export const metadata = { title: "Connexion staff — XBZ" };
+// Page de connexion staff : pas d'indexation (contenu privé, pas de canonical vers l'accueil).
+export const metadata = { title: "Connexion staff — XBZ", robots: { index: false, follow: false } };
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";

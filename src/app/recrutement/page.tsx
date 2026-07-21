@@ -7,6 +7,7 @@ export const metadata = {
   title: "Recrutement — XBZ Esport",
   description:
     "Rejoins XBZ Esport : postes joueurs, staff et création ouverts. Candidate en ligne en quelques minutes.",
+  alternates: { canonical: "/recrutement" },
 };
 
 // Rôles ouverts lus en base à chaque visite.
