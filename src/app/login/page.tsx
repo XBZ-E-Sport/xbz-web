@@ -24,8 +24,30 @@ export default async function LoginPage({
         )}
 
         <form action={loginWithPassword} className="flex flex-col gap-3">
-          <input name="email" type="email" placeholder="Email" required className={inputCls} />
-          <input name="password" type="password" placeholder="Mot de passe" required className={inputCls} />
+          <label htmlFor="login-email" className="sr-only">
+            Adresse e-mail
+          </label>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            placeholder="Email"
+            required
+            autoComplete="email"
+            className={inputCls}
+          />
+          <label htmlFor="login-password" className="sr-only">
+            Mot de passe
+          </label>
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="Mot de passe"
+            required
+            autoComplete="current-password"
+            className={inputCls}
+          />
           <button type="submit" className="btn-xbz w-full text-center hover:cursor-pointer">Se connecter</button>
         </form>
 

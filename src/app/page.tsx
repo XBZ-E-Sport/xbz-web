@@ -121,14 +121,16 @@ export default async function Home() {
           <h2 id="stats-heading" className="sr-only">
             La structure en chiffres
           </h2>
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {/* Liste de description (clé/valeur) : sémantiquement correct pour des
+              stats, et évite que les grands nombres soient pris pour des titres. */}
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {stats.map((s) => (
-              <li key={s.label} className="card-xbz p-6 text-center">
-                <p className="font-display text-4xl font-black text-xbz-cyan">{s.value}</p>
-                <p className="mt-2 text-sm text-neutral-400">{s.label}</p>
-              </li>
+              <div key={s.label} className="card-xbz flex flex-col-reverse gap-2 p-6 text-center">
+                <dt className="text-sm text-neutral-400">{s.label}</dt>
+                <dd className="font-display text-4xl font-black text-xbz-cyan">{s.value}</dd>
+              </div>
             ))}
-          </ul>
+          </dl>
         </section>
 
         {/* Dernières actualités */}

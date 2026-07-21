@@ -23,33 +23,47 @@ export default function RosterForm({
   roster?: RosterRow;
   submitLabel: string;
 }) {
+  // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
+  const uid = roster ? `roster-${roster.id}` : "roster-new";
+
   return (
     <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {roster && <input type="hidden" name="id" value={roster.id} />}
 
-      <label className="block">
-        <span className={labelCls}>Nom</span>
-        <input name="name" defaultValue={roster?.name} required placeholder="Roster SSL" className={inputCls} />
-      </label>
+      <div className="block">
+        <label htmlFor={`${uid}-name`} className={labelCls}>
+          Nom
+        </label>
+        <input id={`${uid}-name`} name="name" defaultValue={roster?.name} required placeholder="Roster SSL" className={inputCls} />
+      </div>
 
-      <label className="block">
-        <span className={labelCls}>Slug (auto si vide)</span>
-        <input name="slug" defaultValue={roster?.slug} placeholder="ssl" className={inputCls} />
-      </label>
+      <div className="block">
+        <label htmlFor={`${uid}-slug`} className={labelCls}>
+          Slug (auto si vide)
+        </label>
+        <input id={`${uid}-slug`} name="slug" defaultValue={roster?.slug} placeholder="ssl" className={inputCls} />
+      </div>
 
-      <label className="block">
-        <span className={labelCls}>Rang</span>
-        <input name="rank" defaultValue={roster?.rank ?? ""} placeholder="Supersonic Legend" className={inputCls} />
-      </label>
+      <div className="block">
+        <label htmlFor={`${uid}-rank`} className={labelCls}>
+          Rang
+        </label>
+        <input id={`${uid}-rank`} name="rank" defaultValue={roster?.rank ?? ""} placeholder="Supersonic Legend" className={inputCls} />
+      </div>
 
-      <label className="block">
-        <span className={labelCls}>Position (ordre)</span>
-        <input name="position" type="number" defaultValue={roster?.position ?? 0} className={inputCls} />
-      </label>
+      <div className="block">
+        <label htmlFor={`${uid}-position`} className={labelCls}>
+          Position (ordre)
+        </label>
+        <input id={`${uid}-position`} name="position" type="number" defaultValue={roster?.position ?? 0} className={inputCls} />
+      </div>
 
-      <label className="block">
-        <span className={labelCls}>Capacité (places)</span>
+      <div className="block">
+        <label htmlFor={`${uid}-capacity`} className={labelCls}>
+          Capacité (places)
+        </label>
         <input
+          id={`${uid}-capacity`}
           name="capacity"
           type="number"
           min={0}
@@ -57,27 +71,32 @@ export default function RosterForm({
           placeholder="3"
           className={inputCls}
         />
-      </label>
+      </div>
 
-      <label className="block">
-        <span className={labelCls}>Rôle recruté (vide = pas de recrutement)</span>
+      <div className="block">
+        <label htmlFor={`${uid}-recrute`} className={labelCls}>
+          Rôle recruté (vide = pas de recrutement)
+        </label>
         <input
+          id={`${uid}-recrute`}
           name="recrute"
           defaultValue={roster?.recrute ?? "Joueur"}
           placeholder="Joueur"
           className={inputCls}
         />
-      </label>
+      </div>
 
-      <label className="block sm:col-span-2">
-        <span className={labelCls}>Description</span>
-        <textarea name="description" defaultValue={roster?.description ?? ""} rows={2} className={inputCls} />
-      </label>
+      <div className="block sm:col-span-2">
+        <label htmlFor={`${uid}-description`} className={labelCls}>
+          Description
+        </label>
+        <textarea id={`${uid}-description`} name="description" defaultValue={roster?.description ?? ""} rows={2} className={inputCls} />
+      </div>
 
-      <label className="flex items-center gap-2 text-sm text-neutral-300">
-        <input type="checkbox" name="active" defaultChecked={roster?.active ?? true} className="h-4 w-4" />
-        Visible sur le site (actif)
-      </label>
+      <div className="flex items-center gap-2 text-sm text-neutral-300">
+        <input id={`${uid}-active`} type="checkbox" name="active" defaultChecked={roster?.active ?? true} className="h-4 w-4" />
+        <label htmlFor={`${uid}-active`}>Visible sur le site (actif)</label>
+      </div>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110">
