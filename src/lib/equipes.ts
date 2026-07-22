@@ -45,10 +45,13 @@ function memberCount(rel: CountRel): number {
   return Array.isArray(rel) && rel[0] ? rel[0].count : 0;
 }
 
-// Lecture centrale (rosters + pôles), mise en cache et partagée entre requêtes
-// (tag `equipes`). getEquipes / getStructureStats / getOpenRolesByCategory en
-// dérivent → une seule requête BDD partagée pour tout ça.
-const fetchGroups = unstable_cache(
+// Lecture centrale (rosters + pôles). Double cache :
+//  - `unstable_cache` : partagé entre requêtes (tag `equipes`), pas de BDD répétée.
+//  - `cache` (React) : dédup dans un même rendu si plusieurs helpers dérivés
+//    (getEquipes / getStructureStats / getOpenRolesByCategory) l'appellent —
+//    cohérent avec getPoleBySlug / getRosterBySlug.
+const fetchGroups = cache(
+  unstable_cache(
   async (): Promise<{ rosters: Group[]; poles: Group[] }> => {
   const supabase = createPublicClient();
 
@@ -104,6 +107,7 @@ const fetchGroups = unstable_cache(
   },
   ["equipes-groups"],
   { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+  ),
 );
 
 /** Groupes affichés sur /equipes, répartis en sections Staff / Esport. */

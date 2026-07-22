@@ -1,6 +1,5 @@
-import Image from "next/image";
-
-import { getProducts, type Product, type ProductCategory } from "@/lib/boutique";
+import { getProducts } from "@/lib/boutique";
+import BoutiqueList from "@/components/BoutiqueList";
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
 
@@ -13,17 +12,6 @@ export const metadata = {
 
 // Produits lus en base à chaque visite (pilotés par le back-office).
 export const dynamic = "force-dynamic";
-
-const categoryStyles: Record<ProductCategory, string> = {
-  Textile: "bg-xbz-blue/15 text-[#7fc8ff]",
-  Accessoire: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
-  Gaming: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
-};
-
-const priceFormatter = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-});
 
 export default async function BoutiquePage() {
   const products = await getProducts();
@@ -62,11 +50,7 @@ export default async function BoutiquePage() {
           Aucun produit pour le moment. Reviens vite !
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => (
-            <ProductCard key={product.slug} product={product} />
-          ))}
-        </ul>
+        <BoutiqueList products={products} />
       )}
 
       {/* CTA */}
@@ -91,65 +75,5 @@ export default async function BoutiquePage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ProductCard({ product }: { product: Product }) {
-  return (
-    <li className="card-xbz flex flex-col overflow-hidden">
-      {/* Visuel : image produit si dispo, sinon emoji de repli */}
-      <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
-        {product.image ? (
-          <Image
-            src={product.image}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover"
-          />
-        ) : (
-          <span aria-hidden="true" className="text-6xl">
-            {product.icon}
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${categoryStyles[product.category]}`}
-          >
-            {product.category}
-          </span>
-          <span className="font-display text-lg font-bold text-white">
-            {priceFormatter.format(product.price)}
-          </span>
-        </div>
-
-        <h3 className="mt-3 font-display text-lg text-xbz-blue">{product.name}</h3>
-        <p className="mt-1 flex-1 text-sm leading-relaxed text-neutral-400">
-          {product.description}
-        </p>
-
-        <div className="mt-4">
-          {product.available ? (
-            // Achetable : lien d'achat externe s'il existe, sinon commande via Discord.
-            <a
-              href={product.url || DISCORD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg bg-xbz-blue px-4 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
-            >
-              {product.url ? "Acheter" : "Commander sur Discord"}
-              <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
-            </a>
-          ) : (
-            <span className="block rounded-lg border border-white/15 px-4 py-2 text-center text-sm font-semibold text-neutral-400">
-              Bientôt disponible
-            </span>
-          )}
-        </div>
-      </div>
-    </li>
   );
 }
