@@ -282,10 +282,12 @@ export default function RecrutementForm({
             {/* Rosters lus en base (même système que les rôles). Valeur = nom du
                 roster, stockée dans la colonne `rang` de la candidature. */}
             <select id="rec-rang" name="rang" defaultValue="" className={inputCls}>
-              <option value="">Sans préférence</option>
+              <option value="" disabled hidden>
+                Sans préférence
+              </option>
               {rosters.map((r) => (
                 <option key={r.name} value={r.name}>
-                  {r.rank ? `${r.name} · ${r.rank}` : r.name}
+                  {r.rank ? `${r.name}` : r.name}
                 </option>
               ))}
             </select>

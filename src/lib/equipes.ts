@@ -153,6 +153,30 @@ export async function isRoleOpen(categorie: string, role: string): Promise<boole
   return roles.some((r) => r.name === role);
 }
 
+/**
+ * Rosters encore OUVERTS au recrutement (rempli < capacity), pour le sélecteur
+ * du formulaire de recrutement. Même règle de disponibilité que les rôles :
+ * un roster plein (ex. GC3 4/4) n'est plus proposé.
+ */
+export async function getOpenRosters(): Promise<{ name: string; rank: string | null }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("rosters")
+    .select("name, rank, capacity, position, joueurs(count)")
+    .eq("active", true)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("[rosters ouverts] select:", error.message);
+    return [];
+  }
+
+  type OpenRosterRow = { name: string; rank: string | null; capacity: number | null; joueurs: CountRel };
+  return ((data ?? []) as OpenRosterRow[])
+    .filter((r) => (r.capacity ?? 3) - memberCount(r.joueurs) > 0)
+    .map((r) => ({ name: r.name, rank: r.rank }));
+}
+
 // ============ PAGE DÉTAIL D'UN PÔLE ============
 
 export type PoleDetail = {

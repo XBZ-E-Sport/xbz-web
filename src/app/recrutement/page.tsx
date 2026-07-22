@@ -1,8 +1,7 @@
 import Link from "next/link";
 
 import RecrutementForm from "@/components/RecrutementForm";
-import { getOpenRolesByCategory } from "@/lib/equipes";
-import { getRosters } from "@/lib/roster";
+import { getOpenRolesByCategory, getOpenRosters } from "@/lib/equipes";
 
 export const metadata = {
   title: "Recrutement — XBZ Esport",
@@ -11,15 +10,14 @@ export const metadata = {
   alternates: { canonical: "/recrutement" },
 };
 
-// Rôles ouverts + rosters lus en base à chaque visite.
+// Rôles + rosters ouverts lus en base à chaque visite.
 export const dynamic = "force-dynamic";
 
 export default async function RecrutementPage() {
-  const [rolesByCategory, rostersData] = await Promise.all([
+  const [rolesByCategory, rosters] = await Promise.all([
     getOpenRolesByCategory(),
-    getRosters(),
+    getOpenRosters(),
   ]);
-  const rosters = rostersData.map((r) => ({ name: r.name, rank: r.rank }));
   return (
     <div className="relative z-10 mx-auto max-w-2xl px-6 pb-24 pt-32">
       {/* En-tête */}
