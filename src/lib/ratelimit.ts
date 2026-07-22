@@ -2,6 +2,8 @@
 // On compte les requêtes récentes par IP + route sur une fenêtre glissante ;
 // au-delà du seuil, l'appelant renvoie 429. Écrit/lu via service_role.
 
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** IP client (Vercel renseigne `x-forwarded-for`). */
