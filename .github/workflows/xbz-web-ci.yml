@@ -31,3 +31,35 @@ jobs:
       run: npm run build
     - name: Tests
       run: npm test --if-present
+
+  e2e:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    # Variables Supabase FACTICES : suffisent pour les specs « sans BDD » (le
+    # middleware se construit, getUser échoue sans bloquer, les pages statiques
+    # + le gating /admin répondent). Pour couvrir les parcours BDD (recrutement,
+    # boutique, back-office), remplacer par un vrai projet Supabase de test via
+    # des secrets GitHub (Settings → Secrets) et activer les specs de e2e/flows.spec.ts.
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder
+      SUPABASE_SECRET_KEY: sb_secret_placeholder
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - name: Install Playwright (chromium + deps)
+      run: npx playwright install --with-deps chromium
+    - name: E2E
+      run: npm run test:e2e

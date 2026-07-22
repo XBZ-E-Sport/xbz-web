@@ -2,13 +2,14 @@
 
 Site officiel de la structure esport **XBZ Esport** (Rocket League) : pages publiques
 (présentation, équipes, recrutement, actualité, boutique, support) + un back-office
-staff pour gérer les rosters, les joueurs et les pôles.
+staff pour gérer les rosters, les joueurs, les pôles, l'actualité et la boutique.
 
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript** (strict)
 - **Tailwind CSS v4**
 - **Supabase** (Postgres + Auth + Storage) — données dynamiques et espace staff
+- **Vitest** + **Testing Library** (tests unitaires) · **Playwright** (E2E)
 - Déploiement **Vercel**
 
 ## Prérequis
@@ -46,34 +47,95 @@ Voir `.env.example`. Résumé :
 
 Exécute les migrations dans **Supabase → SQL Editor**, **dans cet ordre** :
 
-1. `supabase/migration_rosters_joueurs_bdd.sql` — tables `rosters` + `joueurs`, RLS.
-2. `supabase/migration_equipes_bdd.sql` — table `poles`, colonnes `capacity`/`recrute`,
+1. `supabase/migration_rosters_joueurs_20072026.sql` — tables `rosters` + `joueurs`, RLS.
+2. `supabase/migration_equipes_20072026.sql` — table `poles`, colonnes `capacity`/`recrute`,
    `joueurs.pole_id`, seed des pôles, et le **bucket Storage public `joueurs`** (photos).
-3. `supabase/migration_equipes_review.sql` — colonne `poles.badge` + contrainte
+3. `supabase/migration_equipes_review_20072026.sql` — colonne `poles.badge` + contrainte
    « roster XOR pôle » + `ON DELETE CASCADE`.
 4. `supabase/migration_articles_bdd.sql` — table `articles` (actualité) + RLS + seed.
-5. `supabase/migration_ratelimit.sql` — table technique `rate_limit_hits` (anti-flood
-   des formulaires, écrite/lue via service_role uniquement).
+5. `supabase/migration_products_21072026.sql` — table `products` (boutique) + RLS + seed,
+   et le **bucket Storage public `products`** (visuels).
+6. `supabase/migration_ratelimit_21072026.sql` — table technique `rate_limit_hits`
+   (anti-flood des formulaires, écrite/lue via service_role uniquement).
 
-Tables attendues en plus (côté Supabase) pour l'espace staff :
+Toutes ces tables sont en **lecture publique via RLS** (produits/articles/rosters… actifs)
+et en **écriture réservée au back-office** (service_role, aucune policy d'écriture).
+
+### Tables gérées hors migrations (côté Supabase)
 
 - `allow_staff_list(email)` — liste blanche des e-mails autorisés au back-office.
 - `candidatures` / `support_messages` — réceptacles des formulaires (écriture via service_role).
 
+Une fois la table `candidatures` en place, applique le correctif :
+
+- `supabase/migration_candidatures_nullable_21072026.sql` — rend nullables les colonnes
+  facultatives de `candidatures` (`jeu`, `pays_residence`, `rltracker`, `rang`, `experience`,
+  `motivation`), pour qu'une candidature « XBZ Staff » (sans jeu) puisse s'enregistrer.
+
 L'accès à `/admin` exige d'être connecté **et** présent dans `allow_staff_list`.
+Sections du back-office : **Candidatures**, **Rosters & Joueurs**, **Pôles & Staff**,
+**Actualité**, **Boutique**.
 
 ## Scripts
 
 ```bash
-npm run dev      # développement
-npm run build    # build de production
-npm run start    # serveur de production
-npm run lint     # ESLint
-npx tsc --noEmit # vérification de types
+npm run dev       # développement
+npm run build     # build de production
+npm run start     # serveur de production
+npm run lint      # ESLint
+npx tsc --noEmit  # vérification de types
+npm test          # tests unitaires (Vitest)
+npm run test:e2e  # tests end-to-end (Playwright)
 ```
 
-L'intégration continue (`.github/workflows/xbz-web-ci.yml`) rejoue lint + typecheck + build
-sur chaque push/PR — lance donc `npm run build` en local avant de pousser.
+## Tests
+
+### Unitaires — Vitest + Testing Library
+
+Logique pure (anti-spam, rate-limit, métadonnées SEO, formatage) + composants client
+synchrones. Les Server Components `async` ne sont pas couverts par Vitest (limite connue) —
+c'est le rôle de l'E2E.
+
+```bash
+npm test          # une passe
+npm run test:watch
+```
+
+### End-to-end — Playwright
+
+Le harnais build + démarre l'app et pilote un vrai navigateur.
+
+```bash
+npx playwright install chromium   # une seule fois (récupère le navigateur)
+npm run test:e2e
+```
+
+> ⚠️ Le middleware Supabase s'exécute sur **toutes** les routes, et plusieurs pages
+> lisent la base (accueil, équipes, boutique, recrutement…). Les specs de `e2e/` ciblent
+> donc les **pages sans BDD** + le gating du back-office — elles passent avec de simples
+> variables Supabase **factices** (aucun projet requis). Les parcours BDD (recrutement,
+> boutique, connexion staff) sont scaffoldés dans `e2e/flows.spec.ts` en `test.fixme`
+> (ignorés) : pour les activer, branche un **Supabase de test** (env réel + données
+> seedées) et retire les `.fixme`.
+
+## Intégration continue
+
+`.github/workflows/xbz-web-ci.yml` rejoue sur chaque push/PR (toutes branches) :
+
+- **job `build`** : `lint` + `tsc --noEmit` + `build` + tests unitaires ;
+- **job `e2e`** : installe Chromium et lance Playwright avec des variables Supabase
+  factices (les specs « sans BDD »).
+
+Lance donc `npm run build` et `npm test` en local avant de pousser.
+
+## Sécurité des dépendances
+
+Deux CVE traînent dans les dépendances **internes** de Next (`postcss`, `sharp` bundlés).
+Elles sont neutralisées via un bloc `overrides` dans `package.json` qui force des versions
+patchées dans tout l'arbre (`npm audit` → 0 vulnérabilité), **sans downgrader Next**.
+
+> ❌ Ne lance **jamais** `npm audit fix --force` : il tenterait d'installer `next@9.3.3`
+> (retour à Next 9), ce qui casserait toute l'app.
 
 ## Déploiement
 
