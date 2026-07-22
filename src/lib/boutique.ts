@@ -5,7 +5,10 @@
 //
 // Achat via lien externe (champ `url`) — AUCUN paiement géré sur le site.
 
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+
+import { createPublicClient } from "@/lib/supabase/public";
+import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
 
 export type ProductCategory = "Textile" | "Accessoire" | "Gaming";
 
@@ -58,19 +61,23 @@ function toProduct(row: ProductRow): Product {
   };
 }
 
-/** Liste des produits actifs, ordonnés pour l'affichage. */
-export async function getProducts(): Promise<Product[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_COLS)
-    .eq("active", true)
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
+/** Liste des produits actifs, ordonnés pour l'affichage. Cache : tag `products`. */
+export const getProducts = unstable_cache(
+  async (): Promise<Product[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select(PRODUCT_COLS)
+      .eq("active", true)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
 
-  if (error) {
-    console.error("[boutique] select:", error.message);
-    return [];
-  }
-  return ((data ?? []) as ProductRow[]).map(toProduct);
-}
+    if (error) {
+      console.error("[boutique] select:", error.message);
+      return [];
+    }
+    return ((data ?? []) as ProductRow[]).map(toProduct);
+  },
+  ["products-list"],
+  { tags: [CACHE_TAGS.products], revalidate: CACHE_TTL_SECONDS },
+);

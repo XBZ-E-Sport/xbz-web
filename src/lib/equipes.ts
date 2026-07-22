@@ -4,8 +4,10 @@
 // base ; le « total » = colonne `capacity`. Slots 100 % dynamiques.
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
+import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
 import type { Player } from "@/lib/roster";
 import type { RecrutementCategory } from "@/content/recrutement";
 
@@ -43,8 +45,12 @@ function memberCount(rel: CountRel): number {
   return Array.isArray(rel) && rel[0] ? rel[0].count : 0;
 }
 
-async function fetchGroups(): Promise<{ rosters: Group[]; poles: Group[] }> {
-  const supabase = await createClient();
+// Lecture centrale (rosters + pôles), mise en cache et partagée entre requêtes
+// (tag `equipes`). getEquipes / getStructureStats / getOpenRolesByCategory en
+// dérivent → une seule requête BDD partagée pour tout ça.
+const fetchGroups = unstable_cache(
+  async (): Promise<{ rosters: Group[]; poles: Group[] }> => {
+  const supabase = createPublicClient();
 
   const [rostersRes, polesRes] = await Promise.all([
     supabase
@@ -94,8 +100,11 @@ async function fetchGroups(): Promise<{ rosters: Group[]; poles: Group[] }> {
     isRoster: false,
   }));
 
-  return { rosters, poles };
-}
+    return { rosters, poles };
+  },
+  ["equipes-groups"],
+  { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+);
 
 /** Groupes affichés sur /equipes, répartis en sections Staff / Esport. */
 export async function getEquipes(): Promise<{ staff: Group[]; esport: Group[] }> {
@@ -158,24 +167,28 @@ export async function isRoleOpen(categorie: string, role: string): Promise<boole
  * du formulaire de recrutement. Même règle de disponibilité que les rôles :
  * un roster plein (ex. GC3 4/4) n'est plus proposé.
  */
-export async function getOpenRosters(): Promise<{ name: string; rank: string | null }[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("rosters")
-    .select("name, rank, capacity, position, joueurs(count)")
-    .eq("active", true)
-    .order("position", { ascending: true });
+export const getOpenRosters = unstable_cache(
+  async (): Promise<{ name: string; rank: string | null }[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("rosters")
+      .select("name, rank, capacity, position, joueurs(count)")
+      .eq("active", true)
+      .order("position", { ascending: true });
 
-  if (error) {
-    console.error("[rosters ouverts] select:", error.message);
-    return [];
-  }
+    if (error) {
+      console.error("[rosters ouverts] select:", error.message);
+      return [];
+    }
 
-  type OpenRosterRow = { name: string; rank: string | null; capacity: number | null; joueurs: CountRel };
-  return ((data ?? []) as OpenRosterRow[])
-    .filter((r) => (r.capacity ?? 3) - memberCount(r.joueurs) > 0)
-    .map((r) => ({ name: r.name, rank: r.rank }));
-}
+    type OpenRosterRow = { name: string; rank: string | null; capacity: number | null; joueurs: CountRel };
+    return ((data ?? []) as OpenRosterRow[])
+      .filter((r) => (r.capacity ?? 3) - memberCount(r.joueurs) > 0)
+      .map((r) => ({ name: r.name, rank: r.rank }));
+  },
+  ["open-rosters"],
+  { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+);
 
 // ============ PAGE DÉTAIL D'UN PÔLE ============
 
@@ -192,26 +205,32 @@ export type PoleDetail = {
  * Un pôle + ses membres actifs (triés), ou null s'il n'existe pas.
  * Mémoïsé par requête (`cache`) : generateMetadata + la page ne font qu'un appel.
  */
-export const getPoleBySlug = cache(async (slug: string): Promise<PoleDetail | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("poles")
-    .select("id, slug, name, description, category, members:joueurs(*)")
-    .eq("slug", slug)
-    .eq("active", true)
-    .maybeSingle();
+export const getPoleBySlug = cache(
+  unstable_cache(
+    async (slug: string): Promise<PoleDetail | null> => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("poles")
+        .select("id, slug, name, description, category, members:joueurs(*)")
+        .eq("slug", slug)
+        .eq("active", true)
+        .maybeSingle();
 
-  if (error) {
-    console.error("[pole] select:", error.message);
-    return null;
-  }
-  if (!data) return null;
+      if (error) {
+        console.error("[pole] select:", error.message);
+        return null;
+      }
+      if (!data) return null;
 
-  const pole = data as unknown as PoleDetail;
-  pole.category = pole.category === "esport" ? "esport" : "staff";
-  pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
-  return pole;
-});
+      const pole = data as unknown as PoleDetail;
+      pole.category = pole.category === "esport" ? "esport" : "staff";
+      pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
+      return pole;
+    },
+    ["pole-by-slug"],
+    { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+  ),
+);
 
 // ============ SITEMAP ============
 
@@ -219,28 +238,32 @@ export const getPoleBySlug = cache(async (slug: string): Promise<PoleDetail | nu
  * Toutes les URLs /equipes/* dérivées de la base (pour le sitemap) :
  * une par roster/pôle actif + une par joueur/membre actif.
  */
-export async function getEquipesUrls(): Promise<string[]> {
-  const supabase = await createClient();
-  const [rostersRes, polesRes, joueursRes] = await Promise.all([
-    supabase.from("rosters").select("slug").eq("active", true),
-    supabase.from("poles").select("slug").eq("active", true),
-    supabase.from("joueurs").select("slug, rosters(slug), poles(slug)").eq("active", true),
-  ]);
+export const getEquipesUrls = unstable_cache(
+  async (): Promise<string[]> => {
+    const supabase = createPublicClient();
+    const [rostersRes, polesRes, joueursRes] = await Promise.all([
+      supabase.from("rosters").select("slug").eq("active", true),
+      supabase.from("poles").select("slug").eq("active", true),
+      supabase.from("joueurs").select("slug, rosters(slug), poles(slug)").eq("active", true),
+    ]);
 
-  const urls: string[] = [];
-  for (const r of (rostersRes.data ?? []) as { slug: string }[]) {
-    urls.push(`/equipes/${r.slug}`);
-  }
-  for (const p of (polesRes.data ?? []) as { slug: string }[]) {
-    urls.push(`/equipes/${p.slug}`);
-  }
-  for (const j of (joueursRes.data ?? []) as unknown as {
-    slug: string;
-    rosters: { slug: string } | null;
-    poles: { slug: string } | null;
-  }[]) {
-    const parent = j.rosters?.slug ?? j.poles?.slug;
-    if (parent) urls.push(`/equipes/${parent}/${j.slug}`);
-  }
-  return urls;
-}
+    const urls: string[] = [];
+    for (const r of (rostersRes.data ?? []) as { slug: string }[]) {
+      urls.push(`/equipes/${r.slug}`);
+    }
+    for (const p of (polesRes.data ?? []) as { slug: string }[]) {
+      urls.push(`/equipes/${p.slug}`);
+    }
+    for (const j of (joueursRes.data ?? []) as unknown as {
+      slug: string;
+      rosters: { slug: string } | null;
+      poles: { slug: string } | null;
+    }[]) {
+      const parent = j.rosters?.slug ?? j.poles?.slug;
+      if (parent) urls.push(`/equipes/${parent}/${j.slug}`);
+    }
+    return urls;
+  },
+  ["equipes-urls"],
+  { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+);

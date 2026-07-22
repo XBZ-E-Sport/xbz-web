@@ -4,8 +4,10 @@
 // d'où viennent les données.
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
+import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
 
 export type ArticleCategory =
   | "Compétition"
@@ -63,38 +65,49 @@ function toArticle(row: ArticleRow): Article {
   };
 }
 
-/** Liste des actualités publiées, les plus récentes d'abord. */
-export async function getArticles(): Promise<Article[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("articles")
-    .select(ARTICLE_COLS)
-    .eq("published", true)
-    .order("date", { ascending: false });
+/** Liste des actualités publiées, les plus récentes d'abord. Cache : tag `articles`. */
+export const getArticles = unstable_cache(
+  async (): Promise<Article[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("articles")
+      .select(ARTICLE_COLS)
+      .eq("published", true)
+      .order("date", { ascending: false });
 
-  if (error) {
-    console.error("[actualite] select:", error.message);
-    return [];
-  }
-  return ((data ?? []) as ArticleRow[]).map(toArticle);
-}
+    if (error) {
+      console.error("[actualite] select:", error.message);
+      return [];
+    }
+    return ((data ?? []) as ArticleRow[]).map(toArticle);
+  },
+  ["articles-list"],
+  { tags: [CACHE_TAGS.articles], revalidate: CACHE_TTL_SECONDS },
+);
 
 /**
  * Un article publié par son slug, ou null s'il n'existe pas.
- * Mémoïsé par requête : generateMetadata + la page ne font qu'un appel.
+ * - `unstable_cache` : partagé entre requêtes (tag `articles`).
+ * - `cache` (React) : mémoïsé dans un même rendu (generateMetadata + page = 1 appel).
  */
-export const getArticleBySlug = cache(async (slug: string): Promise<Article | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("articles")
-    .select(ARTICLE_COLS)
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
+export const getArticleBySlug = cache(
+  unstable_cache(
+    async (slug: string): Promise<Article | null> => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("articles")
+        .select(ARTICLE_COLS)
+        .eq("slug", slug)
+        .eq("published", true)
+        .maybeSingle();
 
-  if (error) {
-    console.error("[article] select:", error.message);
-    return null;
-  }
-  return data ? toArticle(data as ArticleRow) : null;
-});
+      if (error) {
+        console.error("[article] select:", error.message);
+        return null;
+      }
+      return data ? toArticle(data as ArticleRow) : null;
+    },
+    ["article-by-slug"],
+    { tags: [CACHE_TAGS.articles], revalidate: CACHE_TTL_SECONDS },
+  ),
+);

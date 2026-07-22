@@ -3,8 +3,10 @@
 // Voir supabase/rosters_joueurs.sql pour le schéma.
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
+import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
 
 export type Player = {
   id: string;
@@ -37,47 +39,58 @@ export type Roster = {
 
 const ROSTER_COLS = "id, slug, name, rank, description, position";
 
-/** Tous les rosters actifs, ordonnés. Sans les joueurs (pour les listes). */
-export async function getRosters(): Promise<Omit<Roster, "players">[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("rosters")
-    .select(ROSTER_COLS)
-    .eq("active", true)
-    .order("position", { ascending: true });
+/** Tous les rosters actifs, ordonnés. Sans les joueurs (pour les listes). Cache : tag `equipes`. */
+export const getRosters = unstable_cache(
+  async (): Promise<Omit<Roster, "players">[]> => {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .from("rosters")
+      .select(ROSTER_COLS)
+      .eq("active", true)
+      .order("position", { ascending: true });
 
-  if (error) {
-    console.error("[rosters] select:", error.message);
-    return [];
-  }
-  return (data ?? []) as Omit<Roster, "players">[];
-}
+    if (error) {
+      console.error("[rosters] select:", error.message);
+      return [];
+    }
+    return (data ?? []) as Omit<Roster, "players">[];
+  },
+  ["rosters-list"],
+  { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+);
 
 /**
  * Un roster + ses joueurs actifs (triés), ou null s'il n'existe pas.
- * Mémoïsé par requête (`cache`) : generateMetadata + la page ne font qu'un appel.
+ * - `unstable_cache` : partagé entre requêtes (tag `equipes`).
+ * - `cache` (React) : mémoïsé dans un même rendu (generateMetadata + page = 1 appel).
  */
-export const getRosterBySlug = cache(async (slug: string): Promise<Roster | null> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("rosters")
-    .select(`${ROSTER_COLS}, players:joueurs(*)`)
-    .eq("slug", slug)
-    .eq("active", true)
-    .maybeSingle();
+export const getRosterBySlug = cache(
+  unstable_cache(
+    async (slug: string): Promise<Roster | null> => {
+      const supabase = createPublicClient();
+      const { data, error } = await supabase
+        .from("rosters")
+        .select(`${ROSTER_COLS}, players:joueurs(*)`)
+        .eq("slug", slug)
+        .eq("active", true)
+        .maybeSingle();
 
-  if (error) {
-    console.error("[roster] select:", error.message);
-    return null;
-  }
-  if (!data) return null;
+      if (error) {
+        console.error("[roster] select:", error.message);
+        return null;
+      }
+      if (!data) return null;
 
-  const roster = data as Roster;
-  roster.players = (roster.players ?? [])
-    .slice()
-    .sort((a, b) => a.position - b.position);
-  return roster;
-});
+      const roster = data as Roster;
+      roster.players = (roster.players ?? [])
+        .slice()
+        .sort((a, b) => a.position - b.position);
+      return roster;
+    },
+    ["roster-by-slug"],
+    { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
+  ),
+);
 
 /** Un joueur (via slug roster + slug joueur) accompagné de son roster. */
 export const getPlayer = cache(
