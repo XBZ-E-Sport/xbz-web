@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { recrutementCategories, type RecrutementCategory } from "@/content/recrutement";
 
 type RolesByCategory = Record<RecrutementCategory, { name: string; free: number }[]>;
+type RosterOption = { name: string; rank: string | null };
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
@@ -19,7 +20,13 @@ const toneColor: Record<Tone, string> = {
   error: "text-red-500",
 };
 
-export default function RecrutementForm({ rolesByCategory }: { rolesByCategory: RolesByCategory }) {
+export default function RecrutementForm({
+  rolesByCategory,
+  rosters,
+}: {
+  rolesByCategory: RolesByCategory;
+  rosters: RosterOption[];
+}) {
   const [categorie, setCategorie] = useState("");
   const [role, setRole] = useState("");
   const [jeu, setJeu] = useState("");
@@ -270,15 +277,18 @@ export default function RecrutementForm({ rolesByCategory }: { rolesByCategory: 
 
           <div>
             <label htmlFor="rec-rang" className={labelCls}>
-              Rang <span className={optionalCls}>(facultatif)</span>
+              Roster souhaité <span className={optionalCls}>(facultatif)</span>
             </label>
-            <input
-              id="rec-rang"
-              name="rang"
-              type="text"
-              placeholder="Ton rang actuel"
-              className={inputCls}
-            />
+            {/* Rosters lus en base (même système que les rôles). Valeur = nom du
+                roster, stockée dans la colonne `rang` de la candidature. */}
+            <select id="rec-rang" name="rang" defaultValue="" className={inputCls}>
+              <option value="">Sans préférence</option>
+              {rosters.map((r) => (
+                <option key={r.name} value={r.name}>
+                  {r.rank ? `${r.name} · ${r.rank}` : r.name}
+                </option>
+              ))}
+            </select>
           </div>
         </>
       )}
