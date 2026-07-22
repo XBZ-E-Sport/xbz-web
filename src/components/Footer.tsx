@@ -18,6 +18,7 @@ const infoLinks = [
   { href: "/recrutement", label: "Nous rejoindre" },
   { href: "/support", label: "Support & contact" },
   { href: "/mentions-legales", label: "Mentions légales" },
+  { href: "/confidentialite", label: "Confidentialité" },
 ];
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

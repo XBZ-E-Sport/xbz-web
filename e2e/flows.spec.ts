@@ -44,6 +44,7 @@ test.describe("Parcours BDD", () => {
     await page.locator("#rec-pays1").fill("France");
     await page.locator("#rec-discord").fill("test_discord");
     await page.locator("#rec-pseudo").fill("test_pseudo");
+    await page.locator("#rec-consent").check(); // consentement RGPD obligatoire
 
     // Anti-spam serveur : un envoi de moins de 2 s est rejeté (bot).
     await page.waitForTimeout(2100);
@@ -61,6 +62,7 @@ test.describe("Parcours BDD", () => {
     await page
       .locator("#support-message")
       .fill("Message de test E2E pour vérifier l'envoi du formulaire de contact.");
+    await page.locator("#support-consent").check(); // consentement RGPD obligatoire
 
     // Anti-spam serveur : un envoi de moins de 2 s est rejeté (bot).
     await page.waitForTimeout(2100);

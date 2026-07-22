@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isRoleOpen } from "@/lib/equipes";
 import { minAgeForCategory } from "@/content/recrutement";
 import { checkSpam } from "@/lib/antispam";
+import { hasConsent } from "@/lib/consent";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -18,6 +19,8 @@ type Payload = {
   rang?: string;
   exp?: string;
   motiv?: string;
+  // Consentement RGPD
+  consent?: unknown;
   // Anti-spam
   website?: string;
   elapsed?: string;
@@ -51,6 +54,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
       { status: 429 },
+    );
+  }
+
+  // --- Consentement RGPD (obligatoire, validé côté serveur) ---
+  if (!hasConsent(body.consent)) {
+    return NextResponse.json(
+      { ok: false, error: "Tu dois accepter le traitement de tes données pour envoyer ta candidature." },
+      { status: 422 },
     );
   }
 
@@ -102,6 +113,7 @@ export async function POST(request: Request) {
       rang: String(body.rang ?? "").trim() || null,
       experience: String(body.exp ?? "").trim() || null,
       motivation: String(body.motiv ?? "").trim() || null,
+      consent_at: new Date().toISOString(), // preuve de consentement RGPD
     })
     .select("id")
     .single();

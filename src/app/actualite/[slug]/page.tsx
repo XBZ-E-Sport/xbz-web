@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getArticleBySlug } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
+import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl, pageMetadata } from "@/lib/site";
 
 // Article lu en base à chaque visite (piloté par le back-office).
@@ -55,7 +56,7 @@ export default async function ArticlePage({
     <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
       />
 
       <Link

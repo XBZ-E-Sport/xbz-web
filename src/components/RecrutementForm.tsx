@@ -330,6 +330,30 @@ export default function RecrutementForm({
         />
       </div>
 
+      {/* Consentement RGPD (obligatoire). Non coché par défaut. */}
+      <div className="flex items-start gap-3">
+        <input
+          id="rec-consent"
+          name="consent"
+          type="checkbox"
+          required
+          className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-xbz-blue"
+        />
+        <label htmlFor="rec-consent" className="text-[13px] leading-relaxed text-neutral-400">
+          J’accepte que les informations transmises soient utilisées par XBZ Esport pour traiter
+          ma candidature et me recontacter. Voir la{" "}
+          <a
+            href="/confidentialite"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-xbz-cyan hover:underline"
+          >
+            politique de confidentialité
+          </a>
+          .
+        </label>
+      </div>
+
       <button
         type="submit"
         disabled={submitting}

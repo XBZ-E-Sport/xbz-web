@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkSpam } from "@/lib/antispam";
+import { hasConsent } from "@/lib/consent";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -8,6 +9,8 @@ type Payload = {
   email?: string;
   sujet?: string;
   message?: string;
+  // Consentement RGPD
+  consent?: unknown;
   // Anti-spam
   website?: string;
   elapsed?: string;
@@ -53,6 +56,14 @@ export async function POST(request: Request) {
     );
   }
 
+  // --- Consentement RGPD (obligatoire, validé côté serveur) ---
+  if (!hasConsent(body.consent)) {
+    return NextResponse.json(
+      { ok: false, error: "Tu dois accepter le traitement de tes données pour envoyer ton message." },
+      { status: 422 },
+    );
+  }
+
   const nom = String(body.nom ?? "").trim();
   const email = String(body.email ?? "").trim();
   const sujet = SUJETS.includes(String(body.sujet)) ? String(body.sujet) : "Général";
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
   // --- 1) Persister le message (source de vérité) ---
   const { data, error } = await supabase
     .from("support_messages")
-    .insert({ nom, email, sujet, message })
+    .insert({ nom, email, sujet, message, consent_at: new Date().toISOString() })
     .select("id")
     .single();
 

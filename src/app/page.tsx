@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getArticles } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { getStructureStats } from "@/lib/equipes";
+import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl } from "@/lib/site";
 
 export const metadata = {
@@ -45,7 +46,7 @@ export default async function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(orgJsonLd) }}
       />
 
       {/* ===== HERO ===== */}

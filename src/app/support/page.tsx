@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import SupportForm from "@/components/SupportForm";
+import { jsonLdString } from "@/lib/jsonld";
 
 export const metadata = {
   title: "Support — XBZ Esport",
@@ -115,7 +116,7 @@ export default function SupportPage() {
     <div className="relative z-10 mx-auto max-w-4xl px-6 pb-24 pt-32">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
       />
       {/* En-tête */}
       <header className="mb-14 text-center">

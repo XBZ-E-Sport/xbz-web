@@ -101,6 +101,14 @@ export default function MentionsLegalesPage() {
             Conformément au RGPD, tu peux demander l’accès, la rectification ou la suppression de
             tes données en nous contactant via le Discord de la structure.
           </p>
+          <p className="mt-2">
+            Pour le détail (finalités, durée de conservation, sous-traitants, droits), consulte
+            notre{" "}
+            <Link href="/confidentialite" className="font-semibold text-xbz-cyan hover:underline">
+              politique de confidentialité
+            </Link>
+            .
+          </p>
         </section>
 
         <section aria-labelledby="cookies">
