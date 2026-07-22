@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { recrutementCategories, type RecrutementCategory } from "@/content/recrutement";
+import {
+  recrutementCategories,
+  minAgeForCategory,
+  type RecrutementCategory,
+} from "@/content/recrutement";
 
 type RolesByCategory = Record<RecrutementCategory, { name: string; free: number }[]>;
 type RosterOption = { name: string; rank: string | null };
@@ -40,6 +44,8 @@ export default function RecrutementForm({
 
   const isEsport = categorie === "XBZ Esport";
   const showRL = isEsport && jeu === "Rocket League";
+  // Âge minimum selon la catégorie : 18 ans pour le staff, 16 sinon.
+  const minAge = minAgeForCategory(categorie);
   // On ne propose que les rôles avec de la disponibilité (postes ouverts).
   const roles = rolesByCategory[categorie as RecrutementCategory] ?? [];
   const noOpenRole = Boolean(categorie) && roles.length === 0;
@@ -55,9 +61,12 @@ export default function RecrutementForm({
     const form = e.currentTarget;
     const fd = new FormData(form);
 
-    // Règle métier reprise de l'ancien site : 16 ans minimum
-    if (Number(fd.get("age")) < 16) {
-      setStatus({ msg: "❌ Tu dois avoir au minimum 16 ans pour rejoindre XBZ.", tone: "error" });
+    // Âge minimum selon la catégorie (16 ans, 18 pour le staff).
+    if (Number(fd.get("age")) < minAge) {
+      setStatus({
+        msg: `❌ Tu dois avoir au minimum ${minAge} ans pour cette catégorie.`,
+        tone: "error",
+      });
       return;
     }
 
@@ -181,10 +190,10 @@ export default function RecrutementForm({
             id="rec-age"
             name="age"
             type="number"
-            min={16}
+            min={minAge}
             max={99}
             required
-            placeholder="16 ans minimum"
+            placeholder={`${minAge} ans minimum`}
             className={inputCls}
           />
         </div>

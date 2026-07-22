@@ -48,6 +48,22 @@ describe("RecrutementForm", () => {
     expect(container.querySelector<HTMLSelectElement>("#rec-role")!.disabled).toBe(true);
   });
 
+  it("impose 18 ans minimum pour le staff, 16 sinon", () => {
+    const { container } = render(
+      <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} />,
+    );
+    const age = container.querySelector<HTMLInputElement>("#rec-age")!;
+    const categorie = container.querySelector<HTMLSelectElement>("#rec-categorie")!;
+
+    expect(age.min).toBe("16"); // défaut (aucune catégorie choisie)
+
+    fireEvent.change(categorie, { target: { value: "XBZ Staff" } });
+    expect(age.min).toBe("18");
+
+    fireEvent.change(categorie, { target: { value: "XBZ Esport" } });
+    expect(age.min).toBe("16");
+  });
+
   it("propose les rosters dans un sélecteur pour une candidature Esport", () => {
     const { container } = render(
       <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} />,

@@ -33,7 +33,7 @@ export default async function RecrutementPage() {
           candidature est étudiée par le staff.
         </p>
         <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-xbz-cyan/30 bg-white/5 px-4 py-1.5 text-sm font-semibold text-xbz-cyan">
-          <span aria-hidden="true">🔞</span> 16 ans minimum
+          <span aria-hidden="true">🔞</span> 16 ans minimum · 18 pour le staff
         </p>
       </header>
 

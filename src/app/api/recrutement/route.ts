@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isRoleOpen } from "@/lib/equipes";
+import { minAgeForCategory } from "@/content/recrutement";
 import { checkSpam } from "@/lib/antispam";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
@@ -71,8 +72,9 @@ export async function POST(request: Request) {
       { status: 422 },
     );
   }
-  if (age < 16) {
-    return NextResponse.json({ ok: false, error: "Âge minimum requis : 16 ans." }, { status: 422 });
+  const minAge = minAgeForCategory(categorie);
+  if (age < minAge) {
+    return NextResponse.json({ ok: false, error: `Âge minimum requis : ${minAge} ans.` }, { status: 422 });
   }
   // Le jeu n'est requis que pour une candidature Esport
   if (categorie === "XBZ Esport" && !jeu) {
