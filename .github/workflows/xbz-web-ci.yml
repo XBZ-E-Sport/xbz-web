@@ -4,9 +4,9 @@ name: XBZ Web CI
 # lint, build) AVANT le déploiement Vercel — y compris sur les branches de feature.
 on:
   push:
-    branches: ["master", "develop"]
+    # branches: ["master", "develop"]
   pull_request:
-    branches: ["master", "develop"]
+    # branches: ["master", "develop"]
 
 jobs:
   build:
