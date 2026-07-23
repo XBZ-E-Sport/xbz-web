@@ -141,7 +141,9 @@ export default function ConfidentialitePage() {
               données où sont stockées les candidatures et messages.
             </li>
             <li className={liCls}>
-              <strong className="text-neutral-200">Vercel</strong> — hébergement du site.
+              <strong className="text-neutral-200">Vercel</strong> — hébergement du site et
+              mesure d’audience anonyme (statistiques de visite agrégées, sans cookie ni
+              traçage individuel).
             </li>
             <li className={liCls}>
               <strong className="text-neutral-200">Discord</strong> — une notification interne est

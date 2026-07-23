@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Orbitron } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -55,6 +56,9 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
+        {/* Mesure d'audience Vercel : sans cookie, endpoints same-origin
+            (/_vercel/insights) → compatible avec la CSP stricte, aucun ajout. */}
+        <Analytics />
       </body>
     </html>
   );
