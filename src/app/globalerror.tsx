@@ -1,9 +1,23 @@
 "use client";
 
-// Frontière d'erreur ultime : ne se déclenche que si le layout racine lui-même
-// plante. Elle remplace tout le document (html/body) → styles en ligne, car la
-// CSS de l'app n'est pas garantie ici.
-export default function GlobalError({ reset }: { error: Error; reset: () => void }) {
+import { useEffect } from "react";
+
+import { reportClientError } from "@/lib/client-report";
+
+// Error boundary racine : remplace le layout quand une erreur non gérée casse
+// le rendu. Doit fournir ses propres <html>/<body>. On remonte l'erreur au sink
+// et on affiche un repli sobre avec un bouton de réessai.
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    reportClientError({ message: error.message, stack: error.stack, digest: error.digest });
+  }, [error]);
+
   return (
     <html lang="fr">
       <body
@@ -14,34 +28,52 @@ export default function GlobalError({ reset }: { error: Error; reset: () => void
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: "1rem",
-          background: "#0a0a0e",
-          color: "#e5e5e5",
-          fontFamily: "system-ui, sans-serif",
+          gap: 20,
+          padding: "24px",
           textAlign: "center",
-          padding: "1.5rem",
+          background: "linear-gradient(135deg, #070710 0%, #0b1b2e 55%, #06121f 100%)",
+          color: "white",
+          fontFamily: "system-ui, sans-serif",
         }}
       >
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#fff" }}>
-          Une erreur est survenue
-        </h1>
-        <p style={{ maxWidth: "32rem", lineHeight: 1.6, color: "#a3a3a3" }}>
-          Le site a rencontré un problème inattendu. Réessaie dans un instant.
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Une erreur est survenue</h1>
+        <p style={{ maxWidth: 460, lineHeight: 1.5, color: "#9fb3c6", margin: 0 }}>
+          Désolé, quelque chose s’est mal passé. L’équipe a été notifiée automatiquement. Tu peux
+          réessayer ou revenir à l’accueil.
         </p>
-        <button
-          onClick={reset}
-          style={{
-            border: "none",
-            borderRadius: "0.75rem",
-            background: "#0066ff",
-            color: "#fff",
-            fontWeight: 700,
-            padding: "0.75rem 1.75rem",
-            cursor: "pointer",
-          }}
-        >
-          Réessayer
-        </button>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <button
+            type="button"
+            onClick={() => reset()}
+            style={{
+              cursor: "pointer",
+              border: "none",
+              borderRadius: 12,
+              padding: "12px 28px",
+              fontWeight: 700,
+              color: "white",
+              background: "linear-gradient(90deg, #00bfff, #0066ff)",
+            }}
+          >
+            Réessayer
+          </button>
+          {/* Rechargement complet volontaire : le rendu racine a planté, on
+              repart sur une page fraîche plutôt qu'une navigation client. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a
+            href="/"
+            style={{
+              borderRadius: 12,
+              padding: "12px 28px",
+              fontWeight: 700,
+              color: "white",
+              textDecoration: "none",
+              border: "1px solid rgba(255,255,255,0.25)",
+            }}
+          >
+            Accueil
+          </a>
+        </div>
       </body>
     </html>
   );
