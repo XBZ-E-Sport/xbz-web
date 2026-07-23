@@ -1,0 +1,45 @@
+# Mises à jour de dépendances automatisées (Dependabot, natif GitHub).
+# Dependabot ouvre des PR vers la branche par défaut (master) → la CI
+# (.github/workflows/xbz-web-ci.yml, déclenchée sur les PR vers master) valide
+# chaque bump (lint + typage + build + tests) avant merge.
+#
+# NB : ce fichier doit se trouver sur la branche par défaut pour être actif.
+version: 2
+
+updates:
+  # --- Dépendances npm ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    # On regroupe les mises à jour mineures + correctives en UNE seule PR
+    # hebdomadaire (moins de bruit). Les mises à jour MAJEURES restent isolées
+    # (plus susceptibles de casser → revue au cas par cas, ex. Next/React).
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # --- Actions GitHub (versions dans les workflows CI) ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(ci)"
