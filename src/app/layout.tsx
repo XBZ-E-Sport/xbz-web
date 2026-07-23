@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Orbitron } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -40,6 +40,12 @@ export const metadata: Metadata = {
     title: defaultTitle,
     description: siteConfig.description,
   },
+};
+
+// Couleur de thème mobile (barre d'adresse/statut) — sombre, comme le site.
+// En Next 16, `themeColor` vit dans l'export `viewport` (plus dans `metadata`).
+export const viewport: Viewport = {
+  themeColor: "#070710",
 };
 
 export default function RootLayout({
