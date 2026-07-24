@@ -279,12 +279,12 @@ export default function RecrutementForm({
           )}
 
           <div>
-            <label htmlFor="rec-rang" className={labelCls}>
+            <label htmlFor="rec-roster" className={labelCls}>
               Roster souhaité <span className={optionalCls}>(facultatif)</span>
             </label>
             {/* Rosters lus en base (même système que les rôles). Valeur = nom du
-                roster, stockée dans la colonne `rang` de la candidature. */}
-            <select id="rec-rang" name="rang" defaultValue="" className={inputCls}>
+                roster, stockée dans la colonne `roster` de la candidature. */}
+            <select id="rec-roster" name="roster" defaultValue="" className={inputCls}>
               <option value="" disabled hidden>
                 Sans préférence
               </option>

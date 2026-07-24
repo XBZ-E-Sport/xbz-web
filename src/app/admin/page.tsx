@@ -45,7 +45,7 @@ export default async function AdminCandidaturesPage() {
             <p><span className="text-neutral-400">Nom :</span> {c.nom}</p>
             <p><span className="text-neutral-400">Âge :</span> {c.age}</p>
             <p><span className="text-neutral-400">Discord :</span> {c.discord}</p>
-            <p><span className="text-neutral-400">Rang :</span> {c.rang ?? "—"}</p>
+            <p><span className="text-neutral-400">Roster :</span> {c.roster ?? "—"}</p>
             <p><span className="text-neutral-400">Pays :</span> {c.pays_residence ?? "—"}</p>
             {c.rltracker && (
               <p className="truncate">

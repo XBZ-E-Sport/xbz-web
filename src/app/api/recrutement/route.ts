@@ -16,7 +16,7 @@ type Payload = {
   pseudo?: string;
   jeu?: string;
   rltracker?: string;
-  rang?: string;
+  roster?: string;
   exp?: string;
   motiv?: string;
   // Consentement RGPD
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
       pseudo,
       jeu: jeu || null,
       rltracker: String(body.rltracker ?? "").trim() || null,
-      rang: String(body.rang ?? "").trim() || null,
+      roster: String(body.roster ?? "").trim() || null,
       experience: String(body.exp ?? "").trim() || null,
       motivation: String(body.motiv ?? "").trim() || null,
       consent_at: new Date().toISOString(), // preuve de consentement RGPD
@@ -138,7 +138,9 @@ export async function POST(request: Request) {
       discord,
       pseudo,
       jeu,
-      rang: body.rang,
+      // Clé `rang` conservée : contrat de payload attendu par le bot Discord
+      // (externe). La valeur vient désormais du champ `roster`.
+      rang: body.roster,
       exp: body.exp,
       motiv: body.motiv,
       rltracker: body.rltracker,

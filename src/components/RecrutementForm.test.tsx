@@ -73,9 +73,9 @@ describe("RecrutementForm", () => {
       target: { value: "XBZ Esport" },
     });
 
-    const rosterSelect = container.querySelector<HTMLSelectElement>("#rec-rang")!;
+    const rosterSelect = container.querySelector<HTMLSelectElement>("#rec-roster")!;
     expect(rosterSelect.tagName).toBe("SELECT");
-    expect(rosterSelect.name).toBe("rang"); // même champ → stocké dans candidatures.rang
+    expect(rosterSelect.name).toBe("roster"); // même champ → stocké dans candidatures.roster
     const values = [...rosterSelect.querySelectorAll("option")].map((o) => o.value);
     expect(values).toContain("Roster SSL");
     expect(values).toContain("Roster GC3");
