@@ -38,7 +38,7 @@ export default function MentionsLegalesPage() {
           </p>
           <p className="mt-2">
             Responsable de la publication :{" "}
-            <span className="text-neutral-500">Forux</span>.
+            <span className="text-neutral-400">Forux</span>.
           </p>
           <p className="mt-2">
             Contact :{" "}

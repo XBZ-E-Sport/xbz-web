@@ -30,7 +30,7 @@ export default async function AdminArticlesPage() {
       {/* Liste */}
       <section>
         <h2 className="mb-4 font-display text-lg text-white">
-          Articles <span className="text-neutral-500">({articles.length})</span>
+          Articles <span className="text-neutral-400">({articles.length})</span>
         </h2>
 
         {articles.length === 0 ? (
@@ -49,7 +49,7 @@ export default async function AdminArticlesPage() {
                         </span>
                       )}
                     </h3>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-neutral-400">
                       /{a.slug} · {a.category} · {formatDate(a.date)} · {a.author ?? "—"}
                     </p>
                   </div>

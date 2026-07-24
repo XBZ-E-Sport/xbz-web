@@ -117,7 +117,7 @@ export default async function PlayerPage({
             <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
               {stats.map((s) => (
                 <div key={s.label} className="card-xbz p-4 text-center">
-                  <dt className="text-xs uppercase tracking-wide text-neutral-500">{s.label}</dt>
+                  <dt className="text-xs uppercase tracking-wide text-neutral-400">{s.label}</dt>
                   <dd className="mt-1 font-display text-lg text-white">{s.value}</dd>
                 </div>
               ))}

@@ -32,7 +32,7 @@ export default async function AdminBoutiquePage() {
       {/* Liste */}
       <section>
         <h2 className="mb-4 font-display text-lg text-white">
-          Produits <span className="text-neutral-500">({products.length})</span>
+          Produits <span className="text-neutral-400">({products.length})</span>
         </h2>
 
         {products.length === 0 ? (
@@ -59,7 +59,7 @@ export default async function AdminBoutiquePage() {
                         </span>
                       )}
                     </h3>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-neutral-400">
                       /{p.slug} · {p.category} · {priceFormatter.format(Number(p.price ?? 0))}
                     </p>
                   </div>

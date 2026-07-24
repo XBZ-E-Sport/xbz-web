@@ -42,7 +42,7 @@ export default async function AdminPolesPage() {
       {/* Liste */}
       <section>
         <h2 className="mb-4 font-display text-lg text-white">
-          Pôles <span className="text-neutral-500">({poles.length})</span>
+          Pôles <span className="text-neutral-400">({poles.length})</span>
         </h2>
 
         {poles.length === 0 ? (
@@ -64,7 +64,7 @@ export default async function AdminPolesPage() {
                           </span>
                         )}
                       </h3>
-                      <p className="text-sm text-neutral-500">
+                      <p className="text-sm text-neutral-400">
                         /{p.slug} · {CATEGORY_LABEL[p.category] ?? p.category} · {count}/{p.capacity}{" "}
                         membre{count > 1 ? "s" : ""}
                         {p.fixed

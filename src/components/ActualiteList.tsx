@@ -31,7 +31,7 @@ function ArticleCard({ article }: { article: Article }) {
       >
         <div className="flex flex-wrap items-center gap-2">
           <CategoryBadge category={article.category} />
-          <time dateTime={article.date} className="text-xs text-neutral-500">
+          <time dateTime={article.date} className="text-xs text-neutral-400">
             {formatDate(article.date)}
           </time>
         </div>

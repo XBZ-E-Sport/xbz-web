@@ -4,7 +4,7 @@ import { loginWithPassword, loginWithDiscord } from "./actions";
 export const metadata = { title: "Connexion staff — XBZ", robots: { index: false, follow: false } };
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
 
 export default async function LoginPage({
   searchParams,
@@ -52,7 +52,7 @@ export default async function LoginPage({
           <button type="submit" className="btn-xbz w-full text-center hover:cursor-pointer">Se connecter</button>
         </form>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-neutral-500">
+        <div className="my-5 flex items-center gap-3 text-xs text-neutral-400">
           <span className="h-px flex-1 bg-white/10" /> ou <span className="h-px flex-1 bg-white/10" />
         </div>
 

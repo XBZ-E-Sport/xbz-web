@@ -164,7 +164,7 @@ export default async function Home() {
                       >
                         {article.category}
                       </span>
-                      <time dateTime={article.date} className="text-neutral-500">
+                      <time dateTime={article.date} className="text-neutral-400">
                         {formatDate(article.date)}
                       </time>
                     </div>

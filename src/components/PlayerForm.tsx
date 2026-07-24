@@ -1,5 +1,5 @@
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-600 outline-none";
+  "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400";
 
 const ROSTER_ROLES = ["Joueur", "Capitaine", "Coach", "Manager", "Sub"];
@@ -104,7 +104,7 @@ export default function PlayerForm({
           placeholder="…ou colle une URL d'image"
           className={`${inputCls} mt-2`}
         />
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           Upload une image (JPG / PNG / WebP, 5&nbsp;Mo max) ou colle une URL. L&apos;upload est
           prioritaire sur l&apos;URL.
         </p>

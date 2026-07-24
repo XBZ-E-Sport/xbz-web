@@ -14,9 +14,9 @@ type RolesByCategory = Record<RecrutementCategory, { name: string; free: number 
 type RosterOption = { name: string; rank: string | null };
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1.5 block text-sm font-semibold text-neutral-300";
-const optionalCls = "font-normal text-neutral-500";
+const optionalCls = "font-normal text-neutral-400";
 
 type Tone = "idle" | "loading" | "ok" | "error";
 const toneColor: Record<Tone, string> = {

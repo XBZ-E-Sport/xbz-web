@@ -73,7 +73,7 @@ export default async function ArticlePage({
           >
             {article.category}
           </span>
-          <time dateTime={article.date} className="text-sm text-neutral-500">
+          <time dateTime={article.date} className="text-sm text-neutral-400">
             {formatDate(article.date)}
           </time>
         </div>
@@ -81,7 +81,7 @@ export default async function ArticlePage({
         <h1 className="mt-4 font-display text-3xl font-black leading-tight text-white sm:text-4xl">
           {article.title}
         </h1>
-        <p className="mt-3 text-sm text-neutral-500">Par {article.author}</p>
+        <p className="mt-3 text-sm text-neutral-400">Par {article.author}</p>
 
         <div className="mt-8 space-y-5 text-lg leading-relaxed text-neutral-300">
           {article.content.map((paragraph, i) => (

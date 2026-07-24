@@ -1,7 +1,7 @@
 import { productCategories } from "@/lib/boutique";
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-600 outline-none";
+  "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400";
 
 export type ProductRow = {
@@ -120,7 +120,7 @@ export default function ProductForm({
           placeholder="…ou colle une URL d'image"
           className={`${inputCls} mt-2`}
         />
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           Upload une image (JPG / PNG / WebP, 5&nbsp;Mo max) ou colle une URL. L&apos;upload est
           prioritaire sur l&apos;URL.
         </p>
@@ -138,7 +138,7 @@ export default function ProductForm({
           placeholder="https://boutique-externe.com/produit-xbz"
           className={inputCls}
         />
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           Lien vers un shop externe. Laissé vide, un produit « achetable » affiche un bouton
           « Commander » qui renvoie vers le Discord.
         </p>

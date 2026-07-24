@@ -90,11 +90,11 @@ export default function Footer() {
 
       {/* Barre du bas */}
       <div className="border-t border-white/5">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-neutral-500 sm:flex-row">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 text-sm text-neutral-400 sm:flex-row">
           <p>
             © <CurrentYear initial={year} /> {siteConfig.name}. Tous droits réservés.
           </p>
-          <p className="text-neutral-600">Structure esport Rocket League 💙</p>
+          <p className="text-neutral-400">Structure esport Rocket League 💙</p>
         </div>
       </div>
     </footer>

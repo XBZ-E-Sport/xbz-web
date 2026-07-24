@@ -34,7 +34,7 @@ export default async function AdminRostersPage() {
       {/* Liste */}
       <section>
         <h2 className="mb-4 font-display text-lg text-white">
-          Rosters <span className="text-neutral-500">({rosters.length})</span>
+          Rosters <span className="text-neutral-400">({rosters.length})</span>
         </h2>
 
         {rosters.length === 0 ? (
@@ -56,7 +56,7 @@ export default async function AdminRostersPage() {
                           </span>
                         )}
                       </h3>
-                      <p className="text-sm text-neutral-500">
+                      <p className="text-sm text-neutral-400">
                         /{r.slug} · {r.rank ?? "—"} · {count}/{r.capacity} joueur
                         {count > 1 ? "s" : ""}
                         {r.recrute ? ` · recrute : ${r.recrute}` : ""}

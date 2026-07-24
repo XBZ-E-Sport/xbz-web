@@ -49,7 +49,7 @@ export default async function AdminRosterPlayersPage({
           ← Tous les rosters
         </Link>
         <h2 className="mt-2 font-display text-xl text-white">
-          {roster.name} <span className="text-neutral-500">· {roster.rank ?? "—"}</span>
+          {roster.name} <span className="text-neutral-400">· {roster.rank ?? "—"}</span>
         </h2>
       </div>
 
@@ -62,7 +62,7 @@ export default async function AdminRosterPlayersPage({
       {/* Liste */}
       <section>
         <h3 className="mb-4 font-display text-lg text-white">
-          Joueurs <span className="text-neutral-500">({players.length})</span>
+          Joueurs <span className="text-neutral-400">({players.length})</span>
         </h3>
 
         {players.length === 0 ? (
@@ -81,7 +81,7 @@ export default async function AdminRosterPlayersPage({
                         </span>
                       )}
                     </h4>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-neutral-400">
                       {p.role} · {p.nom ?? "—"} · {p.pays ?? "—"}
                     </p>
                   </div>

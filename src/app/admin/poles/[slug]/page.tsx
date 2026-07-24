@@ -52,7 +52,7 @@ export default async function AdminPoleMembersPage({
         </Link>
         <h2 className="mt-2 font-display text-xl text-white">
           {pole.name}{" "}
-          <span className="text-neutral-500">
+          <span className="text-neutral-400">
             · {activeCount}/{pole.capacity} membre{activeCount > 1 ? "s" : ""}
           </span>
         </h2>
@@ -67,7 +67,7 @@ export default async function AdminPoleMembersPage({
       {/* Liste */}
       <section>
         <h3 className="mb-4 font-display text-lg text-white">
-          Membres <span className="text-neutral-500">({members.length})</span>
+          Membres <span className="text-neutral-400">({members.length})</span>
         </h3>
 
         {members.length === 0 ? (
@@ -86,7 +86,7 @@ export default async function AdminPoleMembersPage({
                         </span>
                       )}
                     </h4>
-                    <p className="text-sm text-neutral-500">
+                    <p className="text-sm text-neutral-400">
                       {m.nom ?? "—"} · {m.pays ?? "—"}
                     </p>
                   </div>
