@@ -35,6 +35,10 @@ export default function Header() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Actif si on est sur la page OU une de ses sous-pages (ex. "Actualité" reste
+  // actif sur /actualite/[slug]). Le lien "/" (logo) garde une égalité stricte.
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   const linkClass = (active: boolean) =>
     `rounded-lg px-4 py-2 text-sm font-bold tracking-wide transition ${
       active
@@ -66,7 +70,7 @@ export default function Header() {
           {/* Navigation — bureau */}
           <ul className="hidden items-center gap-1 md:flex">
             {links.map((l) => {
-              const active = pathname === l.href;
+              const active = isActive(l.href);
               return (
                 <li key={l.href}>
                   <Link
@@ -129,7 +133,7 @@ export default function Header() {
           className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2 md:hidden"
         >
           {links.map((l) => {
-            const active = pathname === l.href;
+            const active = isActive(l.href);
             return (
               <li key={l.href}>
                 <Link
