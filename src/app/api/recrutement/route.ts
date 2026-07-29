@@ -130,6 +130,7 @@ export async function POST(request: Request) {
   const botUrl = process.env.BOT_RECRUTEMENT_URL;
   if (botUrl) {
     const notif = {
+      id: data.id,
       categorie,
       role,
       nom,
