@@ -34,6 +34,7 @@ vi.mock("next/server", () => ({
   after: () => {},
 }));
 
+import { FIELD_MAX } from "@/lib/limits";
 import { POST } from "@/app/api/support/route";
 
 const VALID = {
@@ -101,6 +102,19 @@ describe("POST /api/support", () => {
 
   it("message trop court (< 10) → 422", async () => {
     expect((await post({ ...VALID, message: "court" })).status).toBe(422);
+  });
+
+  it("message trop long → 422, AUCUNE insertion", async () => {
+    const res = await post({ ...VALID, message: "m".repeat(FIELD_MAX.message + 1) });
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toContain("Message");
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("email trop long → 422", async () => {
+    const local = "a".repeat(FIELD_MAX.email);
+    expect((await post({ ...VALID, email: `${local}@test.fr` })).status).toBe(422);
+    expect(insertMock).not.toHaveBeenCalled();
   });
 
   it("erreur BDD à l'insertion → 500", async () => {

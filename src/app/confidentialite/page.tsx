@@ -88,6 +88,12 @@ export default function ConfidentialitePage() {
               <strong className="text-neutral-200">Formulaire de support</strong> : nom ou pseudo,
               adresse email, sujet et contenu de ton message.
             </li>
+            <li className={liCls}>
+              <strong className="text-neutral-200">Protection anti-spam</strong> : lors de l’envoi
+              d’un formulaire, ton adresse IP est enregistrée brièvement pour limiter le nombre
+              d’envois successifs. Elle n’est jamais associée au contenu de ton message et est
+              supprimée automatiquement quelques instants après l’envoi.
+            </li>
           </ul>
           <p className="mt-3">
             Aucune donnée sensible n’est demandée. Nous n’utilisons ni cookie publicitaire ni
@@ -111,6 +117,11 @@ export default function ConfidentialitePage() {
             La base légale du traitement est ton <strong>consentement</strong> (article 6.1.a du
             RGPD), recueilli via la case à cocher présente sur chaque formulaire. Ce consentement
             est horodaté au moment de l’envoi.
+          </p>
+          <p className="mt-2">
+            La protection anti-spam décrite ci-dessus repose, elle, sur notre{" "}
+            <strong>intérêt légitime</strong> (article 6.1.f du RGPD) à préserver le site des envois
+            automatisés.
           </p>
         </section>
 

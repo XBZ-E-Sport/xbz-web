@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Honeypot from "@/components/Honeypot";
 import { useElapsed } from "@/hooks/useElapsed";
+import { FIELD_MAX } from "@/lib/limits";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
@@ -65,6 +66,7 @@ export default function SupportForm() {
         <input
           id="support-nom"
           name="nom"
+          maxLength={FIELD_MAX.nom}
           type="text"
           required
           autoComplete="name"
@@ -80,6 +82,7 @@ export default function SupportForm() {
         <input
           id="support-email"
           name="email"
+          maxLength={FIELD_MAX.email}
           type="email"
           required
           autoComplete="email"
@@ -108,6 +111,7 @@ export default function SupportForm() {
         <textarea
           id="support-message"
           name="message"
+          maxLength={FIELD_MAX.message}
           rows={5}
           required
           minLength={10}

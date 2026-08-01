@@ -2,6 +2,7 @@ import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
+import { findTooLong, tooLongMessage } from "@/lib/limits";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -85,6 +86,11 @@ export async function POST(request: Request) {
       { status: 422 },
     );
   }
+  // Longueurs maximales (le `maxLength` du navigateur se contourne).
+  const tooLong = findTooLong({ nom, email, sujet, message });
+  if (tooLong) {
+    return NextResponse.json({ ok: false, error: tooLongMessage(tooLong) }, { status: 422 });
+  }
 
   const supabase = createAdminClient();
 
@@ -116,7 +122,8 @@ export async function POST(request: Request) {
               ? { "x-xbz-secret": process.env.BOT_SHARED_SECRET }
               : {}),
           },
-          body: JSON.stringify({ nom, email, sujet, message }),
+          // `id` : même contrat que la route recrutement (le bot l'affiche).
+          body: JSON.stringify({ id: data.id, nom, email, sujet, message }),
           signal: AbortSignal.timeout(60000),
         });
         if (!res.ok) {

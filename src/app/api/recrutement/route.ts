@@ -4,6 +4,7 @@ import { isRoleOpen } from "@/lib/equipes";
 import { minAgeForCategory } from "@/content/recrutement";
 import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
+import { findTooLong, tooLongMessage } from "@/lib/limits";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -77,6 +78,22 @@ export async function POST(request: Request) {
   if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
     return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
   }
+
+  // Longueurs : le `maxLength` du navigateur se contourne en deux clics.
+  const tooLong = findTooLong({
+    nom,
+    pseudo,
+    discord,
+    jeu,
+    pays: body.pays1,
+    roster: body.roster,
+    rltracker: body.rltracker,
+    exp: body.exp,
+    motiv: body.motiv,
+  });
+  if (tooLong) {
+    return NextResponse.json({ ok: false, error: tooLongMessage(tooLong) }, { status: 422 });
+  }
   if (!(await isRoleOpen(categorie, role))) {
     return NextResponse.json(
       { ok: false, error: "Ce rôle n'est pas disponible au recrutement." },
@@ -139,8 +156,9 @@ export async function POST(request: Request) {
       discord,
       pseudo,
       jeu,
-      // Clé `rang` conservée : contrat de payload attendu par le bot Discord
-      // (externe). La valeur vient désormais du champ `roster`.
+      // Le bot lit `roster` en priorité et retombe sur `rang` : on envoie les
+      // deux le temps de la transition, `rang` pourra disparaître ensuite.
+      roster: body.roster,
       rang: body.roster,
       exp: body.exp,
       motiv: body.motiv,

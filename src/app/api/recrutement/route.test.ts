@@ -42,6 +42,7 @@ vi.mock("next/server", () => ({
   after: () => {},
 }));
 
+import { FIELD_MAX } from "@/lib/limits";
 import { POST } from "@/app/api/recrutement/route";
 
 // Candidature Esport valide de référence.
@@ -127,6 +128,29 @@ describe("POST /api/recrutement", () => {
 
   it("Esport sans jeu → 422", async () => {
     expect((await post({ ...VALID, jeu: "" })).status).toBe(422);
+  });
+
+  it("champ libre trop long → 422, AUCUNE insertion", async () => {
+    const res = await post({ ...VALID, motiv: "M".repeat(FIELD_MAX.motiv + 1) });
+    expect(res.status).toBe(422);
+    expect((await res.json()).error).toContain("Motivation");
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("champ court trop long (maxLength contourné) → 422", async () => {
+    const res = await post({ ...VALID, pseudo: "P".repeat(FIELD_MAX.pseudo + 1) });
+    expect(res.status).toBe(422);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("valeurs pile à la limite → acceptées", async () => {
+    const res = await post({
+      ...VALID,
+      nom: "N".repeat(FIELD_MAX.nom),
+      motiv: "M".repeat(FIELD_MAX.motiv),
+    });
+    expect(res.status).toBe(200);
+    expect(insertMock).toHaveBeenCalledTimes(1);
   });
 
   it("erreur BDD à l'insertion → 500", async () => {

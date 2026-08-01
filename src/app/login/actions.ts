@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { DISCORD_SCOPES } from "@/lib/discord-guard";
 
 export async function loginWithPassword(formData: FormData) {
   const email = String(formData.get("email"));
@@ -25,7 +26,12 @@ export async function loginWithDiscord() {
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "discord",
-    options: { redirectTo: `${origin}/auth/callback?next=/admin` },
+    options: {
+      redirectTo: `${origin}/auth/callback?next=/admin`,
+      // `guilds.members.read` : indispensable pour lire les rôles de la personne
+      // sur le serveur XBZ au retour de l'OAuth (voir @/lib/discord-guard).
+      scopes: DISCORD_SCOPES,
+    },
   });
 
   if (error || !data.url) {

@@ -63,6 +63,11 @@ export default async function LoginPage({
           >
             Se connecter avec Discord
           </button>
+          <p className="mt-3 text-center text-[13px] leading-relaxed text-neutral-400">
+            Réservé aux membres du serveur XBZ ayant le rôle{" "}
+            <strong className="text-neutral-300">Administrateur</strong> ou{" "}
+            <strong className="text-neutral-300">Fondateur</strong>.
+          </p>
         </form>
       </div>
     </section>

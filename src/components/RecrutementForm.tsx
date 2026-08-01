@@ -9,6 +9,7 @@ import {
 } from "@/content/recrutement";
 import Honeypot from "@/components/Honeypot";
 import { useElapsed } from "@/hooks/useElapsed";
+import { FIELD_MAX } from "@/lib/limits";
 
 type RolesByCategory = Record<RecrutementCategory, { name: string; free: number }[]>;
 type RosterOption = { name: string; rank: string | null };
@@ -169,6 +170,7 @@ export default function RecrutementForm({
           <input
             id="rec-nom"
             name="nom"
+            maxLength={FIELD_MAX.nom}
             type="text"
             required
             autoComplete="name"
@@ -200,6 +202,7 @@ export default function RecrutementForm({
         <input
           id="rec-pays1"
           name="pays1"
+          maxLength={FIELD_MAX.pays}
           type="text"
           required
           autoComplete="country-name"
@@ -216,6 +219,7 @@ export default function RecrutementForm({
           <input
             id="rec-discord"
             name="discord"
+            maxLength={FIELD_MAX.discord}
             type="text"
             required
             placeholder="pseudo_discord"
@@ -229,6 +233,7 @@ export default function RecrutementForm({
           <input
             id="rec-pseudo"
             name="pseudo"
+            maxLength={FIELD_MAX.pseudo}
             type="text"
             required
             placeholder="pseudo_perso"
@@ -267,6 +272,7 @@ export default function RecrutementForm({
               <input
                 id="rec-rltracker"
                 name="rltracker"
+                maxLength={FIELD_MAX.rltracker}
                 type="url"
                 placeholder="https://rocketleague.tracker.network/..."
                 className={inputCls}
@@ -305,6 +311,7 @@ export default function RecrutementForm({
         <textarea
           id="rec-exp"
           name="exp"
+          maxLength={FIELD_MAX.exp}
           rows={3}
           placeholder="Tes expériences passées (équipes, compétitions, contenus...)"
           className={inputCls}
@@ -318,6 +325,7 @@ export default function RecrutementForm({
         <textarea
           id="rec-motiv"
           name="motiv"
+          maxLength={FIELD_MAX.motiv}
           rows={4}
           placeholder="Pourquoi veux-tu rejoindre XBZ ?"
           className={inputCls}

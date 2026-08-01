@@ -38,9 +38,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — tout sauf le modèle.
+# `.env` et `.env.local` seuls laissaient passer .env.production.local,
+# .env.development.local… que Next lit aussi : un secret aurait pu être commité.
 .env
-.env.local
+.env.*
+!.env.example
 
 # vercel
 .vercel

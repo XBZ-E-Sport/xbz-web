@@ -6,6 +6,8 @@
 // endpoint de ton bot). Absente → on log seulement (build / CI / dev restent
 // muets côté Discord). Server-only : jamais importé par un composant client.
 
+import "server-only";
+
 export type ErrorSource = "server" | "client";
 
 export type ErrorReport = {
