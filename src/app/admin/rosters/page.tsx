@@ -1,7 +1,7 @@
 import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/adminguard";
 import ConfirmButton from "@/components/ConfirmButton";
 import RosterForm, { type RosterRow } from "./RosterForm";
 import { createRoster, updateRoster, deleteRoster } from "./actions";
@@ -13,7 +13,11 @@ export const dynamic = "force-dynamic";
 type RosterWithMembers = RosterRow & { joueurs?: { active: boolean }[] };
 
 export default async function AdminRostersPage() {
-  const admin = createAdminClient();
+  // Contrôle d'accès DANS la page : layout et page sont rendus EN PARALLÈLE
+  // par le App Router. Une garde placée uniquement dans le layout laisse la
+  // page interroger la base et sérialiser ses données dans la réponse, même
+  // quand la redirection part. La garde doit donc vivre ici aussi.
+  const { admin } = await requireStaff();
   const { data, error } = await admin
     .from("rosters")
     .select("id, slug, name, rank, description, capacity, recrute, position, active, joueurs(active)")

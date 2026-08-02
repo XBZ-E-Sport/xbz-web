@@ -1,7 +1,7 @@
 import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireStaff } from "@/lib/adminguard";
 import ConfirmButton from "@/components/ConfirmButton";
 import PoleForm, { type PoleRow } from "./PoleForm";
 import { createPole, updatePole, deletePole } from "../rosters/actions";
@@ -18,7 +18,11 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 export default async function AdminPolesPage() {
-  const admin = createAdminClient();
+  // Contrôle d'accès DANS la page : layout et page sont rendus EN PARALLÈLE
+  // par le App Router. Une garde placée uniquement dans le layout laisse la
+  // page interroger la base et sérialiser ses données dans la réponse, même
+  // quand la redirection part. La garde doit donc vivre ici aussi.
+  const { admin } = await requireStaff();
   const { data, error } = await admin
     .from("poles")
     .select(
