@@ -1,10 +1,12 @@
 name: XBZ Web CI
 
+# Sur toutes les branches + toutes les PR, pour attraper une régression (typage,
+# lint, build) AVANT le déploiement Vercel — y compris sur les branches de feature.
 on:
   push:
-    branches: [ "master", "develop" ]
+    branches: ["master", "develop"]
   pull_request:
-    branches: [ "master", "develop" ]
+    branches: ["master", "develop"]
 
 jobs:
   build:
@@ -14,7 +16,7 @@ jobs:
     strategy:
       matrix:
         node-version: [22.x]
-        
+
     steps:
     - uses: actions/checkout@v4
     - name: Use Node.js ${{ matrix.node-version }}
@@ -23,5 +25,39 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test --if-present
+    - name: Lint
+      run: npm run lint
+    - name: Typecheck
+      run: npx tsc --noEmit
+    - name: Build
+      run: npm run build
+    - name: Tests
+      run: npm test --if-present
+
+  e2e:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [22.x]
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_placeholder' }}
+      SUPABASE_SECRET_KEY: ${{ secrets.TEST_SUPABASE_SECRET_KEY || 'sb_secret_placeholder' }}
+      E2E_STAFF_EMAIL: ${{ secrets.E2E_STAFF_EMAIL }}
+      E2E_STAFF_PASSWORD: ${{ secrets.E2E_STAFF_PASSWORD }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - name: Install Playwright (chromium + deps)
+      run: npx playwright install --with-deps chromium
+    - name: E2E
+      run: npm run test:e2e

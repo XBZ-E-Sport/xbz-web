@@ -1,18 +1,30 @@
 import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isRoleOpen } from "@/lib/equipes";
+import { minAgeForCategory } from "@/content/recrutement";
+import { checkSpam } from "@/lib/antispam";
+import { hasConsent } from "@/lib/consent";
+import { findTooLong, tooLongMessage } from "@/lib/limits";
+import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
+  categorie?: string;
+  role?: string;
   nom?: string;
   age?: string | number;
   pays1?: string;
-  pays2?: string;
   discord?: string;
   pseudo?: string;
   jeu?: string;
   rltracker?: string;
-  rang?: string;
+  roster?: string;
   exp?: string;
   motiv?: string;
+  // Consentement RGPD
+  consent?: unknown;
+  // Anti-spam
+  website?: string;
+  elapsed?: string;
 };
 
 export async function POST(request: Request) {
@@ -24,6 +36,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
   }
 
+  // --- Limite de débit (anti-flood par IP) ---
+  const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "recrutement");
+  if (!allowed) {
+    return NextResponse.json(
+      { ok: false, error: "Trop de tentatives. Réessaie dans une minute." },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
+  // --- Anti-spam (honeypot + délai minimum) ---
+  const { spam, tooFast } = checkSpam(body);
+  if (spam) {
+    // Piège rempli : on répond OK sans rien enregistrer (le bot n'apprend rien).
+    return NextResponse.json({ ok: true });
+  }
+  if (tooFast) {
+    return NextResponse.json(
+      { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
+      { status: 429 },
+    );
+  }
+
+  // --- Consentement RGPD (obligatoire, validé côté serveur) ---
+  if (!hasConsent(body.consent)) {
+    return NextResponse.json(
+      { ok: false, error: "Tu dois accepter le traitement de tes données pour envoyer ta candidature." },
+      { status: 422 },
+    );
+  }
+
+  const categorie = String(body.categorie ?? "").trim();
+  const role = String(body.role ?? "").trim();
   const nom = String(body.nom ?? "").trim();
   const age = Number(body.age);
   const discord = String(body.discord ?? "").trim();
@@ -31,11 +75,41 @@ export async function POST(request: Request) {
   const jeu = String(body.jeu ?? "").trim();
 
   // --- Validation serveur (on ne fait JAMAIS confiance au navigateur) ---
-  if (!nom || !discord || !pseudo || !jeu || Number.isNaN(age)) {
+  if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
     return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
   }
-  if (age < 16) {
-    return NextResponse.json({ ok: false, error: "Âge minimum requis : 16 ans." }, { status: 422 });
+
+  // Longueurs : le `maxLength` du navigateur se contourne en deux clics.
+  const tooLong = findTooLong({
+    nom,
+    pseudo,
+    discord,
+    jeu,
+    pays: body.pays1,
+    roster: body.roster,
+    rltracker: body.rltracker,
+    exp: body.exp,
+    motiv: body.motiv,
+  });
+  if (tooLong) {
+    return NextResponse.json({ ok: false, error: tooLongMessage(tooLong) }, { status: 422 });
+  }
+  if (!(await isRoleOpen(categorie, role))) {
+    return NextResponse.json(
+      { ok: false, error: "Ce rôle n'est pas disponible au recrutement." },
+      { status: 422 },
+    );
+  }
+  const minAge = minAgeForCategory(categorie);
+  if (age < minAge) {
+    return NextResponse.json({ ok: false, error: `Âge minimum requis : ${minAge} ans.` }, { status: 422 });
+  }
+  // Le jeu n'est requis que pour une candidature Esport
+  if (categorie === "XBZ Esport" && !jeu) {
+    return NextResponse.json(
+      { ok: false, error: "Le jeu est requis pour une candidature Esport." },
+      { status: 422 },
+    );
   }
 
   const supabase = createAdminClient();
@@ -44,17 +118,19 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("candidatures")
     .insert({
+      categorie,
+      role,
       nom,
       age,
       pays_residence: String(body.pays1 ?? "").trim() || null,
-      pays_naissance: String(body.pays2 ?? "").trim() || null,
       discord,
       pseudo,
-      jeu,
+      jeu: jeu || null,
       rltracker: String(body.rltracker ?? "").trim() || null,
-      rang: String(body.rang ?? "").trim() || null,
+      roster: String(body.roster ?? "").trim() || null,
       experience: String(body.exp ?? "").trim() || null,
       motivation: String(body.motiv ?? "").trim() || null,
+      consent_at: new Date().toISOString(), // preuve de consentement RGPD
     })
     .select("id")
     .single();
@@ -71,16 +147,21 @@ export async function POST(request: Request) {
   const botUrl = process.env.BOT_RECRUTEMENT_URL;
   if (botUrl) {
     const notif = {
-      nom, 
-      age: String(age), 
-      pays1: body.pays1, 
-      pays2: body.pays2, 
-      discord, 
-      pseudo, 
+      id: data.id,
+      categorie,
+      role,
+      nom,
+      age: String(age),
+      pays1: body.pays1,
+      discord,
+      pseudo,
       jeu,
-      rang: body.rang, 
-      exp: body.exp, 
-      motiv: body.motiv, 
+      // Le bot lit `roster` en priorité et retombe sur `rang` : on envoie les
+      // deux le temps de la transition, `rang` pourra disparaître ensuite.
+      roster: body.roster,
+      rang: body.roster,
+      exp: body.exp,
+      motiv: body.motiv,
       rltracker: body.rltracker,
     };
     after(async () => {
@@ -98,8 +179,6 @@ export async function POST(request: Request) {
         });
         if (!res.ok) {
           console.error("[recrutement] le bot a répondu", res.status, await res.text().catch(() => ""));
-        } else {
-          console.log("[recrutement] notif Discord OK ✅");
         }
       } catch (e) {
         console.error("[recrutement] notif Discord échouée:", e);

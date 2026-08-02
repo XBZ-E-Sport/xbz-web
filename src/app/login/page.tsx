@@ -1,9 +1,10 @@
 import { loginWithPassword, loginWithDiscord } from "./actions";
 
-export const metadata = { title: "Connexion staff — XBZ" };
+// Page de connexion staff : pas d'indexation (contenu privé, pas de canonical vers l'accueil).
+export const metadata = { title: "Connexion staff — XBZ", robots: { index: false, follow: false } };
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-500 outline-none focus:ring-1 focus:ring-xbz-blue";
+  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
 
 export default async function LoginPage({
   searchParams,
@@ -24,22 +25,49 @@ export default async function LoginPage({
         )}
 
         <form action={loginWithPassword} className="flex flex-col gap-3">
-          <input name="email" type="email" placeholder="Email" required className={inputCls} />
-          <input name="password" type="password" placeholder="Mot de passe" required className={inputCls} />
-          <button type="submit" className="btn-xbz w-full text-center">Se connecter</button>
+          <label htmlFor="login-email" className="sr-only">
+            Adresse e-mail
+          </label>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            placeholder="Email"
+            required
+            autoComplete="email"
+            className={inputCls}
+          />
+          <label htmlFor="login-password" className="sr-only">
+            Mot de passe
+          </label>
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="Mot de passe"
+            required
+            autoComplete="current-password"
+            className={inputCls}
+          />
+          <button type="submit" className="btn-xbz w-full text-center hover:cursor-pointer">Se connecter</button>
         </form>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-neutral-500">
+        <div className="my-5 flex items-center gap-3 text-xs text-neutral-400">
           <span className="h-px flex-1 bg-white/10" /> ou <span className="h-px flex-1 bg-white/10" />
         </div>
 
         <form action={loginWithDiscord}>
           <button
             type="submit"
-            className="w-full rounded-xl bg-[#5865F2] px-4 py-3 font-bold text-white transition hover:brightness-110"
+            className="w-full rounded-xl bg-[#5865F2] px-4 py-3 font-bold text-white transition hover:brightness-110 hover:cursor-pointer"
           >
             Se connecter avec Discord
           </button>
+          <p className="mt-3 text-center text-[13px] leading-relaxed text-neutral-400">
+            Réservé aux membres du serveur XBZ ayant le rôle{" "}
+            <strong className="text-neutral-300">Administrateur</strong> ou{" "}
+            <strong className="text-neutral-300">Fondateur</strong>.
+          </p>
         </form>
       </div>
     </section>
