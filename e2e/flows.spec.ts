@@ -8,28 +8,66 @@ import { createClient } from "@supabase/supabase-js";
  * `available` avec `url`, un utilisateur staff dans `allow_staff_list`, et les
  * tables `candidatures` / `support_messages`).
  *
- * Ils ne s'exécutent QUE si `E2E_STAFF_EMAIL` est présent (injecté par les
- * secrets CI). Sinon → skip : la CI et les runs « sans BDD » restent verts.
+ * Ils ne s'exécutent QUE si TOUT est réuni : identifiants staff, clé service,
+ * URL Supabase réelle, ET projet effectivement joignable (voir le préambule
+ * ci-dessous). Sinon → skip explicite.
+ *
+ * Pourquoi ce niveau de prudence : ne tester que la présence de
+ * `E2E_STAFF_EMAIL` suffisait à activer ces parcours alors que la base
+ * pointait sur un placeholder ou un projet en pause — la CI passait alors 3
+ * minutes à échouer sur des `TypeError: fetch failed` illisibles.
  */
-const HAS_TEST_DB = Boolean(process.env.E2E_STAFF_EMAIL);
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY ?? "";
+
+const HAS_CREDENTIALS =
+  Boolean(process.env.E2E_STAFF_EMAIL) &&
+  Boolean(process.env.E2E_STAFF_PASSWORD) &&
+  Boolean(SERVICE_KEY) &&
+  /^https:\/\/.+\.supabase\.co/i.test(SUPABASE_URL) &&
+  !SUPABASE_URL.includes("placeholder");
+
+// Renseigné par le préambule : la base répond-elle vraiment ?
+let dbReachable = false;
+let unreachableReason = "";
 
 // Marqueurs des données créées par les tests → purgés en fin de suite.
 const CANDIDATURE_NOM = "Test Candidat E2E";
 const SUPPORT_NOM = "Test Support E2E";
 
 test.describe("Parcours BDD", () => {
+  // Préambule : un aller-retour réel vers Supabase. Un projet supprimé ou mis
+  // en pause (le plan gratuit met en veille après quelques jours d'inactivité)
+  // est ainsi diagnostiqué en une seconde, au lieu de faire tomber chaque test
+  // en timeout.
+  test.beforeAll(async () => {
+    if (!HAS_CREDENTIALS) return;
+    try {
+      const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+      const { error } = await admin.from("rosters").select("slug").limit(1);
+      dbReachable = !error;
+      unreachableReason = error?.message ?? "";
+    } catch (e) {
+      unreachableReason = e instanceof Error ? e.message : String(e);
+    }
+    if (!dbReachable) {
+      console.warn(`[e2e] Supabase de test injoignable (${unreachableReason}) — parcours BDD ignorés.`);
+    }
+  });
+
   test.beforeEach(() => {
-    test.skip(!HAS_TEST_DB, "Supabase de test non configuré (E2E_STAFF_EMAIL absent).");
+    test.skip(
+      !HAS_CREDENTIALS,
+      "Supabase de test non configuré (E2E_STAFF_EMAIL / E2E_STAFF_PASSWORD / SUPABASE_SECRET_KEY / URL réelle).",
+    );
+    test.skip(!dbReachable, `Supabase de test injoignable : ${unreachableReason}`);
   });
 
   // Nettoyage : supprime les lignes de test via la clé service_role (contourne
   // la RLS). Idempotent, ciblé par marqueur → n'efface jamais de vraie donnée.
   test.afterAll(async () => {
-    if (!HAS_TEST_DB) return;
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SECRET_KEY;
-    if (!url || !key) return;
-    const admin = createClient(url, key, { auth: { persistSession: false } });
+    if (!dbReachable) return; // rien n'a été créé, rien à nettoyer
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     await admin.from("candidatures").delete().eq("nom", CANDIDATURE_NOM);
     await admin.from("support_messages").delete().eq("nom", SUPPORT_NOM);
   });

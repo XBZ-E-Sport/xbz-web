@@ -1,10 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { exchangeMock, signOutMock, checkMock } = vi.hoisted(() => ({
+const { exchangeMock, signOutMock, checkMock, markMock, clearMock } = vi.hoisted(() => ({
   exchangeMock: vi.fn(),
   signOutMock: vi.fn(),
   checkMock: vi.fn(),
+  markMock: vi.fn(),
+  clearMock: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -18,6 +20,8 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/discord-guard", () => ({
   checkDiscordStaff: (...a: unknown[]) => checkMock(...a),
+  markDiscordStaff: (...a: unknown[]) => markMock(...a),
+  clearDiscordStaff: (...a: unknown[]) => clearMock(...a),
   denyMessage: (reason: string) => `refus:${reason}`,
   DISCORD_SCOPES: "identify email guilds.members.read",
 }));
@@ -44,14 +48,19 @@ const location = (res: Response) => res.headers.get("location") ?? "";
 beforeEach(() => {
   exchangeMock.mockReset().mockResolvedValue(session());
   signOutMock.mockReset();
-  checkMock.mockReset().mockResolvedValue({ ok: true, roles: ["1"] });
+  checkMock.mockReset().mockResolvedValue({ ok: true, roles: ["role-admin"] });
+  markMock.mockReset();
+  clearMock.mockReset();
 });
 
 describe("GET /auth/callback", () => {
-  it("laisse entrer un membre au rôle autorisé", async () => {
+  it("laisse entrer un membre au rôle autorisé et mémorise le verdict", async () => {
     const res = await call("?code=abc&next=/admin");
     expect(location(res)).toBe(`${ORIGIN}/admin`);
     expect(signOutMock).not.toHaveBeenCalled();
+    // Sans cet enregistrement, l'accès au back-office dépendrait encore de la
+    // liste email : c'est lui qui rend le rôle Discord suffisant.
+    expect(markMock).toHaveBeenCalledWith("u1", ["role-admin"]);
   });
 
   it("REFUSE et déconnecte si la personne n'est pas sur le serveur", async () => {
@@ -59,6 +68,8 @@ describe("GET /auth/callback", () => {
 
     const res = await call("?code=abc");
     expect(signOutMock).toHaveBeenCalledTimes(1); // aucune session ne survit au refus
+    expect(clearMock).toHaveBeenCalledWith("u1"); // et l'accès staff est retiré
+    expect(markMock).not.toHaveBeenCalled();
     expect(location(res)).toContain("/login?error=");
     expect(decodeURIComponent(location(res))).toContain("refus:not_member");
   });
@@ -68,7 +79,17 @@ describe("GET /auth/callback", () => {
 
     const res = await call("?code=abc");
     expect(signOutMock).toHaveBeenCalledTimes(1);
+    expect(clearMock).toHaveBeenCalledWith("u1");
     expect(decodeURIComponent(location(res))).toContain("refus:missing_role");
+  });
+
+  it("ne retire PAS l'accès quand Discord est en panne", async () => {
+    checkMock.mockResolvedValue({ ok: false, reason: "error" });
+
+    await call("?code=abc");
+    // Une coupure Discord ne doit pas dégrader tout le staff au passage.
+    expect(clearMock).not.toHaveBeenCalled();
+    expect(signOutMock).toHaveBeenCalledTimes(1);
   });
 
   it("transmet le provider_token de la session au contrôle", async () => {
