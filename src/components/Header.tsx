@@ -40,7 +40,7 @@ export default function Header() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const linkClass = (active: boolean) =>
-    `rounded-lg px-4 py-2 text-sm font-bold tracking-wide transition ${
+    `whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold tracking-wide transition min-[1000px]:px-4 ${
       active
         ? "bg-xbz-blue text-white shadow-[0_0_18px_rgba(0,102,255,0.45)]"
         : "text-neutral-200 hover:bg-white/5 hover:text-white"
@@ -68,7 +68,7 @@ export default function Header() {
           </Link>
 
           {/* Navigation — bureau */}
-          <ul className="hidden items-center gap-1 md:flex">
+          <ul className="hidden items-center gap-1 min-[920px]:flex">
             {links.map((l) => {
               const active = isActive(l.href);
               return (
@@ -91,7 +91,7 @@ export default function Header() {
               href={DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 md:inline-block"
+              className="hidden rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 min-[920px]:inline-block"
             >
               Discord
               <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
@@ -105,7 +105,7 @@ export default function Header() {
               aria-expanded={open}
               aria-controls="menu-mobile"
               aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white hover:bg-white/10 md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white hover:bg-white/10 min-[920px]:hidden"
             >
               <svg
                 aria-hidden="true"
@@ -130,7 +130,7 @@ export default function Header() {
         <ul
           id="menu-mobile"
           hidden={!open}
-          className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2 md:hidden"
+          className="mt-2 flex flex-col gap-1 border-t border-white/10 pt-2 min-[920px]:hidden"
         >
           {links.map((l) => {
             const active = isActive(l.href);

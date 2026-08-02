@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -76,7 +77,13 @@ export default async function AdminRostersPage() {
                     </summary>
                     <div className="mt-4">
                       <RosterForm action={updateRoster} roster={r} submitLabel="Enregistrer" />
-                      <form action={deleteRoster} className="mt-3">
+                      <AdminForm
+                      action={deleteRoster}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Roster supprimé"
+                      closeOnSuccess={false}
+                    >
                         <input type="hidden" name="id" value={r.id} />
                         <ConfirmButton
                           className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25 hover:cursor-pointer"
@@ -84,7 +91,7 @@ export default async function AdminRostersPage() {
                         >
                           Supprimer le roster
                         </ConfirmButton>
-                      </form>
+                      </AdminForm>
                     </div>
                   </details>
                 </li>

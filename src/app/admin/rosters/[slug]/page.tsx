@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -98,7 +99,13 @@ export default async function AdminRosterPlayersPage({
                       player={p}
                       submitLabel="Enregistrer"
                     />
-                    <form action={deletePlayer} className="mt-3">
+                    <AdminForm
+                      action={deletePlayer}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Joueur supprimé"
+                      closeOnSuccess={false}
+                    >
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="roster_slug" value={roster.slug} />
                       <ConfirmButton
@@ -107,7 +114,7 @@ export default async function AdminRosterPlayersPage({
                       >
                         Supprimer le joueur
                       </ConfirmButton>
-                    </form>
+                    </AdminForm>
                   </div>
                 </details>
               </li>

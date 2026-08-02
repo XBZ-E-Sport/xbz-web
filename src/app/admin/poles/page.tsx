@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -88,7 +89,13 @@ export default async function AdminPolesPage() {
                     </summary>
                     <div className="mt-4">
                       <PoleForm action={updatePole} pole={p} submitLabel="Enregistrer" />
-                      <form action={deletePole} className="mt-3">
+                      <AdminForm
+                      action={deletePole}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Pôle supprimé"
+                      closeOnSuccess={false}
+                    >
                         <input type="hidden" name="id" value={p.id} />
                         <ConfirmButton
                           className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25 hover:cursor-pointer"
@@ -96,7 +103,7 @@ export default async function AdminPolesPage() {
                         >
                           Supprimer le pôle
                         </ConfirmButton>
-                      </form>
+                      </AdminForm>
                     </div>
                   </details>
                 </li>

@@ -1,3 +1,5 @@
+import AdminForm from "@/components/AdminForm";
+
 import { articleCategories } from "@/lib/actualite";
 
 const inputCls =
@@ -29,7 +31,7 @@ export default function ArticleForm({
   const uid = article ? `article-${article.id}` : "article-new";
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {article && <input type="hidden" name="id" value={article.id} />}
 
       <div className="block sm:col-span-2">
@@ -118,6 +120,6 @@ export default function ArticleForm({
           {submitLabel}
         </button>
       </div>
-    </form>
+    </AdminForm>
   );
 }

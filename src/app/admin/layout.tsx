@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Toaster } from "sonner";
 import { requireStaff } from "@/lib/adminguard";
 import { signOut } from "@/app/login/actions";
 
@@ -12,6 +13,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-28">
+      {/* Retours d'action du back-office (enregistrement, suppression, erreurs). */}
+      <Toaster theme="dark" position="bottom-right" richColors closeButton />
       <header className="mb-8 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
         <h1 className="font-display text-2xl font-bold">Back-office XBZ</h1>
         <div className="flex items-center gap-3 text-sm text-neutral-400">

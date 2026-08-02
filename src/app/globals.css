@@ -54,6 +54,16 @@ body::after { right: 0; }
   body::after { display: none; }
 }
 
+/* Aucun mot ne doit provoquer de défilement horizontal.
+   Un titre comme « confidentialité » (36 px) dépasse la largeur utile d'un
+   téléphone étroit : sans césure, il élargissait tout le document. */
+h1, h2, h3, h4, p, li, dt, dd, figcaption, label, button, a {
+  overflow-wrap: break-word;
+}
+h1, h2, h3 {
+  hyphens: auto;
+}
+
 .btn-xbz {
   display: inline-block;
   padding: 14px 30px;

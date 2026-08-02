@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formatDate } from "@/lib/format";
@@ -61,7 +62,13 @@ export default async function AdminArticlesPage() {
                   </summary>
                   <div className="mt-4">
                     <ArticleForm action={updateArticle} article={a} submitLabel="Enregistrer" />
-                    <form action={deleteArticle} className="mt-3">
+                    <AdminForm
+                      action={deleteArticle}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Article supprimé"
+                      closeOnSuccess={false}
+                    >
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="slug" value={a.slug} />
                       <ConfirmButton
@@ -70,7 +77,7 @@ export default async function AdminArticlesPage() {
                       >
                         Supprimer l’article
                       </ConfirmButton>
-                    </form>
+                    </AdminForm>
                   </div>
                 </details>
               </li>

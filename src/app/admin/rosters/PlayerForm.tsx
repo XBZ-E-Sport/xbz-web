@@ -1,3 +1,5 @@
+import AdminForm from "@/components/AdminForm";
+
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400";
@@ -48,7 +50,7 @@ export default function PlayerForm({
   const uid = player ? `joueur-${player.id}` : `joueur-new-${poleId ?? rosterId ?? "x"}`;
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {player && <input type="hidden" name="id" value={player.id} />}
       {rosterId && <input type="hidden" name="roster_id" value={rosterId} />}
       {poleId && <input type="hidden" name="pole_id" value={poleId} />}
@@ -217,6 +219,6 @@ export default function PlayerForm({
           {submitLabel}
         </button>
       </div>
-    </form>
+    </AdminForm>
   );
 }

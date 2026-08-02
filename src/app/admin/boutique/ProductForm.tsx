@@ -1,3 +1,5 @@
+import AdminForm from "@/components/AdminForm";
+
 import { productCategories } from "@/lib/boutique";
 
 const inputCls =
@@ -32,7 +34,7 @@ export default function ProductForm({
   const uid = product ? `product-${product.id}` : "product-new";
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {product && <input type="hidden" name="id" value={product.id} />}
 
       <div className="block sm:col-span-2">
@@ -181,6 +183,6 @@ export default function ProductForm({
           {submitLabel}
         </button>
       </div>
-    </form>
+    </AdminForm>
   );
 }

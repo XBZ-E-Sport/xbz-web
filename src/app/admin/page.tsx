@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { updateStatut } from "./actions";
 
@@ -61,7 +62,13 @@ export default async function AdminCandidaturesPage() {
           <p className="mt-2 text-xs text-neutral-400">Reçue le {new Date(c.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</p>
 
           {/* Actions staff */}
-          <form action={updateStatut} className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+          <AdminForm
+            action={updateStatut}
+            className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4"
+            loadingMessage="Mise à jour du statut…"
+            successMessage="Statut mis à jour · Discord synchronisé"
+            closeOnSuccess={false}
+          >
             <input type="hidden" name="id" value={c.id} />
             {actions.map((a) => (
               <button
@@ -74,7 +81,7 @@ export default async function AdminCandidaturesPage() {
                 {a.label}
               </button>
             ))}
-          </form>
+          </AdminForm>
         </div>
       ))}
     </div>

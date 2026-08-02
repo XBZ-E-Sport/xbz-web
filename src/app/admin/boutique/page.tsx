@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import ConfirmButton from "@/components/ConfirmButton";
 import ProductForm, { type ProductRow } from "./ProductForm";
@@ -71,7 +72,13 @@ export default async function AdminBoutiquePage() {
                   </summary>
                   <div className="mt-4">
                     <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" />
-                    <form action={deleteProduct} className="mt-3">
+                    <AdminForm
+                      action={deleteProduct}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Produit supprimé"
+                      closeOnSuccess={false}
+                    >
                       <input type="hidden" name="id" value={p.id} />
                       <ConfirmButton
                         className="rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/25 hover:cursor-pointer"
@@ -79,7 +86,7 @@ export default async function AdminBoutiquePage() {
                       >
                         Supprimer le produit
                       </ConfirmButton>
-                    </form>
+                    </AdminForm>
                   </div>
                 </details>
               </li>

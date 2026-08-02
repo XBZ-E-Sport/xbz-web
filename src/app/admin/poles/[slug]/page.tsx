@@ -1,3 +1,4 @@
+import AdminForm from "@/components/AdminForm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -103,7 +104,13 @@ export default async function AdminPoleMembersPage({
                       player={m}
                       submitLabel="Enregistrer"
                     />
-                    <form action={deletePlayer} className="mt-3">
+                    <AdminForm
+                      action={deletePlayer}
+                      className="mt-3"
+                      loadingMessage="Suppression…"
+                      successMessage="Membre supprimé"
+                      closeOnSuccess={false}
+                    >
                       <input type="hidden" name="id" value={m.id} />
                       <input type="hidden" name="pole_slug" value={pole.slug} />
                       <ConfirmButton
@@ -112,7 +119,7 @@ export default async function AdminPoleMembersPage({
                       >
                         Supprimer le membre
                       </ConfirmButton>
-                    </form>
+                    </AdminForm>
                   </div>
                 </details>
               </li>

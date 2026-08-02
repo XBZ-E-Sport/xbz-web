@@ -1,3 +1,5 @@
+import AdminForm from "@/components/AdminForm";
+
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400";
@@ -27,7 +29,7 @@ export default function RosterForm({
   const uid = roster ? `roster-${roster.id}` : "roster-new";
 
   return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {roster && <input type="hidden" name="id" value={roster.id} />}
 
       <div className="block">
@@ -103,6 +105,6 @@ export default function RosterForm({
           {submitLabel}
         </button>
       </div>
-    </form>
+    </AdminForm>
   );
 }
