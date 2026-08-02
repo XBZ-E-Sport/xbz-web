@@ -4,26 +4,53 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasFreshDiscordStaff } from "@/lib/discord-guard";
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+type StaffUser = { id: string; email?: string };
 
 /**
- * Vérifie que l'appelant est connecté ET membre du staff (allowlist).
- * À appeler DANS chaque server action (endpoint POST joignable directement :
- * on ne se repose jamais uniquement sur le layout). Retourne le client admin.
+ * Contrôle d'accès UNIQUE du back-office.
+ *
+ * Deux façons d'être staff — la première suffit :
+ *  1. rôle Discord (Administrateur / Fondateur) vérifié à la connexion puis
+ *     mémorisé dans `app_metadata` : le fondateur donne le rôle, l'accès suit,
+ *     sans intervention manuelle ;
+ *  2. email présent dans `allow_staff_list` : filet pour les comptes
+ *     mot de passe et les accès historiques.
+ *
+ * À appeler DANS chaque server action : une server action est un endpoint POST
+ * joignable directement, on ne se repose jamais uniquement sur le layout.
  */
-export async function assertStaff() {
+export async function requireStaff(): Promise<{ user: StaffUser; admin: AdminClient }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
   const admin = createAdminClient();
+
+  // 1) Rôle Discord vérifié récemment (fraîcheur : STAFF_TTL_DAYS).
+  if (hasFreshDiscordStaff(user.app_metadata)) {
+    return { user: { id: user.id, email: user.email }, admin };
+  }
+
+  // 2) Repli : allowlist email, indépendante de la RLS (clé service_role).
   const { data: staff } = await admin
     .from("allow_staff_list")
     .select("email")
     .eq("email", user.email ?? "")
     .maybeSingle();
 
-  if (!staff) redirect("/login");
+  if (staff) return { user: { id: user.id, email: user.email }, admin };
+
+  redirect(`/login?error=${encodeURIComponent("Accès réservé au staff XBZ.")}`);
+}
+
+/** Raccourci historique : renvoie le client admin une fois l'accès validé. */
+export async function assertStaff(): Promise<AdminClient> {
+  const { admin } = await requireStaff();
   return admin;
 }

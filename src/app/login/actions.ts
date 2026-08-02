@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { DISCORD_SCOPES } from "@/lib/discord-guard";
+import { siteConfig } from "@/lib/site";
 
 export async function loginWithPassword(formData: FormData) {
   const email = String(formData.get("email"));
@@ -22,7 +23,10 @@ export async function loginWithPassword(formData: FormData) {
 
 export async function loginWithDiscord() {
   const supabase = await createClient();
-  const origin = (await headers()).get("origin")!;
+  // L'en-tête `Origin` est normalement présent (soumission de formulaire), mais
+  // un `!` produirait l'URL "null/auth/callback" s'il manquait — et Discord
+  // rejetterait la redirection. On retombe sur le domaine configuré.
+  const origin = (await headers()).get("origin") ?? siteConfig.url;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "discord",

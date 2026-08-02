@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { checkDiscordStaff, denyMessage } from "@/lib/discord-guard";
+import {
+  checkDiscordStaff,
+  clearDiscordStaff,
+  denyMessage,
+  markDiscordStaff,
+} from "@/lib/discord-guard";
 
 // Retour de l'OAuth Discord.
 //
@@ -33,17 +38,27 @@ export async function GET(request: Request) {
   // Contrôle serveur + rôle Discord, avec le jeton fraîchement obtenu.
   const check = await checkDiscordStaff(data.session.provider_token);
 
+  const userId = data.session.user.id;
+
   if (!check.ok) {
-    // Refus → on révoque la session immédiatement (sinon un compte non
-    // autorisé resterait connecté, même sans accès au back-office).
+    // Refus → on retire l'accès staff éventuellement acquis, PUIS on révoque la
+    // session (sinon un compte non autorisé resterait connecté).
+    // `not_configured` / `error` ne sont pas des refus de rôle : on ne retire
+    // rien sur une panne, sinon une coupure Discord dégraderait tout le staff.
+    if (check.reason === "not_member" || check.reason === "missing_role") {
+      await clearDiscordStaff(userId);
+    }
     await supabase.auth.signOut();
     console.warn(
       "[auth] connexion Discord refusée:",
       check.reason,
-      data.session.user.email ?? data.session.user.id,
+      data.session.user.email ?? userId,
     );
     return denied(origin, denyMessage(check.reason));
   }
+
+  // Verdict mémorisé : donne l'accès au back-office sans liste manuelle.
+  await markDiscordStaff(userId, check.roles);
 
   return NextResponse.redirect(`${origin}${next}`);
 }

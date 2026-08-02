@@ -16,7 +16,17 @@ import "server-only";
 // Non configuré → on REFUSE (fail-safe) : la connexion par mot de passe reste
 // disponible, on ne laisse jamais la porte ouverte par simple oubli.
 
+import { createAdminClient } from "@/lib/supabase/admin";
+
 const DISCORD_API = "https://discord.com/api/v10";
+
+/**
+ * Durée de validité du verdict Discord enregistré à la connexion.
+ * Passé ce délai, le back-office redemande une connexion → le rôle est
+ * revérifié auprès de Discord. C'est ce qui rend une révocation effective
+ * sans avoir à interroger Discord à chaque page.
+ */
+export const STAFF_TTL_DAYS = 7;
 
 /** Scopes OAuth demandés à Discord. `guilds.members.read` autorise la lecture
  *  des rôles de l'utilisateur DANS CE SERVEUR uniquement (rien d'autre). */
@@ -94,4 +104,48 @@ export async function checkDiscordStaff(
   }
 
   return { ok: true, roles };
+}
+
+// =============================================================================
+//  Mémorisation du verdict
+//
+//  Le jeton OAuth n'existe qu'au moment du callback : on ne peut pas réinterroger
+//  Discord à chaque page. Le verdict est donc écrit dans `app_metadata` de
+//  l'utilisateur Supabase — champ que SEULE la clé service_role peut modifier
+//  (l'utilisateur ne peut pas se l'attribuer lui-même, contrairement à
+//  `user_metadata`).
+// =============================================================================
+
+type AppMetadata = Record<string, unknown> | undefined | null;
+
+/** Enregistre « staff Discord vérifié » sur le compte. */
+export async function markDiscordStaff(userId: string, roles: string[]): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: {
+      xbz_staff: true,
+      xbz_staff_at: new Date().toISOString(),
+      xbz_roles: roles,
+    },
+  });
+  if (error) console.error("[auth] écriture du verdict Discord échouée:", error.message);
+}
+
+/** Retire l'accès staff (rôle perdu, exclusion du serveur…). */
+export async function clearDiscordStaff(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: { xbz_staff: false, xbz_staff_at: null, xbz_roles: [] },
+  });
+  if (error) console.error("[auth] révocation du verdict Discord échouée:", error.message);
+}
+
+/** Vrai si le compte porte un verdict Discord valide ET encore frais. */
+export function hasFreshDiscordStaff(appMetadata: AppMetadata): boolean {
+  if (!appMetadata || appMetadata.xbz_staff !== true) return false;
+
+  const verifiedAt = Date.parse(String(appMetadata.xbz_staff_at ?? ""));
+  if (Number.isNaN(verifiedAt)) return false;
+
+  return Date.now() - verifiedAt < STAFF_TTL_DAYS * 24 * 3600 * 1000;
 }
