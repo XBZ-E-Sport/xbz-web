@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useLocale, useTranslations } from "next-intl";
 
 // Import de TYPES uniquement (erasé au build) : lib/boutique tire le client
 // Supabase serveur (server-only) → un import de valeur ferait planter le bundle
@@ -13,6 +14,7 @@ const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
 // Nombre de produits ajoutés à chaque « page » (pagination / lazy loading).
 const PAGE_SIZE = 6;
 
+// « Tous » n'est pas une catégorie de la base : c'est le filtre « pas de filtre ».
 type Filter = ProductCategory | "Tous";
 type SortKey = "defaut" | "prix-asc" | "prix-desc";
 
@@ -22,9 +24,18 @@ const categoryStyles: Record<ProductCategory, string> = {
   Gaming: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
 };
 
-const priceFormatter = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+/** Prix en euros, formaté selon la langue (« 19,90 € » / « €19.90 »). */
+function formatPrice(price: number, locale: string): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-IE" : "fr-FR", {
+    style: "currency",
+    currency: "EUR",
+  }).format(price);
+}
 
 function ProductCard({ product }: { product: Product }) {
+  const t = useTranslations("boutique");
+  const tCat = useTranslations("productCategories");
+  const locale = useLocale();
   return (
     <li className="card-xbz flex flex-col overflow-hidden">
       {/* Visuel : image produit si dispo, sinon emoji de repli */}
@@ -49,10 +60,10 @@ function ProductCard({ product }: { product: Product }) {
           <span
             className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${categoryStyles[product.category]}`}
           >
-            {product.category}
+            {tCat(product.category)}
           </span>
           <span className="font-display text-lg font-bold text-white">
-            {priceFormatter.format(product.price)}
+            {formatPrice(product.price, locale)}
           </span>
         </div>
 
@@ -70,12 +81,12 @@ function ProductCard({ product }: { product: Product }) {
               rel="noopener noreferrer"
               className="block rounded-lg bg-xbz-blue px-4 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
             >
-              {product.url ? "Acheter" : "Commander sur Discord"}
-              <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
+              {product.url ? t("buy") : t("orderOnDiscord")}
+              <span className="sr-only">{t("newTab")}</span>
             </a>
           ) : (
             <span className="block rounded-lg border border-white/15 px-4 py-2 text-center text-sm font-semibold text-neutral-400">
-              Bientôt disponible
+              {t("comingSoon")}
             </span>
           )}
         </div>
@@ -85,6 +96,8 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function BoutiqueList({ products }: { products: Product[] }) {
+  const t = useTranslations("boutique");
+  const tCat = useTranslations("productCategories");
   const [filter, setFilter] = useState<Filter>("Tous");
   const [sort, setSort] = useState<SortKey>("defaut");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -139,7 +152,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
     <>
       {/* Barre de contrôle : filtres + tri */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div role="group" aria-label="Filtrer par catégorie" className="flex flex-wrap gap-2">
+        <div role="group" aria-label={t("filterAria")} className="flex flex-wrap gap-2">
           {filters.map((f) => {
             const active = f === filter;
             return (
@@ -150,7 +163,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
                 onClick={() => setFilter(f)}
                 className={`${chipBase} ${active ? chipActive : chipIdle}`}
               >
-                {f}
+                {f === "Tous" ? t("filterAll") : tCat(f)}
               </button>
             );
           })}
@@ -158,7 +171,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
 
         <div className="flex items-center gap-2 sm:shrink-0">
           <label htmlFor="boutique-sort" className="text-sm text-neutral-400">
-            Trier
+            {t("sort")}
           </label>
           <select
             id="boutique-sort"
@@ -166,23 +179,25 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="rounded-lg border-0 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
           >
-            <option value="defaut">Par défaut</option>
-            <option value="prix-asc">Prix croissant</option>
-            <option value="prix-desc">Prix décroissant</option>
+            <option value="defaut">{t("sortDefault")}</option>
+            <option value="prix-asc">{t("sortPriceAsc")}</option>
+            <option value="prix-desc">{t("sortPriceDesc")}</option>
           </select>
         </div>
       </div>
 
       {/* Annonce du nombre de résultats pour les lecteurs d'écran */}
       <p aria-live="polite" className="sr-only">
-        {filteredSorted.length} produit{filteredSorted.length > 1 ? "s" : ""}
-        {filter !== "Tous" ? ` dans la catégorie ${filter}` : ""}.
+        {filter === "Tous"
+          ? t("resultCount", { count: filteredSorted.length })
+          : t("resultCountFiltered", {
+              count: filteredSorted.length,
+              category: tCat(filter),
+            })}
       </p>
 
       {filteredSorted.length === 0 ? (
-        <p className="card-xbz p-10 text-center text-neutral-400">
-          Aucun produit dans cette catégorie pour le moment.
-        </p>
+        <p className="card-xbz p-10 text-center text-neutral-400">{t("emptyCategory")}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((product) => (
@@ -198,7 +213,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
             className="rounded-xl border border-white/25 px-7 py-3 font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
           >
-            Charger plus de produits
+            {t("loadMore")}
           </button>
         </div>
       )}

@@ -1,23 +1,28 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
+import { Link, usePathname } from "@/i18n/navigation";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+
+// `key` pointe vers le catalogue `nav` ; `href` reste l'URL française, que
+// next-intl préfixe automatiquement en anglais (/en/…).
 const links = [
-  { href: "/le-club", label: "Le club" },
-  { href: "/presentation", label: "Présentation" },
-  { href: "/equipes", label: "Équipes" },
-  { href: "/actualite", label: "Actualité" },
-  { href: "/boutique", label: "Boutique" },
-  { href: "/recrutement", label: "Recrutement" },
-  { href: "/support", label: "Support" },
-];
+  { href: "/le-club", key: "leClub" },
+  { href: "/presentation", key: "presentation" },
+  { href: "/equipes", key: "equipes" },
+  { href: "/actualite", key: "actualite" },
+  { href: "/boutique", key: "boutique" },
+  { href: "/recrutement", key: "recrutement" },
+  { href: "/support", key: "support" },
+] as const;
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
 
 export default function Header() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -52,7 +57,7 @@ export default function Header() {
   return (
     <header className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
       <nav
-        aria-label="Navigation principale"
+        aria-label={t("mainNav")}
         className="w-full max-w-5xl rounded-2xl border border-xbz-blue/15 bg-[rgba(15,15,20,0.85)] px-3 py-2 backdrop-blur-xl"
       >
         <div className="flex items-center justify-between gap-2">
@@ -60,7 +65,7 @@ export default function Header() {
           <Link
             href="/"
             onClick={closeMenu}
-            aria-label="XBZ Esport — Accueil"
+            aria-label={t("homeAria")}
             aria-current={pathname === "/" ? "page" : undefined}
             className="flex shrink-0 items-center rounded-lg p-1"
           >
@@ -78,7 +83,7 @@ export default function Header() {
                     aria-current={active ? "page" : undefined}
                     className={linkClass(active)}
                   >
-                    {l.label}
+                    {t(l.key)}
                   </Link>
                 </li>
               );
@@ -86,6 +91,7 @@ export default function Header() {
           </ul>
 
           <div className="flex shrink-0 items-center gap-2">
+            <LanguageSwitcher />
             {/* Discord — bureau */}
             <a
               href={DISCORD_URL}
@@ -93,8 +99,8 @@ export default function Header() {
               rel="noopener noreferrer"
               className="hidden rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 min-[920px]:inline-block"
             >
-              Discord
-              <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
+              {t("discord")}
+              <span className="sr-only">{t("newTab")}</span>
             </a>
 
             {/* Bouton menu — mobile */}
@@ -104,7 +110,7 @@ export default function Header() {
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-controls="menu-mobile"
-              aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-label={open ? t("closeMenu") : t("openMenu")}
               className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white hover:bg-white/10 min-[920px]:hidden"
             >
               <svg
@@ -142,7 +148,7 @@ export default function Header() {
                   aria-current={active ? "page" : undefined}
                   className={`block ${linkClass(active)}`}
                 >
-                  {l.label}
+                  {t(l.key)}
                 </Link>
               </li>
             );
@@ -155,8 +161,8 @@ export default function Header() {
               onClick={closeMenu}
               className="mt-1 block rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-bold text-white"
             >
-              Discord
-              <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
+              {t("discord")}
+              <span className="sr-only">{t("newTab")}</span>
             </a>
           </li>
         </ul>

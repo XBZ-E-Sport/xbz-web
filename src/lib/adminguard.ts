@@ -1,10 +1,12 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hasFreshDiscordStaff } from "@/lib/discord-guard";
+import { localizedPath } from "@/lib/site";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type StaffUser = { id: string; email?: string };
@@ -28,7 +30,12 @@ export async function requireStaff(): Promise<{ user: StaffUser; admin: AdminCli
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  // Toutes les URL portent leur langue (`/fr/login`) : on renvoie directement à
+  // la bonne, sinon le proxy ferait un aller-retour de plus et la personne
+  // basculerait en français au passage.
+  const loginPath = localizedPath("/login", await getLocale());
+
+  if (!user) redirect(loginPath);
 
   const admin = createAdminClient();
 
@@ -46,7 +53,7 @@ export async function requireStaff(): Promise<{ user: StaffUser; admin: AdminCli
 
   if (staff) return { user: { id: user.id, email: user.email }, admin };
 
-  redirect(`/login?error=${encodeURIComponent("Accès réservé au staff XBZ.")}`);
+  redirect(`${loginPath}?error=${encodeURIComponent("Accès réservé au staff XBZ.")}`);
 }
 
 /** Raccourci historique : renvoie le client admin une fois l'accès validé. */

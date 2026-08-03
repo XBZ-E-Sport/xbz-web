@@ -2,6 +2,8 @@
 // d'une page/liste avant l'arrivée des données serveur (pages force-dynamic).
 // `motion-safe:` → statiques si l'utilisateur a réduit les animations.
 
+import { useTranslations } from "next-intl";
+
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div aria-hidden="true" className={`rounded bg-white/5 motion-safe:animate-pulse ${className}`} />;
 }
@@ -28,10 +30,11 @@ export function CardGridSkeleton({ count = 6 }: { count?: number }) {
  * `aria-hidden` (purement visuels).
  */
 export function ListPageSkeleton({ count = 6, chips = true }: { count?: number; chips?: boolean }) {
+  const t = useTranslations("common");
   return (
     <div
       role="status"
-      aria-label="Chargement…"
+      aria-label={t("loading")}
       className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32"
     >
       <div className="mb-10 flex flex-col items-center gap-3">

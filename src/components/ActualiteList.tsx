@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import type { Article, ArticleCategory } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 
@@ -10,19 +11,23 @@ import { formatDate, articleCategoryStyles } from "@/lib/format";
 const PAGE_SIZE = 6;
 
 type SortKey = "recent" | "ancien";
+// « Tous » n'est pas une catégorie de la base : c'est le filtre « pas de filtre ».
 type Filter = ArticleCategory | "Tous";
 
 function CategoryBadge({ category }: { category: ArticleCategory }) {
+  const tCat = useTranslations("articleCategories");
   return (
     <span
       className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${articleCategoryStyles[category]}`}
     >
-      {category}
+      {tCat(category)}
     </span>
   );
 }
 
 function ArticleCard({ article }: { article: Article }) {
+  const t = useTranslations("actualite");
+  const locale = useLocale();
   return (
     <li>
       <Link
@@ -32,13 +37,13 @@ function ArticleCard({ article }: { article: Article }) {
         <div className="flex flex-wrap items-center gap-2">
           <CategoryBadge category={article.category} />
           <time dateTime={article.date} className="text-xs text-neutral-400">
-            {formatDate(article.date)}
+            {formatDate(article.date, locale)}
           </time>
         </div>
         <h3 className="mt-3 font-display text-lg text-xbz-blue">{article.title}</h3>
         <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">{article.excerpt}</p>
         <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-xbz-cyan">
-          Lire l’article
+          {t("readArticle")}
           <span aria-hidden="true" className="transition-transform duration-300 motion-safe:group-hover:translate-x-1">
             →
           </span>
@@ -49,6 +54,8 @@ function ArticleCard({ article }: { article: Article }) {
 }
 
 export default function ActualiteList({ articles }: { articles: Article[] }) {
+  const t = useTranslations("actualite");
+  const tCat = useTranslations("articleCategories");
   const [filter, setFilter] = useState<Filter>("Tous");
   const [sort, setSort] = useState<SortKey>("recent");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -103,7 +110,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
     <>
       {/* Barre de contrôle : filtres + tri */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div role="group" aria-label="Filtrer par catégorie" className="flex flex-wrap gap-2">
+        <div role="group" aria-label={t("filterAria")} className="flex flex-wrap gap-2">
           {filters.map((f) => {
             const active = f === filter;
             return (
@@ -114,7 +121,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
                 onClick={() => setFilter(f)}
                 className={`${chipBase} ${active ? chipActive : chipIdle}`}
               >
-                {f}
+                {f === "Tous" ? t("filterAll") : tCat(f)}
               </button>
             );
           })}
@@ -122,7 +129,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
 
         <div className="flex items-center gap-2 sm:shrink-0">
           <label htmlFor="actu-sort" className="text-sm text-neutral-400">
-            Trier
+            {t("sort")}
           </label>
           <select
             id="actu-sort"
@@ -130,22 +137,24 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
             onChange={(e) => setSort(e.target.value as SortKey)}
             className="rounded-lg border-0 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
           >
-            <option value="recent">Plus récent</option>
-            <option value="ancien">Plus ancien</option>
+            <option value="recent">{t("sortRecent")}</option>
+            <option value="ancien">{t("sortOldest")}</option>
           </select>
         </div>
       </div>
 
       {/* Annonce du nombre de résultats pour les lecteurs d'écran */}
       <p aria-live="polite" className="sr-only">
-        {filteredSorted.length} article{filteredSorted.length > 1 ? "s" : ""}
-        {filter !== "Tous" ? ` dans la catégorie ${filter}` : ""}.
+        {filter === "Tous"
+          ? t("resultCount", { count: filteredSorted.length })
+          : t("resultCountFiltered", {
+              count: filteredSorted.length,
+              category: tCat(filter),
+            })}
       </p>
 
       {filteredSorted.length === 0 ? (
-        <p className="card-xbz p-10 text-center text-neutral-400">
-          Aucune actualité dans cette catégorie pour le moment.
-        </p>
+        <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((article) => (
@@ -161,7 +170,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
             className="rounded-xl border border-white/25 px-7 py-3 font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
           >
-            Charger plus d’actualités
+            {t("loadMore")}
           </button>
         </div>
       )}
