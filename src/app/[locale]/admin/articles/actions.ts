@@ -46,15 +46,22 @@ async function uniqueArticleSlug(
 function buildRow(formData: FormData) {
   const categoryRaw = field(formData, "category");
   const category = (articleCategories as string[]).includes(categoryRaw) ? categoryRaw : "Annonce";
-  const content = field(formData, "content")
-    .split(/\n\s*\n/) // un paragraphe par bloc séparé d'une ligne vide
-    .map((p) => p.trim())
-    .filter(Boolean);
+  // Un paragraphe par bloc séparé d'une ligne vide.
+  const paragraphs = (name: string) =>
+    field(formData, name)
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
 
   return {
     title: field(formData, "title"),
+    // Traductions facultatives : `null` en base plutôt que "" — c'est ce que
+    // `localizedText` lit comme « absent », et ça reste vrai si on vide le champ.
+    title_en: field(formData, "title_en") || null,
     excerpt: field(formData, "excerpt") || "",
-    content,
+    excerpt_en: field(formData, "excerpt_en") || null,
+    content: paragraphs("content"),
+    content_en: paragraphs("content_en"),
     category,
     author: field(formData, "author") || "Staff XBZ",
     date: field(formData, "date") || null, // null → défaut SQL (current_date)

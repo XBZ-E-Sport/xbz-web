@@ -19,13 +19,14 @@ type Parent = { slug: string; name: string; kind: "roster" | "pole" };
 async function resolveMember(
   parentSlug: string,
   memberSlug: string,
+  locale: string,
 ): Promise<{ player: Player; parent: Parent } | null> {
-  const res = await getPlayer(parentSlug, memberSlug);
+  const res = await getPlayer(parentSlug, memberSlug, locale);
   if (res) {
     return { player: res.player, parent: { slug: res.roster.slug, name: res.roster.name, kind: "roster" } };
   }
 
-  const pole = await getPoleBySlug(parentSlug);
+  const pole = await getPoleBySlug(parentSlug, locale);
   const member = pole?.members.find((m) => m.slug === memberSlug);
   if (pole && member) {
     return { player: member, parent: { slug: pole.slug, name: pole.name, kind: "pole" } };
@@ -39,7 +40,7 @@ type PageProps = { params: Promise<{ locale: string; roster: string; joueur: str
 export async function generateMetadata({ params }: PageProps) {
   const { locale, roster, joueur } = await params;
   const t = await getTranslations({ locale, namespace: "joueur" });
-  const res = await resolveMember(roster, joueur);
+  const res = await resolveMember(roster, joueur, locale);
   if (!res) return { title: t("metaNotFound") };
   const { player, parent } = res;
   return pageMetadata({
@@ -61,8 +62,11 @@ export default async function PlayerPage({ params }: PageProps) {
 
   const t = await getTranslations("joueur");
   const tNav = await getTranslations("nav");
+  // Le rôle est une liste fermée en base : on le traduit à l'affichage.
+  // `.has()` garde intacte une valeur hors liste saisie à la main.
+  const tRole = await getTranslations("playerRoles");
 
-  const res = await resolveMember(parentSlug, memberSlug);
+  const res = await resolveMember(parentSlug, memberSlug, locale);
   if (!res) notFound();
   const { player, parent } = res;
 
@@ -107,7 +111,9 @@ export default async function PlayerPage({ params }: PageProps) {
         <div>
           <p className="mb-2 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
             {/* Pour un pôle, le pôle EST le rôle : on n'affiche pas de sous-rôle. */}
-            {parent.kind === "pole" ? parent.name : `${player.role} · ${parent.name}`}
+            {parent.kind === "pole"
+              ? parent.name
+              : `${tRole.has(player.role) ? tRole(player.role) : player.role} · ${parent.name}`}
           </p>
           <h1 className="flex items-center gap-3 font-display text-4xl font-black uppercase tracking-wide text-white sm:text-5xl">
             <Flag code={player.pays_code} label={player.pays} className="h-7 w-auto rounded-sm" />

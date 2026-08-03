@@ -89,11 +89,56 @@ sélecteur du menu ; le cookie `XBZ_LOCALE` ne sert qu'à mémoriser ce choix.
 
 - `messages/fr.json` et `messages/en.json` — **tout** le texte de l'interface publique,
   organisé par page (`home`, `leClub`, `equipes`, `boutique`, `support`…).
-- Le **contenu de la base** (noms de rosters, articles, produits, bios) n'est pas traduit :
-  il s'affiche tel qu'il est saisi dans le back-office.
+- Le **contenu de la base** a sa propre traduction, en colonnes `_en` : voir
+  [Contenu de la base](#contenu-de-la-base).
 - Le **back-office n'est pas traduit** (staff francophone).
 - `src/app/global-error.tsx` reste en français : il remplace le layout quand tout a déjà
   échoué, donc hors du fournisseur de traductions.
+
+### Contenu de la base
+
+Chaque champ traduisible garde sa colonne d'origine (français) et reçoit une colonne
+jumelle `_en` — 11 colonnes au total, créées par
+`supabase/migration_i18n_contenu_03082026.sql` :
+
+| Table      | Colonnes traduites                          |
+| ---------- | ------------------------------------------- |
+| `articles` | `title_en`, `excerpt_en`, `content_en`      |
+| `products` | `name_en`, `description_en`                 |
+| `rosters`  | `description_en`                            |
+| `poles`    | `name_en`, `description_en`, `badge_en`     |
+| `joueurs`  | `bio_en`, `palmares_en`                     |
+
+**Les traductions sont facultatives.** Une colonne `_en` vide fait afficher le français
+sur `/en` — un contenu non traduit reste lisible plutôt que de laisser un blanc. On peut
+donc passer la migration et déployer sans rien avoir traduit, puis traduire au fil de
+l'eau depuis le back-office (repli « Version anglaise » sous chaque formulaire).
+
+Le repli est **champ par champ** pour le texte, mais **liste entière** pour les tableaux
+(`content_en`, `palmares_en`) : un palmarès à moitié traduit mélangerait les deux langues
+dans un même bloc.
+
+Trois champs sont traduits **sans aucune saisie**, parce qu'ils sont dérivables :
+
+- `joueurs.pays` — dérivé de `pays_code` (ISO) via `Intl.DisplayNames`, donc correct dans
+  n'importe quelle langue. Le champ libre `pays` ne sert que de repli.
+- `joueurs.role` et les catégories (`articles.category`, `products.category`) — listes
+  fermées, traduites dans `messages/*.json` (`playerRoles`, `articleCategories`,
+  `productCategories`).
+
+Ne sont volontairement **pas** traduits : les noms propres (`rosters.name`, `joueurs.pseudo`,
+`joueurs.nom`, `articles.author`) et les termes du jeu (`rank`, `rang` : « Supersonic
+Legend » se dit pareil).
+
+La langue est résolue **dans la couche data** (`src/lib/actualite.ts`, `boutique.ts`,
+`roster.ts`, `equipes.ts`) : les composants reçoivent un objet déjà dans la bonne langue
+et ne savent rien des colonnes `_en`. Le cache, lui, reste bilingue — une seule entrée
+sert `/fr` et `/en`.
+
+⚠️ **La migration doit passer AVANT ou AVEC le déploiement.** Les requêtes nomment les
+colonnes `_en` explicitement : sur une base non migrée, PostgREST renvoie une erreur et la
+page se vide. `src/lib/i18ncolumns.test.ts` vérifie que chaque colonne de la migration est
+bien lue par le site, écrite par le back-office, et présente dans un formulaire.
 
 ### Ajouter une chaîne
 
@@ -225,7 +270,7 @@ npm run test:e2e  # end-to-end (Playwright)
 
 ## Tests
 
-### Unitaires — Vitest (144 tests)
+### Unitaires — Vitest (173 tests)
 
 Logique pure et routes API : anti-spam, consentement, longueurs de champs, rate-limit,
 métadonnées SEO, JSON-LD, contrôle d'accès staff, garde Discord, purge RGPD, remontée

@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: PageProps) {
   const { locale, roster: slug } = await params;
   const t = await getTranslations({ locale, namespace: "equipeDetail" });
 
-  const roster = await getRosterBySlug(slug);
+  const roster = await getRosterBySlug(slug, locale);
   if (roster) {
     return pageMetadata({
       title: `${roster.name} — XBZ Esport`,
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps) {
       locale,
     });
   }
-  const pole = await getPoleBySlug(slug);
+  const pole = await getPoleBySlug(slug, locale);
   if (pole) {
     return pageMetadata({
       title: `${pole.name} — XBZ Esport`,
@@ -47,7 +47,7 @@ export default async function EquipeDetailPage({ params }: PageProps) {
 
   const t = await getTranslations("equipeDetail");
 
-  const roster = await getRosterBySlug(slug);
+  const roster = await getRosterBySlug(slug, locale);
   if (roster) {
     return (
       <DetailLayout
@@ -64,7 +64,7 @@ export default async function EquipeDetailPage({ params }: PageProps) {
     );
   }
 
-  const pole = await getPoleBySlug(slug);
+  const pole = await getPoleBySlug(slug, locale);
   if (pole) {
     return (
       <DetailLayout

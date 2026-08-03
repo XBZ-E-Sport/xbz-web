@@ -43,7 +43,7 @@ export default async function Home({ params }: PageProps) {
     getTranslations("nav"),
     getTranslations("articleCategories"),
     getTranslations("site"),
-    getArticles().then((a) => a.slice(0, 3)),
+    getArticles(locale).then((a) => a.slice(0, 3)),
     getStructureStats(),
   ]);
   const openCount = structure.openSlots;

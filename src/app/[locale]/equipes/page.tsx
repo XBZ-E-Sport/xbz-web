@@ -140,7 +140,7 @@ export default async function EquipesPage({ params }: PageProps) {
 
   const t = await getTranslations("equipes");
   const tNav = await getTranslations("nav");
-  const { staff, esport } = await getEquipes();
+  const { staff, esport } = await getEquipes(locale);
 
   return (
     <section className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-32">

@@ -1,4 +1,5 @@
 import AdminForm from "@/components/AdminForm";
+import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 import { productCategories } from "@/lib/boutique";
 
@@ -10,7 +11,9 @@ export type ProductRow = {
   id: string;
   slug: string;
   name: string;
+  name_en: string | null;
   description: string | null;
+  description_en: string | null;
   price: number | string | null;
   category: string;
   icon: string | null;
@@ -32,6 +35,7 @@ export default function ProductForm({
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = product ? `product-${product.id}` : "product-new";
+  const hasEnglish = Boolean(product?.name_en || product?.description_en);
 
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -177,6 +181,33 @@ export default function ProductForm({
           <label htmlFor={`${uid}-active`}>Visible sur le site</label>
         </div>
       </div>
+
+      <EnglishBlock filled={hasEnglish}>
+        <div className="block">
+          <label htmlFor={`${uid}-name-en`} className={labelCls}>
+            Name
+          </label>
+          <input
+            id={`${uid}-name-en`}
+            name="name_en"
+            defaultValue={product?.name_en ?? ""}
+            placeholder="XBZ mouse pad"
+            className={inputCls}
+          />
+        </div>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-description-en`} className={labelCls}>
+            Description
+          </label>
+          <textarea
+            id={`${uid}-description-en`}
+            name="description_en"
+            defaultValue={product?.description_en ?? ""}
+            rows={2}
+            className={inputCls}
+          />
+        </div>
+      </EnglishBlock>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">

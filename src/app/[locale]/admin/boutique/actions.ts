@@ -104,7 +104,11 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
 
   return {
     name: field(formData, "name"),
+    // Traductions facultatives : `null` plutôt que "" — c'est ce que le site lit
+    // comme « absent », et ça reste vrai quand on vide le champ.
+    name_en: field(formData, "name_en") || null,
     description: field(formData, "description") || "",
+    description_en: field(formData, "description_en") || null,
     price: priceField(formData, "price"),
     category: normalizeCategory(field(formData, "category")),
     icon: field(formData, "icon") || "",

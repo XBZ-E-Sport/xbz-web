@@ -9,6 +9,7 @@ import { unstable_cache } from "next/cache";
 
 import { createPublicClient } from "@/lib/supabase/public";
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
+import { localizedText } from "@/lib/localized";
 
 export type ProductCategory = "Textile" | "Accessoire" | "Gaming";
 
@@ -26,7 +27,8 @@ export type Product = {
   url: string | null; // lien d'achat externe
 };
 
-const PRODUCT_COLS = "slug, name, description, price, category, icon, image, url, available";
+const PRODUCT_COLS =
+  "slug, name, name_en, description, description_en, price, category, icon, image, url, available";
 
 /** Normalise une catégorie inconnue vers "Textile" (garde-fou d'affichage). */
 function normalizeCategory(value: string): ProductCategory {
@@ -38,7 +40,9 @@ function normalizeCategory(value: string): ProductCategory {
 type ProductRow = {
   slug: string;
   name: string;
+  name_en: string | null;
   description: string | null;
+  description_en: string | null;
   price: number | string | null; // `numeric` peut revenir en string
   category: string;
   icon: string | null;
@@ -47,11 +51,12 @@ type ProductRow = {
   available: boolean | null;
 };
 
-function toProduct(row: ProductRow): Product {
+/** Ligne brute → produit dans UNE langue (résolution hors cache, cf. actualite.ts). */
+function toProduct(row: ProductRow, locale: string): Product {
   return {
     slug: row.slug,
-    name: row.name,
-    description: row.description ?? "",
+    name: localizedText(row.name, row.name_en, locale) ?? row.name,
+    description: localizedText(row.description, row.description_en, locale) ?? "",
     price: Number(row.price ?? 0),
     category: normalizeCategory(row.category),
     icon: row.icon ?? "",
@@ -61,9 +66,9 @@ function toProduct(row: ProductRow): Product {
   };
 }
 
-/** Liste des produits actifs, ordonnés pour l'affichage. Cache : tag `products`. */
-export const getProducts = unstable_cache(
-  async (): Promise<Product[]> => {
+/** Lecture brute, bilingue, mise en cache (une entrée sert les deux langues). */
+const fetchProducts = unstable_cache(
+  async (): Promise<ProductRow[]> => {
     const supabase = createPublicClient();
     const { data, error } = await supabase
       .from("products")
@@ -76,8 +81,13 @@ export const getProducts = unstable_cache(
       console.error("[boutique] select:", error.message);
       return [];
     }
-    return ((data ?? []) as ProductRow[]).map(toProduct);
+    return (data ?? []) as ProductRow[];
   },
   ["products-list"],
   { tags: [CACHE_TAGS.products], revalidate: CACHE_TTL_SECONDS },
 );
+
+/** Liste des produits actifs, ordonnés pour l'affichage, dans `locale`. */
+export async function getProducts(locale: string): Promise<Product[]> {
+  return (await fetchProducts()).map((row) => toProduct(row, locale));
+}

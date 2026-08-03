@@ -20,7 +20,9 @@ export default async function AdminRostersPage() {
   const { admin } = await requireStaff();
   const { data, error } = await admin
     .from("rosters")
-    .select("id, slug, name, rank, description, capacity, recrute, position, active, joueurs(active)")
+    .select(
+      "id, slug, name, rank, description, description_en, capacity, recrute, position, active, joueurs(active)",
+    )
     .order("position", { ascending: true });
 
   if (error) {

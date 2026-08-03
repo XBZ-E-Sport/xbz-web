@@ -26,7 +26,7 @@ export default async function AdminPolesPage() {
   const { data, error } = await admin
     .from("poles")
     .select(
-      "id, slug, name, description, category, capacity, recrute, fixed, variant, badge, position, active, joueurs(active)",
+      "id, slug, name, name_en, description, description_en, category, capacity, recrute, fixed, variant, badge, badge_en, position, active, joueurs(active)",
     )
     .order("category", { ascending: true })
     .order("position", { ascending: true });

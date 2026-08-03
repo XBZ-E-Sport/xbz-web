@@ -1,4 +1,5 @@
 import AdminForm from "@/components/AdminForm";
+import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 import { articleCategories } from "@/lib/actualite";
 
@@ -10,8 +11,11 @@ export type ArticleRow = {
   id: string;
   slug: string;
   title: string;
+  title_en: string | null;
   excerpt: string | null;
+  excerpt_en: string | null;
   content: string[] | null;
+  content_en: string[] | null;
   category: string;
   author: string | null;
   date: string; // YYYY-MM-DD
@@ -29,6 +33,9 @@ export default function ArticleForm({
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = article ? `article-${article.id}` : "article-new";
+  const hasEnglish = Boolean(
+    article?.title_en || article?.excerpt_en || article?.content_en?.length,
+  );
 
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -114,6 +121,45 @@ export default function ArticleForm({
         <input id={`${uid}-published`} type="checkbox" name="published" defaultChecked={article?.published ?? true} className="h-4 w-4" />
         <label htmlFor={`${uid}-published`}>Publié (visible sur le site)</label>
       </div>
+
+      <EnglishBlock filled={hasEnglish}>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-title-en`} className={labelCls}>
+            Title
+          </label>
+          <input
+            id={`${uid}-title-en`}
+            name="title_en"
+            defaultValue={article?.title_en ?? ""}
+            placeholder="Rocket League recruitment is open"
+            className={inputCls}
+          />
+        </div>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-excerpt-en`} className={labelCls}>
+            Summary
+          </label>
+          <textarea
+            id={`${uid}-excerpt-en`}
+            name="excerpt_en"
+            defaultValue={article?.excerpt_en ?? ""}
+            rows={2}
+            className={inputCls}
+          />
+        </div>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-content-en`} className={labelCls}>
+            Content (one paragraph per block)
+          </label>
+          <textarea
+            id={`${uid}-content-en`}
+            name="content_en"
+            defaultValue={(article?.content_en ?? []).join("\n\n")}
+            rows={10}
+            className={inputCls}
+          />
+        </div>
+      </EnglishBlock>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">

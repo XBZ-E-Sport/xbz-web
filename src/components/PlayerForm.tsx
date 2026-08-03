@@ -1,4 +1,5 @@
 import AdminForm from "@/components/AdminForm";
+import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -16,12 +17,14 @@ export type PlayerRow = {
   pays_code: string | null;
   role: string;
   bio: string | null;
+  bio_en: string | null;
   rang: string | null;
   mmr: number | null;
   twitter: string | null;
   twitch: string | null;
   rltracker: string | null;
   palmares: string[] | null;
+  palmares_en: string[] | null;
   position: number;
   active: boolean;
 };
@@ -174,6 +177,22 @@ export default function PlayerForm({
         <input type="checkbox" name="active" defaultChecked={player?.active ?? true} className="h-4 w-4" />
         Visible (actif)
       </label>
+
+      <EnglishBlock filled={Boolean(player?.bio_en || player?.palmares_en?.length)}>
+        <div className="block sm:col-span-2">
+          <label className={labelCls}>Bio</label>
+          <textarea name="bio_en" defaultValue={player?.bio_en ?? ""} rows={2} className={inputCls} />
+        </div>
+        <div className="block sm:col-span-2">
+          <label className={labelCls}>Honours (one per line)</label>
+          <textarea
+            name="palmares_en"
+            defaultValue={(player?.palmares_en ?? []).join("\n")}
+            rows={3}
+            className={inputCls}
+          />
+        </div>
+      </EnglishBlock>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110">

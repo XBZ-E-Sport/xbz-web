@@ -14,7 +14,7 @@ type PageProps = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale, slug } = await params;
-  const article = await getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug, locale);
   if (!article) {
     const t = await getTranslations({ locale, namespace: "article" });
     return { title: t("metaNotFound") };
@@ -35,7 +35,7 @@ export default async function ArticlePage({ params }: PageProps) {
   const t = await getTranslations("article");
   const tCat = await getTranslations("articleCategories");
 
-  const article = await getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug, locale);
   if (!article) notFound();
 
   // JSON-LD BlogPosting (SEO : rich results / Google Actualités).

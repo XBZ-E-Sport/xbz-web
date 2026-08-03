@@ -1,4 +1,5 @@
 import AdminForm from "@/components/AdminForm";
+import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -10,6 +11,7 @@ export type RosterRow = {
   name: string;
   rank: string | null;
   description: string | null;
+  description_en: string | null;
   capacity: number;
   recrute: string | null;
   position: number;
@@ -27,6 +29,7 @@ export default function RosterForm({
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = roster ? `roster-${roster.id}` : "roster-new";
+  const hasEnglish = Boolean(roster?.description_en);
 
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -99,6 +102,21 @@ export default function RosterForm({
         <input id={`${uid}-active`} type="checkbox" name="active" defaultChecked={roster?.active ?? true} className="h-4 w-4" />
         <label htmlFor={`${uid}-active`}>Visible sur le site (actif)</label>
       </div>
+
+      <EnglishBlock filled={hasEnglish}>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-description-en`} className={labelCls}>
+            Description
+          </label>
+          <textarea
+            id={`${uid}-description-en`}
+            name="description_en"
+            defaultValue={roster?.description_en ?? ""}
+            rows={2}
+            className={inputCls}
+          />
+        </div>
+      </EnglishBlock>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">

@@ -106,6 +106,7 @@ export async function createRoster(formData: FormData) {
     name,
     rank: field(formData, "rank") || null,
     description: field(formData, "description") || null,
+    description_en: field(formData, "description_en") || null,
     capacity: intField(formData, "capacity", 3),
     recrute: field(formData, "recrute") || null,
     position: intField(formData, "position", 0),
@@ -132,6 +133,7 @@ export async function updateRoster(formData: FormData) {
       name,
       rank: field(formData, "rank") || null,
       description: field(formData, "description") || null,
+      description_en: field(formData, "description_en") || null,
       capacity: intField(formData, "capacity", 3),
       recrute: field(formData, "recrute") || null,
       position: intField(formData, "position", 0),
@@ -179,13 +181,16 @@ export async function createPole(formData: FormData) {
   const { error } = await admin.from("poles").insert({
     slug,
     name,
+    name_en: field(formData, "name_en") || null,
     description: field(formData, "description") || null,
+    description_en: field(formData, "description_en") || null,
     category,
     capacity: intField(formData, "capacity", 1),
     recrute: field(formData, "recrute") || null,
     fixed: formData.get("fixed") === "on",
     variant,
     badge: field(formData, "badge") || null,
+    badge_en: field(formData, "badge_en") || null,
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
   });
@@ -217,13 +222,16 @@ export async function updatePole(formData: FormData) {
     .update({
       slug,
       name,
+      name_en: field(formData, "name_en") || null,
       description: field(formData, "description") || null,
+      description_en: field(formData, "description_en") || null,
       category,
       capacity: intField(formData, "capacity", 1),
       recrute: field(formData, "recrute") || null,
       fixed: formData.get("fixed") === "on",
       variant,
       badge: field(formData, "badge") || null,
+      badge_en: field(formData, "badge_en") || null,
       position: intField(formData, "position", 0),
       active: formData.get("active") === "on",
     })
@@ -274,10 +282,13 @@ export async function upsertPlayer(formData: FormData) {
       : "Joueur";
   const paysCode = field(formData, "pays_code");
   const mmrRaw = field(formData, "mmr");
-  const palmares = field(formData, "palmares")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = (name: string) =>
+    field(formData, name)
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  const palmares = lines("palmares");
+  const palmaresEn = lines("palmares_en");
 
   // Photo : un fichier uploadé est prioritaire ; sinon on garde l'URL saisie.
   let photoUrl = field(formData, "photo_url") || null;
@@ -297,12 +308,16 @@ export async function upsertPlayer(formData: FormData) {
     pays_code: paysCode ? paysCode.toUpperCase() : null,
     role,
     bio: field(formData, "bio") || null,
+    // Traduction facultative : `null` = « absent » pour le site, qui retombe
+    // alors sur le français.
+    bio_en: field(formData, "bio_en") || null,
     rang: field(formData, "rang") || null,
     mmr: mmrRaw && Number.isFinite(Number(mmrRaw)) ? Number(mmrRaw) : null,
     twitter: field(formData, "twitter") || null,
     twitch: field(formData, "twitch") || null,
     rltracker: field(formData, "rltracker") || null,
     palmares,
+    palmares_en: palmaresEn,
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
   };

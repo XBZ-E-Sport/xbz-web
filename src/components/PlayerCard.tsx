@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import type { Player } from "@/lib/roster";
@@ -19,7 +20,11 @@ export default function PlayerCard({
   /** Slug du roster ou du pôle parent → carte cliquable vers la fiche. Omis → carte simple. */
   parentSlug?: string;
 }) {
+  // Le rôle est une liste fermée en base : traduit à l'affichage, tandis que
+  // la couleur du badge reste indexée sur la valeur française d'origine.
+  const tRole = useTranslations("playerRoles");
   const badge = roleBadge[player.role];
+  const roleLabel = tRole.has(player.role) ? tRole(player.role) : player.role;
 
   const inner = (
     <>
@@ -45,7 +50,7 @@ export default function PlayerCard({
           <span
             className={`absolute left-3 top-3 rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${badge}`}
           >
-            {player.role}
+            {roleLabel}
           </span>
         )}
       </div>

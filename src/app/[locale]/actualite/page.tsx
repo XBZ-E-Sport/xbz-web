@@ -27,7 +27,7 @@ export default async function ActualitePage({ params }: PageProps) {
 
   const t = await getTranslations("actualite");
   const tNav = await getTranslations("nav");
-  const articles = await getArticles();
+  const articles = await getArticles(locale);
 
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">

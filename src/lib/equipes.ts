@@ -9,6 +9,8 @@ import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
 import type { Player } from "@/lib/roster";
+import { localizePlayer, type PlayerRow } from "@/lib/roster";
+import { localizedText } from "@/lib/localized";
 import type { RecrutementCategory } from "@/content/recrutement";
 
 export type GroupVariant = "founder" | "staff" | "member" | "creative";
@@ -33,13 +35,36 @@ export type Group = {
 type CountRel = { count: number }[] | null;
 type RosterRow = {
   id: string; slug: string; name: string; description: string | null;
+  description_en: string | null;
   capacity: number | null; recrute: string | null; joueurs: CountRel;
 };
 type PoleRow = {
-  id: string; slug: string; name: string; description: string | null;
+  id: string; slug: string; name: string; name_en: string | null;
+  description: string | null; description_en: string | null;
   category: string; capacity: number | null; recrute: string | null;
-  fixed: boolean; variant: string; badge: string | null; joueurs: CountRel;
+  fixed: boolean; variant: string; badge: string | null; badge_en: string | null;
+  joueurs: CountRel;
 };
+
+/**
+ * Groupe tel qu'il sort du cache : les deux langues côte à côte.
+ * `localizeGroup` en tire ensuite le `Group` d'une langue donnée.
+ */
+type RawGroup = Group & {
+  name_en: string | null;
+  description_en: string | null;
+  badge_en: string | null;
+};
+
+function localizeGroup(g: RawGroup, locale: string): Group {
+  const { name_en, description_en, badge_en, ...rest } = g;
+  return {
+    ...rest,
+    name: localizedText(g.name, name_en, locale) ?? g.name,
+    description: localizedText(g.description, description_en, locale),
+    badge: localizedText(g.badge, badge_en, locale),
+  };
+}
 
 function memberCount(rel: CountRel): number {
   return Array.isArray(rel) && rel[0] ? rel[0].count : 0;
@@ -52,18 +77,20 @@ function memberCount(rel: CountRel): number {
 //    cohérent avec getPoleBySlug / getRosterBySlug.
 const fetchGroups = cache(
   unstable_cache(
-  async (): Promise<{ rosters: Group[]; poles: Group[] }> => {
+  async (): Promise<{ rosters: RawGroup[]; poles: RawGroup[] }> => {
   const supabase = createPublicClient();
 
   const [rostersRes, polesRes] = await Promise.all([
     supabase
       .from("rosters")
-      .select("id, slug, name, description, position, capacity, recrute, joueurs(count)")
+      .select("id, slug, name, description, description_en, position, capacity, recrute, joueurs(count)")
       .eq("active", true)
       .order("position", { ascending: true }),
     supabase
       .from("poles")
-      .select("id, slug, name, description, category, capacity, recrute, fixed, variant, badge, position, joueurs(count)")
+      .select(
+        "id, slug, name, name_en, description, description_en, category, capacity, recrute, fixed, variant, badge, badge_en, position, joueurs(count)",
+      )
       .eq("active", true)
       .order("position", { ascending: true }),
   ]);
@@ -71,11 +98,14 @@ const fetchGroups = cache(
   if (rostersRes.error) console.error("[equipes] rosters:", rostersRes.error.message);
   if (polesRes.error) console.error("[equipes] poles:", polesRes.error.message);
 
-  const rosters: Group[] = ((rostersRes.data ?? []) as RosterRow[]).map((r) => ({
+  const rosters: RawGroup[] = ((rostersRes.data ?? []) as RosterRow[]).map((r) => ({
     id: r.id,
     slug: r.slug,
     name: r.name,
+    // Un roster porte un nom propre (« Roster SSL ») : pas de variante anglaise.
+    name_en: null,
     description: r.description,
+    description_en: r.description_en,
     category: "esport",
     capacity: r.capacity ?? 3,
     filled: memberCount(r.joueurs),
@@ -83,14 +113,17 @@ const fetchGroups = cache(
     fixed: false,
     variant: "member",
     badge: null,
+    badge_en: null,
     isRoster: true,
   }));
 
-  const poles: Group[] = ((polesRes.data ?? []) as PoleRow[]).map((p) => ({
+  const poles: RawGroup[] = ((polesRes.data ?? []) as PoleRow[]).map((p) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
+    name_en: p.name_en,
     description: p.description,
+    description_en: p.description_en,
     category: p.category === "esport" ? "esport" : "staff",
     capacity: p.capacity ?? 1,
     filled: memberCount(p.joueurs),
@@ -100,6 +133,7 @@ const fetchGroups = cache(
       ? p.variant
       : "staff") as GroupVariant,
     badge: p.badge?.trim() || null,
+    badge_en: p.badge_en?.trim() || null,
     isRoster: false,
   }));
 
@@ -111,11 +145,15 @@ const fetchGroups = cache(
 );
 
 /** Groupes affichés sur /equipes, répartis en sections Staff / Esport. */
-export async function getEquipes(): Promise<{ staff: Group[]; esport: Group[] }> {
+export async function getEquipes(
+  locale: string,
+): Promise<{ staff: Group[]; esport: Group[] }> {
   const { rosters, poles } = await fetchGroups();
-  const staff = poles.filter((p) => p.category === "staff");
-  const esport = [...poles.filter((p) => p.category === "esport"), ...rosters];
-  return { staff, esport };
+  const localize = (g: RawGroup) => localizeGroup(g, locale);
+  return {
+    staff: poles.filter((p) => p.category === "staff").map(localize),
+    esport: [...poles.filter((p) => p.category === "esport"), ...rosters].map(localize),
+  };
 }
 
 /** Statistiques de la structure (accueil, présentation). */
@@ -209,13 +247,24 @@ export type PoleDetail = {
  * Un pôle + ses membres actifs (triés), ou null s'il n'existe pas.
  * Mémoïsé par requête (`cache`) : generateMetadata + la page ne font qu'un appel.
  */
-export const getPoleBySlug = cache(
+type PoleDetailRow = {
+  id: string;
+  slug: string;
+  name: string;
+  name_en: string | null;
+  description: string | null;
+  description_en: string | null;
+  category: string;
+  members: PlayerRow[] | null;
+};
+
+const fetchPoleBySlug = cache(
   unstable_cache(
-    async (slug: string): Promise<PoleDetail | null> => {
+    async (slug: string): Promise<PoleDetailRow | null> => {
       const supabase = createPublicClient();
       const { data, error } = await supabase
         .from("poles")
-        .select("id, slug, name, description, category, members:joueurs(*)")
+        .select("id, slug, name, name_en, description, description_en, category, members:joueurs(*)")
         .eq("slug", slug)
         .eq("active", true)
         .maybeSingle();
@@ -224,17 +273,32 @@ export const getPoleBySlug = cache(
         console.error("[pole] select:", error.message);
         return null;
       }
-      if (!data) return null;
-
-      const pole = data as unknown as PoleDetail;
-      pole.category = pole.category === "esport" ? "esport" : "staff";
-      pole.members = (pole.members ?? []).slice().sort((a, b) => a.position - b.position);
-      return pole;
+      return (data as unknown as PoleDetailRow) ?? null;
     },
     ["pole-by-slug"],
     { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
   ),
 );
+
+/** Un pôle + ses membres actifs (triés) dans `locale`, ou null s'il n'existe pas. */
+export async function getPoleBySlug(
+  slug: string,
+  locale: string,
+): Promise<PoleDetail | null> {
+  const row = await fetchPoleBySlug(slug);
+  if (!row) return null;
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: localizedText(row.name, row.name_en, locale) ?? row.name,
+    description: localizedText(row.description, row.description_en, locale),
+    category: row.category === "esport" ? "esport" : "staff",
+    members: (row.members ?? [])
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((m) => localizePlayer(m, locale)),
+  };
+}
 
 // ============ SITEMAP ============
 

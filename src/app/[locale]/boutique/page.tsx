@@ -30,7 +30,7 @@ export default async function BoutiquePage({ params }: PageProps) {
   const t = await getTranslations("boutique");
   const tNav = await getTranslations("nav");
 
-  const products = await getProducts();
+  const products = await getProducts(locale);
   // Bandeau « ouvre bientôt » tant qu'aucun produit n'est achetable.
   const anyAvailable = products.some((p) => p.available);
 

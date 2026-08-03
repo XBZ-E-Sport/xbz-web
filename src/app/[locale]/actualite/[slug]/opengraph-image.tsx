@@ -26,7 +26,7 @@ export default async function Image({
 }) {
   const { locale, slug } = await params;
   const t = await getTranslations({ locale, namespace: "og" });
-  const article = await getArticleBySlug(slug);
+  const article = await getArticleBySlug(slug, locale);
 
   if (!article) {
     return ogImage({ eyebrow: t("actualite.eyebrow"), title: t("articleNotFound") });

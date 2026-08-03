@@ -53,7 +53,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   // Pages d'articles (dérivées de la même source que la page Actualité).
-  const articles = await getArticles();
+  // La langue n'a pas d'importance ici : seuls les slugs sont utilisés, et ils
+  // sont identiques dans les deux langues.
+  const articles = await getArticles(routing.defaultLocale);
   const articleEntries: MetadataRoute.Sitemap = articles.flatMap((article) => {
     const path = `/actualite/${article.slug}`;
     return routing.locales.map((locale) => ({

@@ -16,7 +16,9 @@ export default async function AdminArticlesPage() {
   const { admin } = await requireStaff();
   const { data, error } = await admin
     .from("articles")
-    .select("id, slug, title, excerpt, content, category, author, date, published")
+    .select(
+      "id, slug, title, title_en, excerpt, excerpt_en, content, content_en, category, author, date, published",
+    )
     .order("date", { ascending: false });
 
   if (error) {

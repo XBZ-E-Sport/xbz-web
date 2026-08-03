@@ -1,4 +1,5 @@
 import AdminForm from "@/components/AdminForm";
+import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -20,13 +21,16 @@ export type PoleRow = {
   id: string;
   slug: string;
   name: string;
+  name_en: string | null;
   description: string | null;
+  description_en: string | null;
   category: string;
   capacity: number;
   recrute: string | null;
   fixed: boolean;
   variant: string;
   badge: string | null;
+  badge_en: string | null;
   position: number;
   active: boolean;
 };
@@ -42,6 +46,7 @@ export default function PoleForm({
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = pole ? `pole-${pole.id}` : "pole-new";
+  const hasEnglish = Boolean(pole?.name_en || pole?.description_en || pole?.badge_en);
 
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -158,6 +163,44 @@ export default function PoleForm({
         <input id={`${uid}-active`} type="checkbox" name="active" defaultChecked={pole?.active ?? true} className="h-4 w-4" />
         <label htmlFor={`${uid}-active`}>Visible sur le site (actif)</label>
       </div>
+
+      <EnglishBlock filled={hasEnglish}>
+        <div className="block">
+          <label htmlFor={`${uid}-name-en`} className={labelCls}>
+            Name
+          </label>
+          <input
+            id={`${uid}-name-en`}
+            name="name_en"
+            defaultValue={pole?.name_en ?? ""}
+            placeholder="Moderators"
+            className={inputCls}
+          />
+        </div>
+        <div className="block">
+          <label htmlFor={`${uid}-badge-en`} className={labelCls}>
+            Badge
+          </label>
+          <input
+            id={`${uid}-badge-en`}
+            name="badge_en"
+            defaultValue={pole?.badge_en ?? ""}
+            className={inputCls}
+          />
+        </div>
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-description-en`} className={labelCls}>
+            Description
+          </label>
+          <textarea
+            id={`${uid}-description-en`}
+            name="description_en"
+            defaultValue={pole?.description_en ?? ""}
+            rows={2}
+            className={inputCls}
+          />
+        </div>
+      </EnglishBlock>
 
       <div className="sm:col-span-2">
         <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">

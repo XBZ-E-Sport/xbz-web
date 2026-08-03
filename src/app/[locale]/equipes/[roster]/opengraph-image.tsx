@@ -19,7 +19,7 @@ export default async function Image({
   const t = await getTranslations({ locale, namespace: "og" });
   const tDetail = await getTranslations({ locale, namespace: "equipeDetail" });
 
-  const roster = await getRosterBySlug(slug);
+  const roster = await getRosterBySlug(slug, locale);
   if (roster) {
     return ogImage({
       eyebrow: roster.rank ?? t("roster"),
@@ -28,7 +28,7 @@ export default async function Image({
     });
   }
 
-  const pole = await getPoleBySlug(slug);
+  const pole = await getPoleBySlug(slug, locale);
   if (pole) {
     return ogImage({
       eyebrow: pole.category === "esport" ? tDetail("poleEsport") : tDetail("poleStaff"),

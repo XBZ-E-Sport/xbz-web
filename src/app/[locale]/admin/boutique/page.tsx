@@ -17,7 +17,9 @@ export default async function AdminBoutiquePage() {
   const { admin } = await requireStaff();
   const { data, error } = await admin
     .from("products")
-    .select("id, slug, name, description, price, category, icon, image, url, available, position, active")
+    .select(
+      "id, slug, name, name_en, description, description_en, price, category, icon, image, url, available, position, active",
+    )
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
 

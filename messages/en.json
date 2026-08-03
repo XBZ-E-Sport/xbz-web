@@ -512,5 +512,12 @@
     "member": "Member",
     "memberNotFound": "Member not found",
     "articleNotFound": "Article not found"
+  },
+  "playerRoles": {
+    "Joueur": "Player",
+    "Capitaine": "Captain",
+    "Coach": "Coach",
+    "Manager": "Manager",
+    "Sub": "Substitute"
   }
 }

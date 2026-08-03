@@ -41,6 +41,10 @@ export default function RecrutementForm({
   const tErr = useTranslations("formErrors");
   const tField = useTranslations("fieldLabels");
   const tCat = useTranslations("recrutementCategories");
+  // Les rôles ouverts viennent de la base (colonne `recrute`). On traduit le
+  // LIBELLÉ, jamais la valeur soumise : le serveur la revalide telle quelle
+  // contre `isRoleOpen`, en français.
+  const tRole = useTranslations("playerRoles");
   const [categorie, setCategorie] = useState("");
   const [role, setRole] = useState("");
   const [jeu, setJeu] = useState("");
@@ -153,7 +157,7 @@ export default function RecrutementForm({
             </option>
             {roles.map((r) => (
               <option key={r.name} value={r.name}>
-                {r.name}
+                {tRole.has(r.name) ? tRole(r.name) : r.name}
               </option>
             ))}
           </select>
@@ -299,7 +303,7 @@ export default function RecrutementForm({
               </option>
               {rosters.map((r) => (
                 <option key={r.name} value={r.name}>
-                  {r.rank ? `${r.name}` : r.name}
+                  {r.rank ? `${r.name} (${r.rank})` : r.name}
                 </option>
               ))}
             </select>
