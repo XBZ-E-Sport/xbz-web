@@ -1,0 +1,93 @@
+import AdminForm from "@/components/AdminForm";
+import { requireStaff } from "@/lib/adminguard";
+import { updateStatut } from "./actions";
+
+export const metadata = { title: "Candidatures — Back-office XBZ" };
+export const dynamic = "force-dynamic";
+
+const statutStyles: Record<string, string> = {
+  en_attente: "bg-amber-500/15 text-amber-300",
+  accepte: "bg-emerald-500/15 text-emerald-300",
+  refuse: "bg-red-500/15 text-red-300",
+  entretien: "bg-blue-500/15 text-blue-300",
+};
+
+const actions = [
+  { statut: "accepte", label: "✅ Accepter", cls: "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25" },
+  { statut: "entretien", label: "🟡 Entretien", cls: "bg-blue-500/15 text-blue-300 hover:bg-blue-500/25" },
+  { statut: "refuse", label: "❌ Refuser", cls: "bg-red-500/15 text-red-300 hover:bg-red-500/25" },
+];
+
+export default async function AdminCandidaturesPage() {
+  // Contrôle d'accès DANS la page : layout et page sont rendus EN PARALLÈLE
+  // par le App Router. Une garde placée uniquement dans le layout laisse la
+  // page interroger la base et sérialiser ses données dans la réponse, même
+  // quand la redirection part. La garde doit donc vivre ici aussi.
+  const { admin } = await requireStaff();
+  const { data: candidatures, error } = await admin
+    .from("candidatures")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
+  if (!candidatures?.length) return <p className="text-neutral-400">Aucune candidature pour le moment.</p>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-neutral-400">{candidatures.length} candidature(s)</p>
+      {candidatures.map((c) => (
+        <div key={c.id} className="card-xbz p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-display text-lg">
+              {c.pseudo} <span className="text-neutral-400">· {c.jeu}</span>
+            </h2>
+            <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${statutStyles[c.statut] ?? "bg-white/10"}`}>
+              {c.statut}
+            </span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-neutral-300 sm:grid-cols-2">
+            <p><span className="text-neutral-400">Nom :</span> {c.nom}</p>
+            <p><span className="text-neutral-400">Âge :</span> {c.age}</p>
+            <p><span className="text-neutral-400">Discord :</span> {c.discord}</p>
+            <p><span className="text-neutral-400">Roster :</span> {c.roster ?? "—"}</p>
+            <p><span className="text-neutral-400">Pays :</span> {c.pays_residence ?? "—"}</p>
+            {c.rltracker && (
+              <p className="truncate">
+                <span className="text-neutral-400"><a href={c.rltracker} target="_blank" rel="noopener noreferrer" className="text-white hover:text-xbz-blue hover:underline ">RL Tracker</a></span>
+              </p>
+            )}
+          </div>
+
+          {c.motivation && (
+            <p className="mt-3 text-sm text-neutral-300"><span className="text-neutral-400">Motivation :</span> {c.motivation}</p>
+          )}
+
+          <p className="mt-2 text-xs text-neutral-400">Reçue le {new Date(c.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</p>
+
+          {/* Actions staff */}
+          <AdminForm
+            action={updateStatut}
+            className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4"
+            loadingMessage="Mise à jour du statut…"
+            successMessage="Statut mis à jour · Discord synchronisé"
+            closeOnSuccess={false}
+          >
+            <input type="hidden" name="id" value={c.id} />
+            {actions.map((a) => (
+              <button
+                key={a.statut}
+                name="statut"
+                value={a.statut}
+                disabled={c.statut === a.statut}
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold hover:cursor-pointer transition disabled:cursor-not-allowed disabled:opacity-40 ${a.cls}`}
+              >
+                {a.label}
+              </button>
+            ))}
+          </AdminForm>
+        </div>
+      ))}
+    </div>
+  );
+}
