@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import {
   recrutementCategories,
   minAgeForCategory,
@@ -10,6 +12,7 @@ import {
 import Honeypot from "@/components/Honeypot";
 import { useElapsed } from "@/hooks/useElapsed";
 import { FIELD_MAX } from "@/lib/limits";
+import { translateApiError } from "@/lib/formerror";
 
 type RolesByCategory = Record<RecrutementCategory, { name: string; free: number }[]>;
 type RosterOption = { name: string; rank: string | null };
@@ -34,6 +37,10 @@ export default function RecrutementForm({
   rolesByCategory: RolesByCategory;
   rosters: RosterOption[];
 }) {
+  const t = useTranslations("recrutementForm");
+  const tErr = useTranslations("formErrors");
+  const tField = useTranslations("fieldLabels");
+  const tCat = useTranslations("recrutementCategories");
   const [categorie, setCategorie] = useState("");
   const [role, setRole] = useState("");
   const [jeu, setJeu] = useState("");
@@ -63,17 +70,14 @@ export default function RecrutementForm({
 
     // Âge minimum selon la catégorie (16 ans, 18 pour le staff).
     if (Number(fd.get("age")) < minAge) {
-      setStatus({
-        msg: `❌ Tu dois avoir au minimum ${minAge} ans pour cette catégorie.`,
-        tone: "error",
-      });
+      setStatus({ msg: `❌ ${t("ageTooLow", { minAge })}`, tone: "error" });
       return;
     }
 
     const data = Object.fromEntries(fd.entries());
     data.elapsed = elapsed();
     setSubmitting(true);
-    setStatus({ msg: "⏳ Envoi en cours...", tone: "loading" });
+    setStatus({ msg: `⏳ ${t("sending")}`, tone: "loading" });
 
     try {
       const res = await fetch("/api/recrutement", {
@@ -83,15 +87,15 @@ export default function RecrutementForm({
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error ?? "Erreur lors de l’envoi.");
+        throw new Error(translateApiError(json, tErr, tField));
       }
-      setStatus({ msg: "✅ Candidature envoyée avec succès !", tone: "ok" });
+      setStatus({ msg: `✅ ${t("success")}`, tone: "ok" });
       form.reset();
       setCategorie("");
       setRole("");
       setJeu("");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erreur lors de l’envoi.";
+      const msg = err instanceof Error ? err.message : tErr("generic");
       setStatus({ msg: `❌ ${msg}`, tone: "error" });
     } finally {
       setSubmitting(false);
@@ -106,7 +110,7 @@ export default function RecrutementForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="rec-categorie" className={labelCls}>
-            Catégorie
+            {t("category")}
           </label>
           <select
             id="rec-categorie"
@@ -117,18 +121,18 @@ export default function RecrutementForm({
             className={inputCls}
           >
             <option value="" disabled hidden>
-              Choisis une catégorie
+              {t("categoryPlaceholder")}
             </option>
             {recrutementCategories.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {tCat(c)}
               </option>
             ))}
           </select>
         </div>
         <div>
           <label htmlFor="rec-role" className={labelCls}>
-            Rôle souhaité
+            {t("role")}
           </label>
           <select
             id="rec-role"
@@ -142,10 +146,10 @@ export default function RecrutementForm({
           >
             <option value="" disabled hidden>
               {!categorie
-                ? "Choisis d’abord une catégorie"
+                ? t("rolePickCategoryFirst")
                 : noOpenRole
-                  ? "Aucun poste ouvert pour le moment"
-                  : "Choisis un rôle"}
+                  ? t("roleNoneOpen")
+                  : t("rolePlaceholder")}
             </option>
             {roles.map((r) => (
               <option key={r.name} value={r.name}>
@@ -155,8 +159,7 @@ export default function RecrutementForm({
           </select>
           {noOpenRole && (
             <p id="rec-role-empty" className="mt-2 text-[13px] leading-relaxed text-neutral-400">
-              Aucun poste n’est ouvert dans cette catégorie actuellement. Reviens bientôt ou
-              contacte-nous sur Discord.
+              {t("roleNoneOpenHelp")}
             </p>
           )}
         </div>
@@ -165,7 +168,7 @@ export default function RecrutementForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="rec-nom" className={labelCls}>
-            Nom et prénom
+            {t("name")}
           </label>
           <input
             id="rec-nom"
@@ -174,13 +177,13 @@ export default function RecrutementForm({
             type="text"
             required
             autoComplete="name"
-            placeholder="Nom + Prénom"
+            placeholder={t("namePlaceholder")}
             className={inputCls}
           />
         </div>
         <div>
           <label htmlFor="rec-age" className={labelCls}>
-            Âge
+            {t("age")}
           </label>
           <input
             id="rec-age"
@@ -189,7 +192,7 @@ export default function RecrutementForm({
             min={minAge}
             max={99}
             required
-            placeholder={`${minAge} ans minimum`}
+            placeholder={t("agePlaceholder", { minAge })}
             className={inputCls}
           />
         </div>
@@ -197,7 +200,7 @@ export default function RecrutementForm({
 
       <div>
         <label htmlFor="rec-pays1" className={labelCls}>
-          Pays de résidence
+          {t("country")}
         </label>
         <input
           id="rec-pays1"
@@ -214,7 +217,7 @@ export default function RecrutementForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="rec-discord" className={labelCls}>
-            Pseudo Discord
+            {t("discord")}
           </label>
           <input
             id="rec-discord"
@@ -228,7 +231,7 @@ export default function RecrutementForm({
         </div>
         <div>
           <label htmlFor="rec-pseudo" className={labelCls}>
-            Pseudo
+            {t("pseudo")}
           </label>
           <input
             id="rec-pseudo"
@@ -247,7 +250,7 @@ export default function RecrutementForm({
         <>
           <div>
             <label htmlFor="rec-jeu" className={labelCls}>
-              Jeu
+              {t("game")}
             </label>
             <select
               id="rec-jeu"
@@ -258,7 +261,7 @@ export default function RecrutementForm({
               className={inputCls}
             >
               <option value="" disabled hidden>
-                Sélectionne un jeu
+                {t("gamePlaceholder")}
               </option>
               <option value="Rocket League">Rocket League</option>
             </select>
@@ -267,7 +270,8 @@ export default function RecrutementForm({
           {showRL && (
             <div>
               <label htmlFor="rec-rltracker" className={labelCls}>
-                Lien RL Tracker <span className={optionalCls}>(recommandé)</span>
+                {t("rltracker")}{" "}
+                <span className={optionalCls}>({t("recommended")})</span>
               </label>
               <input
                 id="rec-rltracker"
@@ -278,21 +282,20 @@ export default function RecrutementForm({
                 className={inputCls}
               />
               <p className="mt-2 text-[13px] leading-relaxed text-neutral-400">
-                🔗 Le lien doit être cliquable, valide et accessible. Tout lien incorrect ou non
-                fonctionnel pourra entraîner un refus de candidature.
+                🔗 {t("rltrackerHelp")}
               </p>
             </div>
           )}
 
           <div>
             <label htmlFor="rec-roster" className={labelCls}>
-              Roster souhaité <span className={optionalCls}>(facultatif)</span>
+              {t("roster")} <span className={optionalCls}>({t("optional")})</span>
             </label>
             {/* Rosters lus en base (même système que les rôles). Valeur = nom du
                 roster, stockée dans la colonne `roster` de la candidature. */}
             <select id="rec-roster" name="roster" defaultValue="" className={inputCls}>
               <option value="" disabled hidden>
-                Sans préférence
+                {t("rosterPlaceholder")}
               </option>
               {rosters.map((r) => (
                 <option key={r.name} value={r.name}>
@@ -306,28 +309,28 @@ export default function RecrutementForm({
 
       <div>
         <label htmlFor="rec-exp" className={labelCls}>
-          Expérience <span className={optionalCls}>(facultatif)</span>
+          {t("experience")} <span className={optionalCls}>({t("optional")})</span>
         </label>
         <textarea
           id="rec-exp"
           name="exp"
           maxLength={FIELD_MAX.exp}
           rows={3}
-          placeholder="Tes expériences passées (équipes, compétitions, contenus...)"
+          placeholder={t("experiencePlaceholder")}
           className={inputCls}
         />
       </div>
 
       <div>
         <label htmlFor="rec-motiv" className={labelCls}>
-          Motivation <span className={optionalCls}>(facultatif)</span>
+          {t("motivation")} <span className={optionalCls}>({t("optional")})</span>
         </label>
         <textarea
           id="rec-motiv"
           name="motiv"
           maxLength={FIELD_MAX.motiv}
           rows={4}
-          placeholder="Pourquoi veux-tu rejoindre XBZ ?"
+          placeholder={t("motivationPlaceholder")}
           className={inputCls}
         />
       </div>
@@ -342,17 +345,18 @@ export default function RecrutementForm({
           className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-xbz-blue"
         />
         <label htmlFor="rec-consent" className="text-[13px] leading-relaxed text-neutral-400">
-          J’accepte que les informations transmises soient utilisées par XBZ Esport pour traiter
-          ma candidature et me recontacter. Voir la{" "}
-          <a
-            href="/confidentialite"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-xbz-cyan hover:underline"
-          >
-            politique de confidentialité
-          </a>
-          .
+          {t.rich("consent", {
+            privacy: (chunks) => (
+              <Link
+                href="/confidentialite"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-xbz-cyan hover:underline"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
         </label>
       </div>
 
@@ -361,7 +365,7 @@ export default function RecrutementForm({
         disabled={submitting}
         className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
       >
-        {submitting ? "Envoi..." : "Envoyer ma candidature"}
+        {submitting ? t("submitting") : t("submit")}
       </button>
 
       <p aria-live="polite" className={`min-h-5 text-center text-sm ${toneColor[status.tone]}`}>

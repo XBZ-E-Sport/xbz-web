@@ -86,6 +86,19 @@ describe("RecrutementForm", () => {
     expect(values).toContain(""); // option « Sans préférence » (facultatif)
   });
 
+  it("passe par les traductions, et pas par du français en dur", () => {
+    // Signal net et lisible : le lien de la politique de confidentialité passe
+    // par `<Link>`, donc il porte le préfixe de langue. Un `href` nu
+    // ("/confidentialite") signifie que ce composant n'est PAS la version i18n —
+    // typiquement un fichier resté à sa version d'avant. Le build ne dit rien
+    // dans ce cas : les props sont identiques et le français est valide.
+    const { container } = renderIntl(
+      <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} />,
+    );
+    const consent = container.querySelector<HTMLAnchorElement>("#rec-consent ~ label a");
+    expect(consent?.getAttribute("href")).toBe("/fr/confidentialite");
+  });
+
   it("s'affiche en anglais quand la langue est en", () => {
     const { container } = renderIntl(
       <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} />,

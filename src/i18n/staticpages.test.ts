@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 
 /**
  * Garde-fou : une page `force-static` DOIT passer la langue explicitement.
@@ -30,7 +30,9 @@ function pageFiles(dir: string): string[] {
 const pages = pageFiles(APP).map((file) => ({
   file,
   // Chemin lisible dans le message d'échec (ex. "le-club/page.tsx").
-  label: file.slice(APP.length + 1),
+  // Séparateurs normalisés en "/" : sous Windows `join` produit des "\", et un
+  // filtre sur "admin/" ne matcherait alors jamais.
+  label: relative(APP, file).split(sep).join("/"),
   source: readFileSync(file, "utf8"),
 }));
 
