@@ -112,11 +112,23 @@ describe("GET /auth/callback", () => {
   });
 
   it("bloque une redirection ouverte via ?next", async () => {
-    expect(location(await call("?code=abc&next=//evil.com"))).toBe(`${ORIGIN}/admin`);
-    expect(location(await call("?code=abc&next=https://evil.com"))).toBe(`${ORIGIN}/admin`);
+    // Repli = back-office dans la langue par défaut, jamais un domaine externe.
+    expect(location(await call("?code=abc&next=//evil.com"))).toBe(`${ORIGIN}/fr/admin`);
+    expect(location(await call("?code=abc&next=https://evil.com"))).toBe(`${ORIGIN}/fr/admin`);
   });
 
   it("respecte un chemin interne dans ?next", async () => {
-    expect(location(await call("?code=abc&next=/admin/rosters"))).toBe(`${ORIGIN}/admin/rosters`);
+    expect(location(await call("?code=abc&next=/fr/admin/rosters"))).toBe(
+      `${ORIGIN}/fr/admin/rosters`,
+    );
+  });
+
+  it("garde la langue du chemin de retour, y compris en cas de refus", async () => {
+    // La route vit hors du segment [locale] : `next` est sa seule source de
+    // langue. Un staff anglophone refusé ne doit pas atterrir sur /fr/login.
+    expect(location(await call("?code=abc&next=/en/admin"))).toBe(`${ORIGIN}/en/admin`);
+
+    exchangeMock.mockResolvedValue({ data: { session: null }, error: { message: "bad code" } });
+    expect(location(await call("?code=abc&next=/en/admin"))).toContain(`${ORIGIN}/en/login?error=`);
   });
 });

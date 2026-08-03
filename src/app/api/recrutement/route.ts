@@ -4,7 +4,8 @@ import { isRoleOpen } from "@/lib/equipes";
 import { minAgeForCategory } from "@/content/recrutement";
 import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
-import { findTooLong, tooLongMessage } from "@/lib/limits";
+import { findTooLong, tooLongMessage, FIELD_MAX } from "@/lib/limits";
+import { apiError } from "@/lib/apierror";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -33,16 +34,15 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
+    return apiError(400, "invalidRequest", "Requête invalide.");
   }
 
   // --- Limite de débit (anti-flood par IP) ---
   const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "recrutement");
   if (!allowed) {
-    return NextResponse.json(
-      { ok: false, error: "Trop de tentatives. Réessaie dans une minute." },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
+    return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans une minute.", {
+      headers: { "Retry-After": String(retryAfter) },
+    });
   }
 
   // --- Anti-spam (honeypot + délai minimum) ---
@@ -52,17 +52,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
   if (tooFast) {
-    return NextResponse.json(
-      { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
-      { status: 429 },
-    );
+    return apiError(429, "tooFast", "Envoi trop rapide, réessaie dans un instant.");
   }
 
   // --- Consentement RGPD (obligatoire, validé côté serveur) ---
   if (!hasConsent(body.consent)) {
-    return NextResponse.json(
-      { ok: false, error: "Tu dois accepter le traitement de tes données pour envoyer ta candidature." },
-      { status: 422 },
+    return apiError(
+      422,
+      "consentRequired",
+      "Tu dois accepter le traitement de tes données pour envoyer ta candidature.",
     );
   }
 
@@ -76,7 +74,7 @@ export async function POST(request: Request) {
 
   // --- Validation serveur (on ne fait JAMAIS confiance au navigateur) ---
   if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
-    return NextResponse.json({ ok: false, error: "Champs obligatoires manquants." }, { status: 400 });
+    return apiError(400, "missingFields", "Champs obligatoires manquants.");
   }
 
   // Longueurs : le `maxLength` du navigateur se contourne en deux clics.
@@ -92,24 +90,22 @@ export async function POST(request: Request) {
     motiv: body.motiv,
   });
   if (tooLong) {
-    return NextResponse.json({ ok: false, error: tooLongMessage(tooLong) }, { status: 422 });
+    return apiError(422, "tooLong", tooLongMessage(tooLong), {
+      params: { field: tooLong, max: FIELD_MAX[tooLong] },
+    });
   }
   if (!(await isRoleOpen(categorie, role))) {
-    return NextResponse.json(
-      { ok: false, error: "Ce rôle n'est pas disponible au recrutement." },
-      { status: 422 },
-    );
+    return apiError(422, "roleUnavailable", "Ce rôle n'est pas disponible au recrutement.");
   }
   const minAge = minAgeForCategory(categorie);
   if (age < minAge) {
-    return NextResponse.json({ ok: false, error: `Âge minimum requis : ${minAge} ans.` }, { status: 422 });
+    return apiError(422, "ageMin", `Âge minimum requis : ${minAge} ans.`, {
+      params: { minAge },
+    });
   }
   // Le jeu n'est requis que pour une candidature Esport
   if (categorie === "XBZ Esport" && !jeu) {
-    return NextResponse.json(
-      { ok: false, error: "Le jeu est requis pour une candidature Esport." },
-      { status: 422 },
-    );
+    return apiError(422, "gameRequired", "Le jeu est requis pour une candidature Esport.");
   }
 
   const supabase = createAdminClient();
@@ -137,10 +133,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("[recrutement] insert Supabase:", error.message);
-    return NextResponse.json(
-      { ok: false, error: "Impossible d'enregistrer la candidature." },
-      { status: 500 }
-    );
+    return apiError(500, "saveFailed", "Impossible d'enregistrer la candidature.");
   }
 
   // --- 2) Notifier le staff sur Discord EN ARRIÈRE-PLAN (ne bloque pas la réponse) ---

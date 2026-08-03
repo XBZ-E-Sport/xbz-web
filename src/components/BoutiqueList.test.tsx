@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { screen, fireEvent, cleanup } from "@testing-library/react";
 
 import BoutiqueList from "@/components/BoutiqueList";
 import type { Product } from "@/lib/boutique";
+import { renderIntl, messages } from "../../test/intl";
 
 const base = { description: "", image: null, available: false, url: null };
 const products: Product[] = [
@@ -11,11 +12,14 @@ const products: Product[] = [
   { ...base, slug: "tapis", name: "Tapis souris", price: 20, category: "Gaming", icon: "🖱️" },
 ];
 
+const fr = messages("fr");
+const en = messages("en");
+
 afterEach(() => cleanup());
 
 describe("BoutiqueList", () => {
   it("affiche tous les produits par défaut", () => {
-    render(<BoutiqueList products={products} />);
+    renderIntl(<BoutiqueList products={products} />);
     expect(screen.getByText("T-shirt XBZ")).toBeTruthy();
     expect(screen.getByText("Mug XBZ")).toBeTruthy();
     expect(screen.getByText("Tapis souris")).toBeTruthy();
@@ -23,23 +27,39 @@ describe("BoutiqueList", () => {
 
   it("ne propose que les catégories réellement présentes", () => {
     const onlyTextile = [products[0]];
-    render(<BoutiqueList products={onlyTextile} />);
-    expect(screen.getByRole("button", { name: "Textile" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Gaming" })).toBeNull();
+    renderIntl(<BoutiqueList products={onlyTextile} />);
+    expect(screen.getByRole("button", { name: fr.productCategories.Textile })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: fr.productCategories.Gaming })).toBeNull();
   });
 
   it("filtre par catégorie via les chips", () => {
-    render(<BoutiqueList products={products} />);
-    fireEvent.click(screen.getByRole("button", { name: "Textile" }));
+    renderIntl(<BoutiqueList products={products} />);
+    fireEvent.click(screen.getByRole("button", { name: fr.productCategories.Textile }));
     expect(screen.getByText("T-shirt XBZ")).toBeTruthy();
     expect(screen.queryByText("Mug XBZ")).toBeNull();
     expect(screen.queryByText("Tapis souris")).toBeNull();
   });
 
   it("trie par prix croissant", () => {
-    render(<BoutiqueList products={products} />);
-    fireEvent.change(screen.getByLabelText("Trier"), { target: { value: "prix-asc" } });
+    renderIntl(<BoutiqueList products={products} />);
+    fireEvent.change(screen.getByLabelText(fr.boutique.sort), { target: { value: "prix-asc" } });
     const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     expect(names).toEqual(["Mug XBZ", "Tapis souris", "T-shirt XBZ"]); // 12 < 20 < 25
+  });
+
+  it("s'affiche en anglais quand la langue est en", () => {
+    renderIntl(<BoutiqueList products={products} />, { locale: "en" });
+    // Libellé traduit ET catégorie traduite : la carte entière suit la langue.
+    expect(screen.getByLabelText(en.boutique.sort)).toBeTruthy();
+    expect(screen.getByRole("button", { name: en.productCategories.Textile })).toBeTruthy();
+    expect(screen.getAllByText(en.boutique.comingSoon).length).toBe(products.length);
+  });
+
+  it("formate les prix selon la langue", () => {
+    renderIntl(<BoutiqueList products={[products[1]] } />);
+    expect(screen.getByText("12,00 €")).toBeTruthy();
+    cleanup();
+    renderIntl(<BoutiqueList products={[products[1]] } />, { locale: "en" });
+    expect(screen.getByText("€12.00")).toBeTruthy();
   });
 });

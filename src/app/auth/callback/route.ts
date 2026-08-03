@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
+import { hasLocale } from "next-intl";
+
 import { createClient } from "@/lib/supabase/server";
+import { routing } from "@/i18n/routing";
+import { localizedPath } from "@/lib/site";
 import {
   checkDiscordStaff,
   clearDiscordStaff,
@@ -15,12 +19,26 @@ import {
 
 /** Empêche une redirection ouverte : on n'accepte qu'un chemin interne. */
 function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/admin";
+  const fallback = localizedPath("/admin", routing.defaultLocale);
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return fallback;
   return raw;
 }
 
-function denied(origin: string, message: string) {
-  return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(message)}`);
+/**
+ * Langue déduite du chemin de retour.
+ *
+ * Cette route vit HORS du segment `[locale]` (son URL exacte est déclarée dans
+ * les Redirect URLs de Supabase) : elle n'a pas de contexte de langue. Le
+ * paramètre `next`, lui, la porte — c'est notre seule source.
+ */
+function localeOf(next: string): string {
+  const first = next.split("/")[1];
+  return hasLocale(routing.locales, first) ? first : routing.defaultLocale;
+}
+
+function denied(origin: string, next: string, message: string) {
+  const login = localizedPath("/login", localeOf(next));
+  return NextResponse.redirect(`${origin}${login}?error=${encodeURIComponent(message)}`);
 }
 
 export async function GET(request: Request) {
@@ -28,12 +46,12 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = safeNext(searchParams.get("next"));
 
-  if (!code) return denied(origin, "Échec de l'authentification.");
+  if (!code) return denied(origin, next, "Échec de l'authentification.");
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error || !data.session) return denied(origin, "Échec de l'authentification.");
+  if (error || !data.session) return denied(origin, next, "Échec de l'authentification.");
 
   // Contrôle serveur + rôle Discord, avec le jeton fraîchement obtenu.
   const check = await checkDiscordStaff(data.session.provider_token);
@@ -54,7 +72,7 @@ export async function GET(request: Request) {
       check.reason,
       data.session.user.email ?? userId,
     );
-    return denied(origin, denyMessage(check.reason));
+    return denied(origin, next, denyMessage(check.reason));
   }
 
   // Verdict mémorisé : donne l'accès au back-office sans liste manuelle.

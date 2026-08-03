@@ -2,7 +2,8 @@ import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
-import { findTooLong, tooLongMessage } from "@/lib/limits";
+import { findTooLong, tooLongMessage, FIELD_MAX } from "@/lib/limits";
+import { apiError } from "@/lib/apierror";
 import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
@@ -32,16 +33,15 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Requête invalide." }, { status: 400 });
+    return apiError(400, "invalidRequest", "Requête invalide.");
   }
 
   // --- Limite de débit (anti-flood par IP) ---
   const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "support");
   if (!allowed) {
-    return NextResponse.json(
-      { ok: false, error: "Trop de tentatives. Réessaie dans une minute." },
-      { status: 429, headers: { "Retry-After": String(retryAfter) } },
-    );
+    return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans une minute.", {
+      headers: { "Retry-After": String(retryAfter) },
+    });
   }
 
   // --- Anti-spam (honeypot + délai minimum) ---
@@ -51,17 +51,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
   if (tooFast) {
-    return NextResponse.json(
-      { ok: false, error: "Envoi trop rapide, réessaie dans un instant." },
-      { status: 429 },
-    );
+    return apiError(429, "tooFast", "Envoi trop rapide, réessaie dans un instant.");
   }
 
   // --- Consentement RGPD (obligatoire, validé côté serveur) ---
   if (!hasConsent(body.consent)) {
-    return NextResponse.json(
-      { ok: false, error: "Tu dois accepter le traitement de tes données pour envoyer ton message." },
-      { status: 422 },
+    return apiError(
+      422,
+      "consentRequired",
+      "Tu dois accepter le traitement de tes données pour envoyer ton message.",
     );
   }
 
@@ -72,24 +70,22 @@ export async function POST(request: Request) {
 
   // --- Validation serveur (on ne fait jamais confiance au navigateur) ---
   if (!nom || !email || !message) {
-    return NextResponse.json(
-      { ok: false, error: "Champs obligatoires manquants." },
-      { status: 400 },
-    );
+    return apiError(400, "missingFields", "Champs obligatoires manquants.");
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ ok: false, error: "Adresse email invalide." }, { status: 422 });
+    return apiError(422, "invalidEmail", "Adresse email invalide.");
   }
   if (message.length < 10) {
-    return NextResponse.json(
-      { ok: false, error: "Ton message est trop court (10 caractères minimum)." },
-      { status: 422 },
-    );
+    return apiError(422, "messageTooShort", "Ton message est trop court (10 caractères minimum).", {
+      params: { min: 10 },
+    });
   }
   // Longueurs maximales (le `maxLength` du navigateur se contourne).
   const tooLong = findTooLong({ nom, email, sujet, message });
   if (tooLong) {
-    return NextResponse.json({ ok: false, error: tooLongMessage(tooLong) }, { status: 422 });
+    return apiError(422, "tooLong", tooLongMessage(tooLong), {
+      params: { field: tooLong, max: FIELD_MAX[tooLong] },
+    });
   }
 
   const supabase = createAdminClient();
@@ -103,10 +99,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("[support] insert Supabase:", error.message);
-    return NextResponse.json(
-      { ok: false, error: "Impossible d'envoyer le message pour le moment." },
-      { status: 500 },
-    );
+    return apiError(500, "saveFailed", "Impossible d'envoyer le message pour le moment.");
   }
 
   // --- 2) Notifier le staff sur Discord EN ARRIÈRE-PLAN (optionnel) ---

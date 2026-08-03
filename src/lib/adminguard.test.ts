@@ -21,6 +21,10 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// La garde lit la langue courante pour renvoyer vers `/fr/login` ou `/en/login`.
+// Hors requête Next il n'y a pas de contexte : on fixe le français.
+vi.mock("next-intl/server", () => ({ getLocale: async () => "fr" }));
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: async () => ({ data: { user: userResult.value } }) },

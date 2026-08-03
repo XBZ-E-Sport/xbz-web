@@ -73,7 +73,7 @@ test.describe("Parcours BDD", () => {
   });
 
   test("Recrutement : une candidature Staff valide affiche le succès", async ({ page }) => {
-    await page.goto("/recrutement");
+    await page.goto("/fr/recrutement");
 
     await page.locator("#rec-categorie").selectOption("XBZ Staff");
     await page.locator("#rec-role").selectOption("Manager"); // poste seedé
@@ -92,7 +92,7 @@ test.describe("Parcours BDD", () => {
   });
 
   test("Support : un message de contact valide affiche le succès", async ({ page }) => {
-    await page.goto("/support");
+    await page.goto("/fr/support");
 
     await page.locator("#support-nom").fill(SUPPORT_NOM);
     await page.locator("#support-email").fill("e2e-support@xbz.test");
@@ -110,7 +110,7 @@ test.describe("Parcours BDD", () => {
   });
 
   test("Boutique : un produit achetable avec lien affiche « Acheter »", async ({ page }) => {
-    await page.goto("/boutique");
+    await page.goto("/fr/boutique");
 
     const acheter = page.getByRole("link", { name: /^Acheter/ }).first();
     await expect(acheter).toBeVisible();
@@ -118,13 +118,13 @@ test.describe("Parcours BDD", () => {
   });
 
   test("Back-office : connexion staff puis accès aux candidatures", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/fr/login");
 
     await page.locator("#login-email").fill(process.env.E2E_STAFF_EMAIL ?? "");
     await page.locator("#login-password").fill(process.env.E2E_STAFF_PASSWORD ?? "");
     await page.getByRole("button", { name: /Se connecter$/ }).click();
 
-    await expect(page).toHaveURL(/\/admin/);
+    await expect(page).toHaveURL(/\/fr\/admin/);
     await expect(page.getByRole("heading", { name: /Back-office XBZ/i })).toBeVisible();
   });
 });

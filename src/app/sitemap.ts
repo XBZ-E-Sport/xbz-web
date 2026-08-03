@@ -2,7 +2,8 @@ import type { MetadataRoute } from "next";
 
 import { getArticles } from "@/lib/actualite";
 import { getEquipesUrls } from "@/lib/equipes";
-import { siteConfig } from "@/lib/site";
+import { absoluteUrl, localizedPath } from "@/lib/site";
+import { routing } from "@/i18n/routing";
 
 // Généré à la demande : le sitemap lit la base (rosters/pôles/joueurs) → pas de
 // dépendance BDD au build (cohérent avec les pages /equipes en force-dynamic).
@@ -25,29 +26,55 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/confidentialite", priority: 0.3, changeFrequency: "monthly" },
   ];
 
-  const staticEntries: MetadataRoute.Sitemap = routes.map(({ path, priority, changeFrequency }) => ({
-    url: `${siteConfig.url}${path}`,
-    lastModified: now,
-    changeFrequency,
-    priority,
-  }));
+  /** URL absolue d'un chemin non préfixé, dans une langue donnée. */
+  const url = (path: string, locale: string) => absoluteUrl(localizedPath(path, locale));
+
+  /**
+   * Une entrée par langue, chacune déclarant ses alternatives via `alternates`.
+   * C'est ce qui dit à Google que `/fr/equipes` et `/en/equipes` sont la même
+   * page en deux langues, au lieu de deux pages concurrentes.
+   */
+  const localized = (path: string) => ({
+    languages: Object.fromEntries(routing.locales.map((l) => [l, url(path, l)])),
+  });
+
+  /** Le français reste la langue principale : les autres passent juste après. */
+  const rank = (priority: number, locale: string) =>
+    locale === routing.defaultLocale ? priority : priority * 0.9;
+
+  const staticEntries: MetadataRoute.Sitemap = routes.flatMap(({ path, priority, changeFrequency }) =>
+    routing.locales.map((locale) => ({
+      url: url(path, locale),
+      lastModified: now,
+      changeFrequency,
+      priority: rank(priority, locale),
+      alternates: localized(path),
+    })),
+  );
 
   // Pages d'articles (dérivées de la même source que la page Actualité).
   const articles = await getArticles();
-  const articleEntries: MetadataRoute.Sitemap = articles.map((article) => ({
-    url: `${siteConfig.url}/actualite/${article.slug}`,
-    lastModified: new Date(article.date),
-    changeFrequency: "monthly",
-    priority: 0.5,
-  }));
+  const articleEntries: MetadataRoute.Sitemap = articles.flatMap((article) => {
+    const path = `/actualite/${article.slug}`;
+    return routing.locales.map((locale) => ({
+      url: url(path, locale),
+      lastModified: new Date(article.date),
+      changeFrequency: "monthly" as const,
+      priority: rank(0.5, locale),
+      alternates: localized(path),
+    }));
+  });
 
   // Pages /equipes/* (rosters, pôles, joueurs/membres) lues en base.
-  const equipesEntries: MetadataRoute.Sitemap = (await getEquipesUrls()).map((path) => ({
-    url: `${siteConfig.url}${path}`,
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.4,
-  }));
+  const equipesEntries: MetadataRoute.Sitemap = (await getEquipesUrls()).flatMap((path) =>
+    routing.locales.map((locale) => ({
+      url: url(path, locale),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: rank(0.4, locale),
+      alternates: localized(path),
+    })),
+  );
 
   return [...staticEntries, ...articleEntries, ...equipesEntries];
 }
