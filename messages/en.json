@@ -1,0 +1,516 @@
+{
+  "site": {
+    "tagline": "Competitive Rocket League organisation",
+    "description": "XBZ Esport — a competitive Rocket League esports organisation. Join a driven, serious and ambitious team.",
+    "keywords": "XBZ,XBZ Esport,esports,Rocket League,competitive team,gaming recruitment"
+  },
+  "layout": {
+    "skipToContent": "Skip to main content"
+  },
+  "nav": {
+    "home": "Home",
+    "leClub": "The club",
+    "presentation": "About",
+    "equipes": "Teams",
+    "actualite": "News",
+    "boutique": "Shop",
+    "recrutement": "Recruitment",
+    "support": "Support",
+    "discord": "Discord",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "homeAria": "XBZ Esport — Home",
+    "mainNav": "Main navigation",
+    "newTab": " (opens in a new tab)",
+    "joinDiscord": "Join the Discord"
+  },
+  "language": {
+    "label": "Language",
+    "switchTo": "Switch to {language}"
+  },
+  "footer": {
+    "navigation": "Navigation",
+    "infos": "Info",
+    "joinUs": "Join us",
+    "supportContact": "Support & contact",
+    "legal": "Legal notice",
+    "privacy": "Privacy",
+    "footerNav": "Footer links",
+    "rights": "All rights reserved.",
+    "signature": "Rocket League esports organisation 💙"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "metaTitle": "Page not found — XBZ Esport",
+    "metaDescription": "This page does not exist or has been moved.",
+    "message": "Oops, this page doesn’t exist or has been moved. Head back to familiar ground to carry on.",
+    "backHome": "Back to home",
+    "discoverClub": "Discover the club"
+  },
+  "common": {
+    "loading": "Loading…",
+    "retry": "Try again",
+    "errorTitle": "Something went wrong"
+  },
+  "articleCategories": {
+    "Compétition": "Competition",
+    "Recrutement": "Recruitment",
+    "Annonce": "Announcement",
+    "Communauté": "Community",
+    "Création": "Content"
+  },
+  "home": {
+    "metaDescription": "XBZ Esport, a competitive Rocket League organisation: teams, staff, recruitment, news and shop. Join a driven and ambitious team.",
+    "heroTagline": "A competitive esports organisation on <game>Rocket League</game>. Join a driven, serious and ambitious team.",
+    "openSlots": "{count, plural, one {# open position} other {# open positions}}",
+    "recruitmentSoon": "Recruitment opening soon",
+    "joinUs": "Join us",
+    "statsHeading": "The organisation in numbers",
+    "statsTeams": "Competitive teams",
+    "statsPoles": "Staff & content divisions",
+    "statsMembers": "Members in the organisation",
+    "statsOpenSlots": "Open positions",
+    "latestHeading": "LATEST NEWS",
+    "seeAll": "See all →",
+    "exploreHeading": "EXPLORE THE CLUB"
+  },
+  "leClub": {
+    "metaTitle": "The club — XBZ Esport",
+    "metaDescription": "The XBZ Esport club at a glance: our divisions and every way in (teams, recruitment, news, shop, community).",
+    "title": "Welcome to XBZ",
+    "intro": "The starting point to discover everything: our divisions, our teams, recruitment, the shop and the community.",
+    "polesHeading": "THE CLUB IN 4 DIVISIONS",
+    "poles": {
+      "esport": {
+        "title": "Esports",
+        "text": "Competitive teams on Rocket League."
+      },
+      "communaute": {
+        "title": "Community",
+        "text": "An active Discord to play and hang out."
+      },
+      "creation": {
+        "title": "Content",
+        "text": "Designers, editors and casters who bring the content to life."
+      },
+      "staff": {
+        "title": "Staff",
+        "text": "A structured organisation that keeps it all running."
+      }
+    },
+    "exploreHeading": "EXPLORE",
+    "sections": {
+      "presentation": "Who we are, our values and our vision.",
+      "equipes": "Our competitive rosters and the staff behind them.",
+      "recrutement": "Join the organisation: player, staff and content roles open.",
+      "actualite": "The club’s latest news, results and announcements.",
+      "boutique": "Official merch in XBZ colours.",
+      "support": "A question? Get in touch with the staff."
+    },
+    "communityTitle": "Join the community",
+    "communityText": "Everything happens on our Discord: discussions, events, training and recruitment. That’s where the club lives day to day."
+  },
+  "productCategories": {
+    "Textile": "Apparel",
+    "Accessoire": "Accessory",
+    "Gaming": "Gaming"
+  },
+  "presentation": {
+    "metaTitle": "About — XBZ Esport",
+    "metaDescription": "Who XBZ Esport is: a competitive, organised and ambitious organisation, active on Rocket League.",
+    "title": "Who are we?",
+    "intro": "A competitive, organised and ambitious esports organisation — built to progress together on <game>Rocket League</game>.",
+    "pitchHeading": "The XBZ organisation",
+    "pitch1": "XBZ Esport is a fast-growing competitive organisation, created to bring together driven, serious and ambitious players around a shared goal: to improve and perform in esports.",
+    "pitch2": "We are active on <game>Rocket League</game>, with a simple vision: build solid, consistent teams able to play at a genuinely competitive level.",
+    "pitch3": "This isn’t just a community. It’s a structured organisation, with defined roles, an active staff and a real commitment to long-term growth.",
+    "pitch4": "Every player, creator or staff member has an important part in how the project grows. Activity, motivation and team spirit are the foundations of XBZ.",
+    "statsHeading": "IN A FEW NUMBERS",
+    "valuesHeading": "OUR VALUES",
+    "values": {
+      "competition": {
+        "title": "Competition",
+        "text": "Aiming high and performing in a demanding setting, match after match."
+      },
+      "teamSpirit": {
+        "title": "Team spirit",
+        "text": "Playing together, helping each other and moving forward as a group rather than alone."
+      },
+      "progression": {
+        "title": "Progression",
+        "text": "Levelling up, individually and as a team, over the long run."
+      },
+      "ambition": {
+        "title": "Commitment & ambition",
+        "text": "Steady involvement and a structured project that thinks big for the long term."
+      }
+    },
+    "ctaTitle": "Want to be part of the adventure?",
+    "ctaText": "Join the Discord to talk with the organisation, or take a look at the open positions."
+  },
+  "equipes": {
+    "metaTitle": "Teams & Staff — XBZ Esport",
+    "metaDescription": "The staff and competitive rosters of XBZ Esport on Rocket League, with the positions currently open for recruitment.",
+    "title": "XBZ roster",
+    "intro": "The staff and competitive rosters of XBZ — and the positions currently open.",
+    "staffHeading": "STAFF",
+    "esportHeading": "ESPORTS",
+    "openSlots": "{count, plural, one {# open position} other {# open positions}}",
+    "full": "Full",
+    "slotsLabel": "{filled, plural, one {# seat taken} other {# seats taken}} out of {capacity}",
+    "slotsFullLabel": "Full, {capacity} out of {capacity} {capacity, plural, one {seat} other {seats}}",
+    "variants": {
+      "founder": "FOUNDER",
+      "staff": "STAFF",
+      "member": "PLAYER",
+      "creative": "CREATOR"
+    },
+    "recruitmentOpen": "RECRUITING",
+    "recruitmentClosed": "RECRUITMENT CLOSED",
+    "applyAria": "{group}: apply — recruitment open",
+    "empty": "The roster is coming soon."
+  },
+  "equipeDetail": {
+    "metaRoster": "The {name} roster of XBZ Esport.",
+    "metaPole": "The members of the {name} division of XBZ Esport.",
+    "backToTeams": "All teams",
+    "poleEsport": "Esports division",
+    "poleStaff": "Staff division",
+    "emptyRoster": "This roster’s line-up is coming soon.",
+    "emptyPole": "The members of this division are coming soon."
+  },
+  "joueur": {
+    "metaNotFound": "Member not found — XBZ Esport",
+    "metaFallback": "{pseudo}{name}, member of XBZ Esport.",
+    "rank": "Rank",
+    "country": "Country",
+    "honours": "HONOURS"
+  },
+  "actualite": {
+    "metaTitle": "News — XBZ Esport",
+    "metaDescription": "The latest news, results and announcements from XBZ Esport.",
+    "title": "Club news",
+    "intro": "Results, recruitment, announcements: everything that keeps XBZ alive, in one place.",
+    "readArticle": "Read the article",
+    "filterAria": "Filter by category",
+    "filterAll": "All",
+    "sort": "Sort",
+    "sortRecent": "Newest first",
+    "sortOldest": "Oldest first",
+    "resultCount": "{count, plural, one {# article} other {# articles}}.",
+    "resultCountFiltered": "{count, plural, one {# article} other {# articles}} in the {category} category.",
+    "empty": "No news in this category yet.",
+    "loadMore": "Load more news"
+  },
+  "article": {
+    "metaNotFound": "Article not found — XBZ Esport",
+    "backToNews": "Back to news",
+    "by": "By {author}",
+    "ctaText": "Want to join the adventure?",
+    "ctaButton": "See recruitment"
+  },
+  "boutique": {
+    "metaTitle": "Shop — XBZ Esport",
+    "metaDescription": "The official XBZ Esport shop: jerseys, apparel and accessories in the club’s colours.",
+    "title": "The XBZ shop",
+    "intro": "Official merch in the club’s colours. Apparel, accessories and goodies to wear the XBZ colours.",
+    "openingSoon": "The shop opens soon — here’s a preview of the collection.",
+    "empty": "No products yet. Check back soon!",
+    "emptyCategory": "No products in this category yet.",
+    "buy": "Buy",
+    "orderOnDiscord": "Order on Discord",
+    "comingSoon": "Coming soon",
+    "newTab": " (opens in a new tab)",
+    "filterAria": "Filter by category",
+    "filterAll": "All",
+    "sort": "Sort",
+    "sortDefault": "Default",
+    "sortPriceAsc": "Price, low to high",
+    "sortPriceDesc": "Price, high to low",
+    "resultCount": "{count, plural, one {# product} other {# products}}.",
+    "resultCountFiltered": "{count, plural, one {# product} other {# products}} in the {category} category.",
+    "loadMore": "Load more products",
+    "ctaTitle": "Get notified when we open",
+    "ctaText": "Join the Discord to be notified the moment the shop goes live, and never miss a drop."
+  },
+  "fieldLabels": {
+    "nom": "Name / First name",
+    "pseudo": "Username",
+    "discord": "Discord",
+    "pays": "Country of residence",
+    "jeu": "Game",
+    "roster": "Preferred roster",
+    "rltracker": "RL Tracker link",
+    "exp": "Experience",
+    "motiv": "Motivation",
+    "email": "Email",
+    "sujet": "Subject",
+    "message": "Message"
+  },
+  "formErrors": {
+    "generic": "Something went wrong while sending.",
+    "invalidRequest": "Invalid request.",
+    "rateLimited": "Too many attempts. Try again in a minute.",
+    "tooFast": "Sent too quickly, try again in a moment.",
+    "consentRequired": "You must agree to your data being processed to submit this form.",
+    "missingFields": "Required fields are missing.",
+    "tooLong": "The “{field}” field is too long ({max} characters maximum).",
+    "roleUnavailable": "This role is not open for recruitment.",
+    "ageMin": "Minimum age required: {minAge}.",
+    "gameRequired": "The game is required for an esports application.",
+    "invalidEmail": "Invalid email address.",
+    "messageTooShort": "Your message is too short ({min} characters minimum).",
+    "saveFailed": "We can’t send this right now. Please try again in a few minutes."
+  },
+  "recrutementCategories": {
+    "XBZ Staff": "XBZ Staff",
+    "XBZ Esport": "XBZ Esports"
+  },
+  "supportSubjects": {
+    "Général": "General",
+    "Recrutement": "Recruitment",
+    "Partenariat": "Partnership",
+    "Signalement": "Report",
+    "Presse": "Press",
+    "Bug technique": "Technical bug"
+  },
+  "recrutement": {
+    "metaTitle": "Recruitment — XBZ Esport",
+    "metaDescription": "Join XBZ Esport: player, staff and content roles open. Apply online in a few minutes.",
+    "title": "Join XBZ",
+    "intro": "Want to wear the XBZ colours? Fill in the form below — every application is reviewed by the staff.",
+    "ageNotice": "16 and over · 18 for staff roles",
+    "seeOpenRoles": "Curious about the available roles? <teams>See the open positions</teams> on the Teams page."
+  },
+  "recrutementForm": {
+    "category": "Category",
+    "categoryPlaceholder": "Choose a category",
+    "role": "Desired role",
+    "rolePlaceholder": "Choose a role",
+    "rolePickCategoryFirst": "Choose a category first",
+    "roleNoneOpen": "No position open right now",
+    "roleNoneOpenHelp": "No position is currently open in this category. Check back soon or reach out to us on Discord.",
+    "name": "Full name",
+    "namePlaceholder": "First name + Last name",
+    "age": "Age",
+    "agePlaceholder": "{minAge} and over",
+    "ageTooLow": "You must be at least {minAge} for this category.",
+    "country": "Country of residence",
+    "discord": "Discord username",
+    "pseudo": "Username",
+    "game": "Game",
+    "gamePlaceholder": "Select a game",
+    "rltracker": "RL Tracker link",
+    "rltrackerHelp": "The link must be clickable, valid and reachable. An incorrect or broken link may lead to your application being rejected.",
+    "roster": "Preferred roster",
+    "rosterPlaceholder": "No preference",
+    "experience": "Experience",
+    "experiencePlaceholder": "Your past experience (teams, competitions, content...)",
+    "motivation": "Motivation",
+    "motivationPlaceholder": "Why do you want to join XBZ?",
+    "optional": "optional",
+    "recommended": "recommended",
+    "consent": "I agree that the information I submit may be used by XBZ Esport to process my application and get back to me. See the <privacy>privacy policy</privacy>.",
+    "sending": "Sending...",
+    "submitting": "Sending...",
+    "submit": "Send my application",
+    "success": "Application sent successfully!"
+  },
+  "support": {
+    "metaTitle": "Support — XBZ Esport",
+    "metaDescription": "Need help? Get in touch with the XBZ staff through Discord, email or the contact form.",
+    "title": "Need help?",
+    "intro": "A question, a problem or a proposal? The XBZ staff is here to help.",
+    "responseTime": "Usually answered within 48h",
+    "channelsHeading": "GET IN TOUCH",
+    "discordText": "The fastest way to reach the community and the staff.",
+    "emailTitle": "Email",
+    "emailText": "For official, business or partnership enquiries.",
+    "emailCta": "Send an email",
+    "needsHeading": "WHAT DO YOU NEED?",
+    "needs": {
+      "recrutement": {
+        "title": "Recruitment",
+        "text": "Join a team or the staff."
+      },
+      "partenariat": {
+        "title": "Partnership",
+        "text": "Sponsoring & collaborations."
+      },
+      "signalement": {
+        "title": "Report",
+        "text": "Report behaviour to the staff."
+      },
+      "presse": {
+        "title": "Press & media",
+        "text": "Press enquiries and interviews."
+      }
+    },
+    "faqHeading": "FREQUENTLY ASKED QUESTIONS",
+    "faq": {
+      "join": {
+        "q": "How do I join XBZ?",
+        "a": "Head to the Recruitment page and fill in the form. The staff reviews every application carefully."
+      },
+      "followUp": {
+        "q": "How do I follow up on my application?",
+        "a": "The staff gets back to you on Discord: make sure you give a correct Discord username in your application."
+      },
+      "games": {
+        "q": "Which games is XBZ active on?",
+        "a": "The organisation is currently active on Rocket League."
+      },
+      "partner": {
+        "q": "How do I become a partner or sponsor?",
+        "a": "Email us with your proposal: we’ll get back to you quickly."
+      },
+      "report": {
+        "q": "How do I report someone’s behaviour?",
+        "a": "Tell a staff member directly on the club’s Discord."
+      },
+      "shop": {
+        "q": "Is the shop open?",
+        "a": "It opens soon. Join the Discord to be notified as soon as it goes live."
+      }
+    },
+    "formHeading": "WRITE TO US",
+    "charter": "Abusive messages, spam or trolling may lead to sanctions on the platform or the Discord server. Please stay respectful with the staff."
+  },
+  "supportForm": {
+    "name": "Name / Username",
+    "namePlaceholder": "Your name or username",
+    "email": "Email",
+    "subject": "Subject",
+    "message": "Message",
+    "messagePlaceholder": "Explain your request in a few lines...",
+    "consent": "I agree that the information I submit may be used by XBZ Esport to handle my request and reply to me. See the <privacy>privacy policy</privacy>.",
+    "sending": "Sending...",
+    "submitting": "Sending...",
+    "submit": "Send the message",
+    "success": "Message sent! The staff will get back to you soon."
+  },
+  "login": {
+    "metaTitle": "Staff login — XBZ",
+    "title": "Staff area",
+    "email": "Email address",
+    "emailPlaceholder": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "or": "or",
+    "discordSubmit": "Sign in with Discord",
+    "discordNotice": "Restricted to members of the XBZ server holding the <role>Administrateur</role> or <role>Fondateur</role> role."
+  },
+  "legal": {
+    "metaTitle": "Legal notice — XBZ Esport",
+    "metaDescription": "Legal notice and information about the publisher of the XBZ Esport website.",
+    "eyebrow": "Legal",
+    "title": "Legal notice",
+    "publisherHeading": "Website publisher",
+    "publisherText": "The {name} website is published by the esports organisation {name}.",
+    "publisherManager": "Publication director: <manager>Forux</manager>.",
+    "contact": "Contact: <discord>through the official Discord server</discord>.",
+    "hostingHeading": "Hosting",
+    "hostingText": "This website is hosted by Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, United States — <vercel>vercel.com</vercel>.",
+    "ipHeading": "Intellectual property",
+    "ipText": "All content on this website (text, logo, visuals, layout) is the property of {name} unless stated otherwise. Any reproduction or reuse, in whole or in part, without prior permission is prohibited.",
+    "dataHeading": "Personal data",
+    "dataText1": "The recruitment and support forms only collect the information you provide, for the sole purpose of handling your request. This data is never sold or transferred to third parties.",
+    "dataText2": "Under the GDPR, you can request access to, correction of, or deletion of your data by contacting us on the organisation’s Discord.",
+    "dataText3": "For the details (purposes, retention period, processors, rights), see our <privacy>privacy policy</privacy>.",
+    "cookiesHeading": "Cookies",
+    "cookiesText": "This website uses no advertising or tracking cookies. Only technical cookies required to operate (back-office authentication session, remembering your chosen language) may be set."
+  },
+  "privacy": {
+    "metaTitle": "Privacy policy — XBZ Esport",
+    "metaDescription": "How XBZ Esport collects, uses, stores and protects your personal data (recruitment and support), and how to exercise your GDPR rights.",
+    "title": "Privacy policy",
+    "intro": "This page explains what data {name} collects through its forms, why, how long it is kept, and how to exercise your rights.",
+    "controllerHeading": "Data controller",
+    "controllerText": "The data collected on this website is processed by the esports organisation {name}. For any question about your data, contact us <discord>on the official Discord server</discord><mail> or by email at </mail>.",
+    "collectedHeading": "Data collected",
+    "collectedIntro": "We only collect the information you provide voluntarily:",
+    "collected": {
+      "recruitment": "<b>Recruitment form</b>: category, desired role, full name, age, country of residence, Discord username, username, game, RL Tracker link (optional), experience and motivation (optional), preferred roster (optional).",
+      "support": "<b>Support form</b>: name or username, email address, subject and body of your message.",
+      "antispam": "<b>Anti-spam protection</b>: when a form is submitted, your IP address is briefly recorded to limit repeated submissions. It is never associated with the content of your message and is deleted automatically a few moments after sending."
+    },
+    "collectedOutro": "No sensitive data is requested. We use neither advertising cookies nor trackers (see the <legal>legal notice</legal>).",
+    "purposeHeading": "Purposes & legal basis",
+    "purposeText1": "This data is used solely to <b>process your application</b> or to <b>answer your support request</b>, and to get back to you about it.",
+    "purposeText2": "The legal basis for processing is your <b>consent</b> (GDPR article 6.1.a), collected via the checkbox on each form. That consent is timestamped when you submit.",
+    "purposeText3": "The anti-spam protection described above relies instead on our <b>legitimate interest</b> (GDPR article 6.1.f) in protecting the site from automated submissions.",
+    "retentionHeading": "Retention period",
+    "retentionText": "Your data is kept for <b>{months} months</b> from the date you send it, then <b>deleted automatically</b>. You can request its deletion at any time before that (see “Your rights”).",
+    "recipientsHeading": "Recipients & hosting",
+    "recipientsText": "Your data is accessible only to the {name} staff authorised to handle applications and support. It is <b>never sold or transferred</b> to third parties for commercial purposes.",
+    "processorsIntro": "To operate, the website relies on the following technical providers:",
+    "processors": {
+      "supabase": "<b>Supabase</b> — hosting of the database where applications and messages are stored.",
+      "vercel": "<b>Vercel</b> — website hosting and anonymous audience measurement (aggregated visit statistics, no cookie and no individual tracking).",
+      "discord": "<b>Discord</b> — an internal notification is sent to the staff on the organisation’s server when a form is received."
+    },
+    "rightsHeading": "Your rights",
+    "rightsText": "Under the GDPR, you have the right to access, rectify, erase, restrict and object to processing, the right to data portability, and the right to withdraw your consent at any time.",
+    "rightsContact": "To exercise these rights, contact us <discord>on the official Discord server</discord><mail> or at </mail>. We will reply as soon as we can.",
+    "rightsComplaint": "You may also lodge a complaint with the CNIL, the French data protection authority — <cnil>cnil.fr</cnil>."
+  },
+  "error": {
+    "eyebrow": "Oops",
+    "message": "Something went wrong on our side. Try again in a moment — if the problem persists, let us know on Discord."
+  },
+  "og": {
+    "home": {
+      "subtitle": "Competitive esports organisation · Rocket League",
+      "cta": "Join us"
+    },
+    "leClub": {
+      "eyebrow": "The club",
+      "title": "The XBZ club",
+      "subtitle": "Esports, staff & community: discover the organisation."
+    },
+    "presentation": {
+      "eyebrow": "About",
+      "title": "Our organisation",
+      "subtitle": "Values, ambitions and structure of XBZ Esport."
+    },
+    "equipes": {
+      "eyebrow": "Teams & Staff",
+      "title": "Our teams",
+      "subtitle": "XBZ Rocket League rosters and staff divisions."
+    },
+    "actualite": {
+      "eyebrow": "News",
+      "title": "Club news",
+      "subtitle": "Results, recruitment and announcements from the organisation."
+    },
+    "boutique": {
+      "eyebrow": "Shop",
+      "title": "The XBZ shop",
+      "subtitle": "Official merch in the club’s colours."
+    },
+    "recrutement": {
+      "eyebrow": "Recruitment",
+      "title": "Join XBZ",
+      "subtitle": "Open positions in competitive teams and staff."
+    },
+    "support": {
+      "eyebrow": "Support",
+      "title": "Need help?",
+      "subtitle": "Reach the staff on Discord, by email or via the form."
+    },
+    "legal": {
+      "eyebrow": "Legal",
+      "title": "Legal notice",
+      "subtitle": "Publisher, hosting and legal information."
+    },
+    "privacy": {
+      "eyebrow": "Legal",
+      "title": "Privacy",
+      "subtitle": "How your data is processed and protected (GDPR)."
+    },
+    "roster": "Roster",
+    "member": "Member",
+    "memberNotFound": "Member not found",
+    "articleNotFound": "Article not found"
+  }
+}

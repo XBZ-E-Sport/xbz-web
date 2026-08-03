@@ -1,14 +1,15 @@
 # XBZ Esport — site web
 
 Site officiel de la structure esport **XBZ Esport** (Rocket League) : pages publiques
-(présentation, équipes, recrutement, actualité, boutique, support) + un back-office
-staff pour gérer les candidatures, les rosters, les joueurs, les pôles, l'actualité
-et la boutique.
+(présentation, équipes, recrutement, actualité, boutique, support) **en français et en
+anglais**, + un back-office staff pour gérer les candidatures, les rosters, les joueurs,
+les pôles, l'actualité et la boutique.
 
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript** (strict)
 - **Tailwind CSS v4**
+- **next-intl** — site bilingue français / anglais
 - **Supabase** (Postgres + Auth + Storage) — données dynamiques et espace staff
 - **Vitest** + **Testing Library** (unitaires) · **Playwright** (E2E)
 - **Vercel** (hébergement, cron, Web Analytics) · **Discord** (connexion staff, notifications)
@@ -17,6 +18,7 @@ et la boutique.
 
 - [Installation](#installation)
 - [Variables d'environnement](#variables-denvironnement)
+- [Langues (i18n)](#langues-i18n)
 - [Base de données](#base-de-données-supabase)
 - [Accès au back-office](#accès-au-back-office)
 - [RGPD](#rgpd)
@@ -65,6 +67,56 @@ et **ce qui se passe quand elle est absente** (plusieurs ont un repli silencieux
 
 Le test `src/lib/env.test.ts` échoue si une variable utilisée dans le code n'est pas
 documentée dans `.env.example` (et inversement, pour les variables mortes).
+
+## Langues (i18n)
+
+Le site existe en **français** et en **anglais**, via [next-intl](https://next-intl.dev).
+
+### URL
+
+Chaque page porte sa langue : `/fr/equipes`, `/en/equipes`. Une URL sans préfixe
+(`/equipes`) est redirigée en **308 permanent** vers `/fr/…` — les liens partagés avant
+la mise en place des langues continuent de fonctionner et Google transfère le
+référencement acquis.
+
+Cette redirection est **volontairement indépendante du visiteur** : ni `Accept-Language`
+ni le cookie de langue ne la font varier. Une redirection permanente qui changerait de
+cible selon la personne serait incachable par le CDN, et Google recevrait tantôt le
+français tantôt l'anglais sur la même adresse. La langue se choisit par l'URL ou par le
+sélecteur du menu ; le cookie `XBZ_LOCALE` ne sert qu'à mémoriser ce choix.
+
+### Où vivent les textes
+
+- `messages/fr.json` et `messages/en.json` — **tout** le texte de l'interface publique,
+  organisé par page (`home`, `leClub`, `equipes`, `boutique`, `support`…).
+- Le **contenu de la base** (noms de rosters, articles, produits, bios) n'est pas traduit :
+  il s'affiche tel qu'il est saisi dans le back-office.
+- Le **back-office n'est pas traduit** (staff francophone).
+- `src/app/global-error.tsx` reste en français : il remplace le layout quand tout a déjà
+  échoué, donc hors du fournisseur de traductions.
+
+### Ajouter une chaîne
+
+1. Ajouter la clé dans `messages/fr.json` **et** `messages/en.json`.
+2. La lire avec `getTranslations` (serveur) ou `useTranslations` (client).
+
+`src/i18n/messages.test.ts` échoue si une clé manque d'un côté, si une traduction est
+vide, ou si les variables ICU (`{count}`) et les balises de texte riche (`<game>`) ne
+correspondent pas entre les deux langues.
+
+### ⚠️ Pages prérendues (`force-static`)
+
+`le-club`, `support`, `mentions-legales` et `confidentialite` sont générées au build,
+dans les deux langues. Dans ce mode il n'y a **pas de requête**, donc pas de langue
+« ambiante » : `getTranslations()` sans argument et `useTranslations()` retombent
+silencieusement sur le français, et la page anglaise part en ligne en français — sans
+aucune erreur. Sur ces pages, il faut donc :
+
+- `getTranslations({ locale, namespace })` — jamais la forme courte ;
+- `<Link locale={locale}>` — sinon les liens pointent vers `/fr/…` ;
+- pas de `useTranslations()` dans la page ni dans ses composants serveur.
+
+`src/i18n/staticpages.test.ts` vérifie ces trois règles et échoue sinon.
 
 ## Base de données (Supabase)
 
@@ -173,11 +225,11 @@ npm run test:e2e  # end-to-end (Playwright)
 
 ## Tests
 
-### Unitaires — Vitest (117 tests)
+### Unitaires — Vitest (144 tests)
 
 Logique pure et routes API : anti-spam, consentement, longueurs de champs, rate-limit,
 métadonnées SEO, JSON-LD, contrôle d'accès staff, garde Discord, purge RGPD, remontée
-d'erreurs, cohérence de `.env.example`. Les routes sont testées avec Supabase mocké
+d'erreurs, cohérence de `.env.example`, parité des deux catalogues de traduction. Les routes sont testées avec Supabase mocké
 (`// @vitest-environment node`).
 
 Les Server Components `async` ne sont pas couverts par Vitest (limite connue) — c'est le
@@ -258,6 +310,9 @@ Hébergement **Vercel**. À vérifier avant une mise en production :
   `opengraphimage.tsx` ou `route.txt` ne sont pas reconnus : Next les ignore en silence,
   la fonctionnalité disparaît sans la moindre erreur. Les noms exacts sont
   `global-error.tsx`, `opengraph-image.tsx`, `route.ts`, `not-found.tsx`, `loading.tsx`.
+- **`force-static` fait perdre la langue.** Voir [Langues](#langues-i18n) : sur une page
+  prérendue, `getTranslations()` sans langue explicite rend l'anglais en français, sans
+  la moindre erreur au build ni au runtime.
 - **Les server actions sont des endpoints POST publics.** Toujours appeler `requireStaff()`
   *dans* l'action, jamais se reposer sur le layout.
 - **Le cache de schéma PostgREST.** Après une migration, une erreur

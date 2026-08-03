@@ -28,7 +28,8 @@ export default defineConfig({
   webServer: {
     command: "npm run build && npm run start",
     // Page sans BDD : prête même sans projet Supabase (l'accueil, lui, lit la base).
-    url: `${baseURL}/le-club`,
+    // URL préfixée par la langue : `/le-club` ne ferait que renvoyer un 308.
+    url: `${baseURL}/fr/le-club`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },
