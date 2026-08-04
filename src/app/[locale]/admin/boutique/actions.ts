@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import sharp from "sharp";
 
 import { assertStaff } from "@/lib/adminguard";
 import { productCategories } from "@/lib/boutique";
-import { CACHE_TAGS } from "@/lib/cache";
+import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
 function field(fd: FormData, key: string): string {
   const v = fd.get(key);
@@ -123,8 +123,8 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
 function revalidateBoutique() {
   // Invalide le cache de données de la lecture publique (getProducts).
   revalidateTag(CACHE_TAGS.products, "max");
-  revalidatePath("/admin/boutique");
-  revalidatePath("/boutique");
+  revalidateLocalizedPath("/admin/boutique");
+  revalidateLocalizedPath("/boutique");
 }
 
 export async function createProduct(formData: FormData) {

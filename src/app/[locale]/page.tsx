@@ -17,8 +17,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { description: t("metaDescription") };
 }
 
-// Stats lues en base (slots dynamiques).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Les stats venaient d'une lecture BDD par affichage.
+//
+// La fraîcheur ne dépend pas de ce délai : le back-office appelle
+// `revalidateLocalizedPath` à chaque écriture, ce qui régénère la page tout de
+// suite. Le nombre ci-dessous n'est qu'un filet — si une invalidation était
+// oubliée, la page se remet à jour d'elle-même au bout d'une heure.
+//
+// Littéral obligatoire : Next lit cette valeur au build, une constante importée
+// ne serait pas analysable (cf. CACHE_TTL_SECONDS, même durée).//
+// `force-static` en plus de `revalidate` : sous le segment `[locale]`, Next
+// n'infère plus le prérendu tout seul (la racine de l'app est un segment
+// dynamique) et bascule la route en rendu à la demande. Il faut le lui dire.
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
 
@@ -39,10 +52,10 @@ export default async function Home({ params }: PageProps) {
   setRequestLocale(locale);
 
   const [t, tNav, tCat, tSite, latest, structure] = await Promise.all([
-    getTranslations("home"),
-    getTranslations("nav"),
-    getTranslations("articleCategories"),
-    getTranslations("site"),
+    getTranslations({ locale, namespace: "home" }),
+    getTranslations({ locale, namespace: "nav" }),
+    getTranslations({ locale, namespace: "articleCategories" }),
+    getTranslations({ locale, namespace: "site" }),
     getArticles(locale).then((a) => a.slice(0, 3)),
     getStructureStats(),
   ]);
@@ -93,6 +106,7 @@ export default async function Home({ params }: PageProps) {
         {openCount > 0 ? (
           <Link
             href="/recrutement"
+            locale={locale}
             className="inline-flex items-center gap-2 rounded-full border border-xbz-cyan/30 bg-white/5 px-4 py-1.5 text-sm font-semibold text-xbz-cyan transition hover:border-xbz-cyan/60 hover:bg-white/10"
           >
             <span
@@ -120,6 +134,7 @@ export default async function Home({ params }: PageProps) {
           </a>
           <Link
             href="/recrutement"
+            locale={locale}
             className="rounded-xl border border-white/25 px-7 py-3.5 text-center font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
           >
             {t("joinUs")}
@@ -158,6 +173,7 @@ export default async function Home({ params }: PageProps) {
               </h2>
               <Link
                 href="/actualite"
+                locale={locale}
                 className="shrink-0 text-sm font-semibold text-xbz-cyan hover:underline"
               >
                 {t("seeAll")}
@@ -168,6 +184,7 @@ export default async function Home({ params }: PageProps) {
                 <li key={article.slug}>
                   <Link
                     href={`/actualite/${article.slug}`}
+                    locale={locale}
                     className="card-xbz group flex h-full flex-col p-6 transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
                   >
                     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -209,6 +226,7 @@ export default async function Home({ params }: PageProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  locale={locale}
                   className="card-xbz group flex h-full flex-col items-center gap-2 p-6 text-center transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
                 >
                   <span aria-hidden="true" className="text-3xl leading-none">

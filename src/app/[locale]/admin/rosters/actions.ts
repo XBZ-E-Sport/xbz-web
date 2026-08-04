@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import sharp from "sharp";
 
 import { assertStaff } from "@/lib/adminguard";
-import { CACHE_TAGS } from "@/lib/cache";
+import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
 // Rôles d'un joueur de roster (garde-fou : un rôle inconnu retombe sur "Joueur").
 // Un membre de pôle n'a PAS de rôle propre : le pôle lui-même est le rôle.
@@ -114,9 +114,9 @@ export async function createRoster(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/rosters");
+  revalidateLocalizedPath("/admin/rosters");
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
 }
 
 export async function updateRoster(formData: FormData) {
@@ -142,10 +142,10 @@ export async function updateRoster(formData: FormData) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/rosters");
+  revalidateLocalizedPath("/admin/rosters");
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
-  revalidatePath(`/equipes/${slug}`);
+  revalidateLocalizedPath("/equipes");
+  revalidateLocalizedPath(`/equipes/${slug}`);
 }
 
 export async function deleteRoster(formData: FormData) {
@@ -156,9 +156,9 @@ export async function deleteRoster(formData: FormData) {
   const { error } = await admin.from("rosters").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/rosters");
+  revalidateLocalizedPath("/admin/rosters");
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
 }
 
 // ============ PÔLES ============
@@ -196,9 +196,9 @@ export async function createPole(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/poles");
+  revalidateLocalizedPath("/admin/poles");
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
 }
 
 export async function updatePole(formData: FormData) {
@@ -238,10 +238,10 @@ export async function updatePole(formData: FormData) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/poles");
-  revalidatePath(`/admin/poles/${slug}`);
+  revalidateLocalizedPath("/admin/poles");
+  revalidateLocalizedPath(`/admin/poles/${slug}`);
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
 }
 
 export async function deletePole(formData: FormData) {
@@ -252,9 +252,9 @@ export async function deletePole(formData: FormData) {
   const { error } = await admin.from("poles").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/poles");
+  revalidateLocalizedPath("/admin/poles");
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
 }
 
 // ============ JOUEURS / MEMBRES ============
@@ -335,17 +335,17 @@ export async function upsertPlayer(formData: FormData) {
 
   // Revalidation ciblée selon le parent.
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
   if (rosterId) {
     const { data: roster } = await admin
       .from("rosters")
       .select("slug")
       .eq("id", rosterId)
       .maybeSingle();
-    revalidatePath("/admin/rosters");
+    revalidateLocalizedPath("/admin/rosters");
     if (roster?.slug) {
-      revalidatePath(`/admin/rosters/${roster.slug}`);
-      revalidatePath(`/equipes/${roster.slug}`);
+      revalidateLocalizedPath(`/admin/rosters/${roster.slug}`);
+      revalidateLocalizedPath(`/equipes/${roster.slug}`);
     }
   } else {
     const { data: pole } = await admin
@@ -353,8 +353,8 @@ export async function upsertPlayer(formData: FormData) {
       .select("slug")
       .eq("id", poleId)
       .maybeSingle();
-    revalidatePath("/admin/poles");
-    if (pole?.slug) revalidatePath(`/admin/poles/${pole.slug}`);
+    revalidateLocalizedPath("/admin/poles");
+    if (pole?.slug) revalidateLocalizedPath(`/admin/poles/${pole.slug}`);
   }
 }
 
@@ -369,14 +369,14 @@ export async function deletePlayer(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
-  revalidatePath("/equipes");
+  revalidateLocalizedPath("/equipes");
   if (rosterSlug) {
-    revalidatePath("/admin/rosters");
-    revalidatePath(`/admin/rosters/${rosterSlug}`);
-    revalidatePath(`/equipes/${rosterSlug}`);
+    revalidateLocalizedPath("/admin/rosters");
+    revalidateLocalizedPath(`/admin/rosters/${rosterSlug}`);
+    revalidateLocalizedPath(`/equipes/${rosterSlug}`);
   }
   if (poleSlug) {
-    revalidatePath("/admin/poles");
-    revalidatePath(`/admin/poles/${poleSlug}`);
+    revalidateLocalizedPath("/admin/poles");
+    revalidateLocalizedPath(`/admin/poles/${poleSlug}`);
   }
 }

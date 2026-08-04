@@ -20,15 +20,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-// Produits lus en base à chaque visite (pilotés par le back-office).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Les produits venaient d'une lecture BDD par affichage.
+//
+// La fraîcheur ne dépend pas de ce délai : le back-office appelle
+// `revalidateLocalizedPath` à chaque écriture, ce qui régénère la page tout de
+// suite. Le nombre ci-dessous n'est qu'un filet — si une invalidation était
+// oubliée, la page se remet à jour d'elle-même au bout d'une heure.
+//
+// Littéral obligatoire : Next lit cette valeur au build, une constante importée
+// ne serait pas analysable (cf. CACHE_TTL_SECONDS, même durée).//
+// `force-static` en plus de `revalidate` : sous le segment `[locale]`, Next
+// n'infère plus le prérendu tout seul (la racine de l'app est un segment
+// dynamique) et bascule la route en rendu à la demande. Il faut le lui dire.
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 export default async function BoutiquePage({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("boutique");
-  const tNav = await getTranslations("nav");
+  const t = await getTranslations({ locale, namespace: "boutique" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
 
   const products = await getProducts(locale);
   // Bandeau « ouvre bientôt » tant qu'aucun produit n'est achetable.

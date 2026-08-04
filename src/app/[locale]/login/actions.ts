@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { getLocale } from "next-intl/server";
@@ -24,7 +23,11 @@ export async function loginWithPassword(formData: FormData) {
     const login = localizedPath("/login", locale);
     redirect(`${login}?error=${encodeURIComponent("Identifiants invalides.")}`);
   }
-  revalidatePath("/", "layout");
+  // Pas de `revalidatePath` ici : la coquille publique (layout, en-tête, pied
+  // de page) ne lit aucune session, et tout le sous-arbre `/admin` est en
+  // `force-dynamic` — il n'existe donc aucun HTML en cache que la connexion
+  // rendrait périmé. L'ancien `revalidatePath("/", "layout")` ne visait de
+  // toute façon plus aucune route depuis le passage sous `[locale]`.
   redirect(localizedPath("/admin", locale));
 }
 
@@ -71,6 +74,6 @@ export async function signOut() {
   const locale = await getLocale();
   const supabase = await createClient();
   await supabase.auth.signOut();
-  revalidatePath("/", "layout");
+  // Même raison qu'à la connexion : rien de public ne dépend de la session.
   redirect(localizedPath("/login", locale));
 }

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
 
 /**
@@ -39,10 +39,16 @@ function appFiles(dir: string): string[] {
   });
 }
 
+/** Source débarrassée de ses commentaires : on cherche du CODE, pas des mots. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+}
+
 const files = appFiles(APP).map((file) => ({
   label: relative(APP, file).split(sep).join("/"),
   // Nom sans extension : "not-found.tsx" → "not-found".
   stem: basename(file).replace(/\.[^.]+$/, ""),
+  code: stripComments(readFileSync(file, "utf8")),
 }));
 
 describe("conventions de fichiers dans src/app", () => {
@@ -73,5 +79,22 @@ describe("conventions de fichiers dans src/app", () => {
     ];
     const missing = required.filter((p) => !existsSync(join(APP, p)));
     expect(missing).toEqual([]);
+  });
+
+  it("invalide le cache avec le préfixe de langue, jamais sans", () => {
+    // `revalidatePath("/equipes")` ne correspond à AUCUNE route depuis le
+    // passage sous `[locale]` : les vraies adresses sont `/fr/equipes` et
+    // `/en/equipes`. L'appel ne rafraîchissait donc plus rien, en silence — et
+    // ça ne se voyait pas tant que les pages étaient en `force-dynamic`,
+    // puisqu'il n'y avait aucun HTML en cache à invalider.
+    //
+    // Tout passe désormais par `revalidateLocalizedPath`, qui envoie le motif
+    // `/[locale]/…` et couvre les deux langues d'un coup.
+    const offenders = files
+      .filter((f) => !/\.(test|spec)\.tsx?$/.test(f.label))
+      .filter((f) => /\brevalidatePath\s*\(/.test(f.code))
+      .map((f) => f.label);
+
+    expect(offenders).toEqual([]);
   });
 });

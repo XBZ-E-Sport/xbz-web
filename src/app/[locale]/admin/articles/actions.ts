@@ -1,10 +1,10 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
 import { articleCategories } from "@/lib/actualite";
-import { CACHE_TAGS } from "@/lib/cache";
+import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
 function field(fd: FormData, key: string): string {
   const v = fd.get(key);
@@ -72,10 +72,10 @@ function buildRow(formData: FormData) {
 function revalidateArticle(slug?: string) {
   // Invalide le cache de données des lectures publiques (getArticles, getArticleBySlug).
   revalidateTag(CACHE_TAGS.articles, "max");
-  revalidatePath("/admin/articles");
-  revalidatePath("/actualite");
-  revalidatePath("/"); // l'accueil affiche les 3 dernières
-  if (slug) revalidatePath(`/actualite/${slug}`);
+  revalidateLocalizedPath("/admin/articles");
+  revalidateLocalizedPath("/actualite");
+  revalidateLocalizedPath("/"); // l'accueil affiche les 3 dernières
+  if (slug) revalidateLocalizedPath(`/actualite/${slug}`);
 }
 
 export async function createArticle(formData: FormData) {

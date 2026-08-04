@@ -19,15 +19,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-// Rôles + rosters ouverts lus en base à chaque visite.
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Rôles et rosters ouverts venaient d'une lecture BDD par affichage.
+//
+// La fraîcheur ne dépend pas de ce délai : le back-office appelle
+// `revalidateLocalizedPath` à chaque écriture, ce qui régénère la page tout de
+// suite. Le nombre ci-dessous n'est qu'un filet — si une invalidation était
+// oubliée, la page se remet à jour d'elle-même au bout d'une heure.
+//
+// Littéral obligatoire : Next lit cette valeur au build, une constante importée
+// ne serait pas analysable (cf. CACHE_TTL_SECONDS, même durée).//
+// `force-static` en plus de `revalidate` : sous le segment `[locale]`, Next
+// n'infère plus le prérendu tout seul (la racine de l'app est un segment
+// dynamique) et bascule la route en rendu à la demande. Il faut le lui dire.
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 export default async function RecrutementPage({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("recrutement");
-  const tNav = await getTranslations("nav");
+  const t = await getTranslations({ locale, namespace: "recrutement" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
 
   const [rolesByCategory, rosters] = await Promise.all([
     getOpenRolesByCategory(),
@@ -54,7 +67,7 @@ export default async function RecrutementPage({ params }: PageProps) {
       <p className="mb-8 text-center text-sm text-neutral-400">
         {t.rich("seeOpenRoles", {
           teams: (chunks) => (
-            <Link href="/equipes" className="font-semibold text-xbz-cyan hover:underline">
+            <Link href="/equipes" locale={locale} className="font-semibold text-xbz-cyan hover:underline">
               {chunks}
             </Link>
           ),

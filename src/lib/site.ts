@@ -8,7 +8,12 @@ export const siteConfig = {
   shortName: "XBZ",
   description:
     "XBZ Esport — structure esport compétitive sur Rocket League. Rejoins une équipe motivée, sérieuse et ambitieuse.",
-  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://xbz-esport.fr").replace(/\/$/, ""),
+  // Repli sur le domaine RÉEL. L'ancien repli, `xbz-esport.fr`, n'est pas
+  // enregistré (vérifié : injoignable) : si la variable venait à manquer sur un
+  // environnement Vercel, tous les canonicals, le sitemap, le JSON-LD et les
+  // images Open Graph auraient pointé vers un domaine mort, sans rien casser
+  // visiblement. À remplacer le jour où le nom de domaine sera acheté.
+  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://xbz-web.vercel.app").replace(/\/$/, ""),
   locale: "fr_FR",
   discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "",
 } as const;

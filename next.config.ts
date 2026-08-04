@@ -42,6 +42,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Durée de conservation des images optimisées.
+    //
+    // Sans ça, Next recopie le `cache-control` de la source ; nos fichiers de
+    // /public sont servis par Vercel en `max-age=0, must-revalidate`, donc
+    // chaque affichage du logo repassait par une revalidation. Ces images ne
+    // changent jamais sans un nouveau déploiement (leur URL contient la taille
+    // et la qualité), un an est le bon ordre de grandeur.
+    minimumCacheTTL: 31536000, // 1 an
     // Photos des membres hébergées sur Supabase Storage (bucket public "joueurs").
     // `*.supabase.co` couvre le sous-domaine du projet (ex: abcd1234.supabase.co).
     remotePatterns: [

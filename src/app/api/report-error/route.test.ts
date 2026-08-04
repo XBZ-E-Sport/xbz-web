@@ -61,6 +61,10 @@ describe("POST /api/report-error", () => {
     expect(rateLimitMock).toHaveBeenCalledWith("127.0.0.1", "report-error", {
       limit: 10,
       windowSeconds: 60,
+      // Seule route à laisser passer quand le compteur est en panne : la suite
+      // part vers Discord, pas vers Supabase, et c'est pendant un incident
+      // qu'on a le plus besoin de recevoir les erreurs.
+      failOpen: true,
     });
   });
 

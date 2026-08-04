@@ -57,8 +57,20 @@ test.describe("Langues", () => {
     // Filet le plus large : il couvre la page ET la coquille (en-tête, pied de
     // page). Un composant serveur qui oublie la langue produit exactement ça —
     // des liens `/fr/…` sur une page anglaise, sans aucune erreur visible.
-    // Ces quatre pages sont prérendues au build, là où le piège se referme.
-    for (const path of ["/en/le-club", "/en/support", "/en/mentions-legales", "/en/confidentialite"]) {
+    // Toutes ces pages sont prérendues au build, là où le piège se referme.
+    for (const path of [
+      "/en/le-club",
+      "/en/support",
+      "/en/mentions-legales",
+      "/en/confidentialite",
+      // Passées en ISR : elles sont désormais générées au build, elles aussi.
+      "/en",
+      "/en/equipes",
+      "/en/actualite",
+      "/en/boutique",
+      "/en/presentation",
+      "/en/recrutement",
+    ]) {
       await page.goto(path);
       const hrefs = await page.locator('a[href^="/fr/"]').evaluateAll((links) =>
         links.map((l) => l.getAttribute("href")),

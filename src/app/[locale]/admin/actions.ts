@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
 // Garde d'autorisation partagée (@/lib/adminguard) : une seule implémentation
 // pour TOUTES les server actions — une copie locale finirait par diverger.
 import { requireStaff } from "@/lib/adminguard";
+import { revalidateLocalizedPath } from "@/lib/cache";
 
 // Aligné sur le bot Discord : ses boutons écrivent accepte/refuse/entretien.
 const STATUTS = ["en_attente", "accepte", "refuse", "entretien"] as const;
@@ -72,5 +72,5 @@ export async function updateStatut(formData: FormData) {
   // La base est la source de vérité ; Discord n'en est qu'un reflet.
   notifyBot(id, statut, user.email ?? "le staff");
 
-  revalidatePath("/admin");
+  revalidateLocalizedPath("/admin");
 }

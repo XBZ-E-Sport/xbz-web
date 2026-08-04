@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { useTranslations } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
@@ -19,8 +18,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-// Données lues en base à chaque visite (slots dynamiques).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Les rosters et pôles venaient d'une lecture BDD par affichage.
+//
+// La fraîcheur ne dépend pas de ce délai : le back-office appelle
+// `revalidateLocalizedPath` à chaque écriture, ce qui régénère la page tout de
+// suite. Le nombre ci-dessous n'est qu'un filet — si une invalidation était
+// oubliée, la page se remet à jour d'elle-même au bout d'une heure.
+//
+// Littéral obligatoire : Next lit cette valeur au build, une constante importée
+// ne serait pas analysable (cf. CACHE_TTL_SECONDS, même durée).//
+// `force-static` en plus de `revalidate` : sous le segment `[locale]`, Next
+// n'infère plus le prérendu tout seul (la racine de l'app est un segment
+// dynamique) et bascule la route en rendu à la demande. Il faut le lui dire.
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 const roleStyles: Record<GroupVariant, string> = {
   founder: "bg-white/10 text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]",
@@ -37,8 +49,13 @@ function countOpen(groups: Group[]) {
   return groups.reduce((sum, g) => sum + Math.max(0, g.capacity - g.filled), 0);
 }
 
-function SectionHeading({ id, title, groups }: { id: string; title: string; groups: Group[] }) {
-  const t = useTranslations("equipes");
+// `t` et `locale` descendent en props plutôt que par un hook : sous
+// `force-static` il n'y a pas de requête, donc aucun contexte de langue à
+// l'intérieur d'un sous-composant. Ces fonctions vivent dans le même rendu
+// serveur que la page, rien n'est sérialisé — le passage est gratuit.
+type T = Awaited<ReturnType<typeof getTranslations<"equipes">>>;
+
+function SectionHeading({ id, title, groups, t }: { id: string; title: string; groups: Group[]; t: T }) {
   const open = countOpen(groups);
   return (
     <h2
@@ -53,8 +70,17 @@ function SectionHeading({ id, title, groups }: { id: string; title: string; grou
   );
 }
 
-function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
-  const t = useTranslations("equipes");
+function GroupCard({
+  group,
+  index = 0,
+  t,
+  locale,
+}: {
+  group: Group;
+  index?: number;
+  t: T;
+  locale: string;
+}) {
   const { filled, capacity } = group;
   const isFull = filled >= capacity;
   const pct = capacity > 0 ? Math.min(100, Math.max(0, (filled / capacity) * 100)) : 0;
@@ -79,6 +105,7 @@ function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
         <h3 className="font-display text-lg">
           <Link
             href={`/equipes/${group.slug}`}
+            locale={locale}
             className="text-xbz-blue transition after:absolute after:inset-0 after:content-[''] group-hover:text-xbz-cyan"
           >
             {group.name}
@@ -123,6 +150,7 @@ function GroupCard({ group, index = 0 }: { group: Group; index?: number }) {
           ) : (
             <Link
               href="/recrutement"
+              locale={locale}
               aria-label={t("applyAria", { group: group.name })}
               className={`relative z-10 ${badgeClass} transition duration-300 hover:scale-103 hover:brightness-125 ${availabilityStyles.open}`}
             >
@@ -138,8 +166,8 @@ export default async function EquipesPage({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("equipes");
-  const tNav = await getTranslations("nav");
+  const t = await getTranslations({ locale, namespace: "equipes" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
   const { staff, esport } = await getEquipes(locale);
 
   return (
@@ -158,10 +186,10 @@ export default async function EquipesPage({ params }: PageProps) {
 
       {staff.length > 0 && (
         <section aria-labelledby="staff-heading">
-          <SectionHeading id="staff-heading" title={t("staffHeading")} groups={staff} />
+          <SectionHeading id="staff-heading" title={t("staffHeading")} groups={staff} t={t} />
           <ul className="flex flex-wrap justify-center gap-6">
             {staff.map((g, i) => (
-              <GroupCard key={g.id} group={g} index={i} />
+              <GroupCard key={g.id} group={g} index={i} t={t} locale={locale} />
             ))}
           </ul>
         </section>
@@ -169,10 +197,10 @@ export default async function EquipesPage({ params }: PageProps) {
 
       {esport.length > 0 && (
         <section aria-labelledby="esport-heading" className="mt-20">
-          <SectionHeading id="esport-heading" title={t("esportHeading")} groups={esport} />
+          <SectionHeading id="esport-heading" title={t("esportHeading")} groups={esport} t={t} />
           <ul className="flex flex-wrap justify-center gap-6">
             {esport.map((g, i) => (
-              <GroupCard key={g.id} group={g} index={i} />
+              <GroupCard key={g.id} group={g} index={i} t={t} locale={locale} />
             ))}
           </ul>
         </section>

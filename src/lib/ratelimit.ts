@@ -40,17 +40,31 @@ export function getClientIp(request: Request): string {
   return "unknown";
 }
 
-type Options = { limit?: number; windowSeconds?: number };
+type Options = {
+  limit?: number;
+  windowSeconds?: number;
+  /**
+   * Que faire si le compteur lui-même est en panne (Supabase injoignable) ?
+   *
+   * Par défaut on REFUSE. Le raisonnement : sur les formulaires publics,
+   * l'étape suivante est justement une écriture dans cette même base — si la
+   * lecture échoue, l'enregistrement échouera aussi. Laisser passer n'aide donc
+   * personne, et ouvre grand la porte au spam pile au moment le plus fragile.
+   *
+   * `true` sert aux appels dont la suite NE dépend PAS de Supabase : la
+   * remontée d'erreurs client part vers un webhook Discord et doit continuer à
+   * fonctionner pendant une panne — c'est même là qu'elle est la plus utile.
+   */
+  failOpen?: boolean;
+};
 
 /**
  * Autorise au plus `limit` requêtes par (IP, route) sur `windowSeconds`.
- * En cas d'erreur de lecture, on laisse passer (on ne bloque jamais un
- * utilisateur légitime à cause d'un souci d'infra).
  */
 export async function checkRateLimit(
   ip: string,
   route: string,
-  { limit = 5, windowSeconds = 60 }: Options = {},
+  { limit = 5, windowSeconds = 60, failOpen = false }: Options = {},
 ): Promise<{ allowed: boolean; retryAfter: number }> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - windowSeconds * 1000).toISOString();
@@ -64,7 +78,7 @@ export async function checkRateLimit(
 
   if (error) {
     console.error("[ratelimit] count:", error.message);
-    return { allowed: true, retryAfter: 0 };
+    return { allowed: failOpen, retryAfter: failOpen ? 0 : windowSeconds };
   }
 
   if ((count ?? 0) >= limit) {

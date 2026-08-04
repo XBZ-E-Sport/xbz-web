@@ -20,8 +20,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
 
-// Stats lues en base (slots dynamiques).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Les stats venaient d'une lecture BDD par affichage.
+//
+// La fraîcheur ne dépend pas de ce délai : le back-office appelle
+// `revalidateLocalizedPath` à chaque écriture, ce qui régénère la page tout de
+// suite. Le nombre ci-dessous n'est qu'un filet — si une invalidation était
+// oubliée, la page se remet à jour d'elle-même au bout d'une heure.
+//
+// Littéral obligatoire : Next lit cette valeur au build, une constante importée
+// ne serait pas analysable (cf. CACHE_TTL_SECONDS, même durée).//
+// `force-static` en plus de `revalidate` : sous le segment `[locale]`, Next
+// n'infère plus le prérendu tout seul (la racine de l'app est un segment
+// dynamique) et bascule la route en rendu à la demande. Il faut le lui dire.
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 // Icônes ici, textes dans les fichiers de langue (`presentation.values.*`).
 const values = [
@@ -35,9 +48,9 @@ export default async function PresentationPage({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("presentation");
-  const tHome = await getTranslations("home");
-  const tNav = await getTranslations("nav");
+  const t = await getTranslations({ locale, namespace: "presentation" });
+  const tHome = await getTranslations({ locale, namespace: "home" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
 
   const structure = await getStructureStats();
   const stats = [
@@ -143,6 +156,7 @@ export default async function PresentationPage({ params }: PageProps) {
             </a>
             <Link
               href="/recrutement"
+              locale={locale}
               className="rounded-xl border border-white/25 px-7 py-3.5 text-center font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
             >
               {tHome("joinUs")}

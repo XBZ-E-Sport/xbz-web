@@ -9,6 +9,10 @@ export async function POST(request: Request) {
   const { allowed } = await checkRateLimit(getClientIp(request), "report-error", {
     limit: 10,
     windowSeconds: 60,
+    // Une panne du compteur ne doit pas rendre le site aveugle : la remontée
+    // d'erreurs part vers Discord, pas vers Supabase, et c'est justement
+    // pendant un incident qu'on en a besoin.
+    failOpen: true,
   });
   if (!allowed) return NextResponse.json({ ok: false }, { status: 429 });
 

@@ -6,6 +6,23 @@ import { signOut } from "@/app/[locale]/login/actions";
 // Back-office : auth + données live → jamais prérendu au build (tout le sous-arbre /admin).
 export const dynamic = "force-dynamic";
 
+/**
+ * `noindex` pour TOUT le back-office, posé au layout pour qu'aucune page
+ * ajoutée plus tard ne puisse l'oublier.
+ *
+ * `robots.txt` interdit déjà l'exploration, mais un `Disallow` n'empêche pas
+ * une URL d'apparaître dans les résultats si elle est découverte autrement (un
+ * lien collé quelque part suffit) : Google la liste alors sans en connaître le
+ * contenu. Cette balise-ci, elle, interdit vraiment l'indexation.
+ *
+ * ⚠️ Ne JAMAIS lire la base ici ni dans un `generateMetadata` d'une page admin.
+ * Les métadonnées sont calculées AVANT que `requireStaff()` ne s'exécute : ce
+ * qui y transite part dans le HTML servi aux visiteurs non connectés. Vérifié
+ * en prod : `/fr/admin` renvoie 200 avec le titre du back-office à un anonyme
+ * (le corps, lui, est bien la page de connexion).
+ */
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Rôle Discord vérifié à la connexion OU allowlist email — même garde que les
   // server actions (@/lib/adminguard), pour qu'il n'existe qu'une seule règle.
