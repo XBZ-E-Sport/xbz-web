@@ -61,7 +61,16 @@ describe("conventions de fichiers dans src/app", () => {
   it("garde les écrans de repli là où Next les cherche", () => {
     // Un 404 et un écran de crash : deux pages qu'on ne visite jamais en
     // développement, donc deux disparitions qu'on ne remarquerait pas.
-    const required = [join("[locale]", "not-found.tsx"), "global-error.tsx"];
+    //
+    // La route attrape-tout compte autant que la page 404 elle-même : c'est
+    // elle qui l'atteint. Next réserve les URL inconnues au `not-found` RACINE,
+    // et notre racine est un segment dynamique (`[locale]`) — sans attrape-tout,
+    // `[locale]/not-found.tsx` existe mais n'est jamais servi aux visiteurs.
+    const required = [
+      join("[locale]", "not-found.tsx"),
+      join("[locale]", "[...rest]", "page.tsx"),
+      "global-error.tsx",
+    ];
     const missing = required.filter((p) => !existsSync(join(APP, p)));
     expect(missing).toEqual([]);
   });
