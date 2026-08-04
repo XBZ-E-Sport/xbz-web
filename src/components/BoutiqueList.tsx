@@ -67,7 +67,7 @@ function ProductCard({ product }: { product: Product }) {
           </span>
         </div>
 
-        <h3 className="mt-3 font-display text-lg text-xbz-blue">{product.name}</h3>
+        <h2 className="mt-3 font-display text-lg text-xbz-blue">{product.name}</h2>
         <p className="mt-1 flex-1 text-sm leading-relaxed text-neutral-400">
           {product.description}
         </p>

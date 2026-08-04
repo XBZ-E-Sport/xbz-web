@@ -6,11 +6,38 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-/** IP client (Vercel renseigne `x-forwarded-for`). */
+/**
+ * IP du client, choisie pour ne PAS être dictée par le client lui-même.
+ *
+ * `x-forwarded-for` est une liste, et n'importe qui peut l'amorcer avec la
+ * valeur de son choix. La convention veut que chaque relais AJOUTE à la fin
+ * l'adresse qu'il a réellement vue : la DERNIÈRE entrée est donc celle posée
+ * par le relais le plus proche de nous — la seule qu'une requête entrante ne
+ * puisse pas choisir. Prendre la première laisserait quiconque changer
+ * d'identité à chaque envoi, et l'anti-flood ne compterait plus rien.
+ *
+ * Mesuré sur la prod (Vercel écrase l'en-tête entrante) : la version « première
+ * entrée » n'était en fait pas contournable. Mais elle reposait entièrement sur
+ * ce comportement de plateforme, non garanti par contrat et faux dès qu'un
+ * autre relais s'intercale — Cloudflare devant Vercel, ou un déménagement
+ * d'hébergeur. On ne veut pas que l'anti-flood dépende de ça.
+ *
+ * ⚠️ Si un jour un CDN tiers passe DEVANT Vercel, la dernière entrée devient
+ * l'adresse de ce CDN et toutes les visites partageraient le même compteur.
+ * Il faudra alors lire l'en-tête propre à ce CDN (`cf-connecting-ip` & co).
+ */
 export function getClientIp(request: Request): string {
+  // Posée par Vercel, jamais transmise depuis l'extérieur.
+  const real = request.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+
   const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim() || "unknown";
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  if (fwd) {
+    const hops = fwd.split(",");
+    return hops[hops.length - 1]?.trim() || "unknown";
+  }
+
+  return "unknown";
 }
 
 type Options = { limit?: number; windowSeconds?: number };

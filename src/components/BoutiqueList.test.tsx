@@ -43,7 +43,7 @@ describe("BoutiqueList", () => {
   it("trie par prix croissant", () => {
     renderIntl(<BoutiqueList products={products} />);
     fireEvent.change(screen.getByLabelText(fr.boutique.sort), { target: { value: "prix-asc" } });
-    const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    const names = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
     expect(names).toEqual(["Mug XBZ", "Tapis souris", "T-shirt XBZ"]); // 12 < 20 < 25
   });
 

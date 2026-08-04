@@ -56,10 +56,10 @@ export default function PlayerCard({
       </div>
 
       <div className="p-4">
-        <h3 className="flex items-center gap-2 font-display text-lg text-white">
+        <h2 className="flex items-center gap-2 font-display text-lg text-white">
           <Flag code={player.pays_code} label={player.pays} />
           {player.pseudo}
-        </h3>
+        </h2>
         {player.nom && <p className="mt-0.5 text-sm text-xbz-cyan">{player.nom}</p>}
       </div>
     </>

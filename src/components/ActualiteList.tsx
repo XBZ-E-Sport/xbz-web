@@ -40,7 +40,7 @@ function ArticleCard({ article }: { article: Article }) {
             {formatDate(article.date, locale)}
           </time>
         </div>
-        <h3 className="mt-3 font-display text-lg text-xbz-blue">{article.title}</h3>
+        <h2 className="mt-3 font-display text-lg text-xbz-blue">{article.title}</h2>
         <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">{article.excerpt}</p>
         <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-xbz-cyan">
           {t("readArticle")}
