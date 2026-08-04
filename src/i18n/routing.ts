@@ -29,6 +29,12 @@ export const LOCALE_COOKIE = {
   maxAge: 60 * 60 * 24 * 365,
   sameSite: "lax",
   path: "/",
+  // Jamais envoyé en clair. Le contenu n'a rien de secret (« fr » ou « en »),
+  // mais un cookie non `Secure` reste modifiable par un intermédiaire sur une
+  // connexion http — et il n'y a aucune raison de laisser cette prise.
+  // Désactivé en développement : localhost est en http, le cookie ne serait
+  // jamais posé et le sélecteur de langue perdrait sa mémoire.
+  secure: process.env.NODE_ENV === "production",
 } as const;
 
 export const routing = defineRouting({

@@ -24,7 +24,11 @@ const infoLinks = [
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
 
-const linkCls = "text-neutral-400 transition hover:text-xbz-cyan";
+// `inline-block py-1` : la zone cliquable passe de 16 px à 24 px de haut, le
+// minimum du critère « Target Size (Minimum) » du WCAG 2.2 AA. Le texte ne
+// bouge pas d'un pixel — c'est la surface tactile qui grandit, au bénéfice de
+// tous ceux qui visent mal : gros doigts, écran dans le métro, tremblements.
+const linkCls = "inline-block py-1 text-neutral-400 transition hover:text-xbz-cyan";
 const headingCls =
   "mb-4 font-display text-sm font-bold uppercase tracking-[2px] text-neutral-300";
 

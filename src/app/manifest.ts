@@ -10,7 +10,10 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: siteConfig.shortName,
     description: siteConfig.description,
     lang: "fr",
-    start_url: "/",
+    // Préfixé : toutes les URL portent leur langue depuis le passage en
+    // bilingue. `/` ne fait plus que rediriger (308) — la PWA payait ce rebond
+    // à chaque lancement.
+    start_url: "/fr",
     scope: "/",
     display: "standalone",
     background_color: "#070710", // fond de l'écran de démarrage (sombre, comme le site)

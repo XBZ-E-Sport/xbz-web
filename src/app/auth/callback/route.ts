@@ -84,11 +84,10 @@ export async function GET(request: Request) {
       await clearDiscordStaff(userId);
     }
     await supabase.auth.signOut();
-    console.warn(
-      "[auth] connexion Discord refusée:",
-      check.reason,
-      data.session.user.email ?? userId,
-    );
+    // Identifiant seulement, jamais l'email : ces lignes partent dans les logs
+    // Vercel, qui ne sont pas l'endroit où entreposer des données personnelles.
+    // L'id suffit pour retrouver le compte dans Supabase en cas de litige.
+    console.warn("[auth] connexion Discord refusée:", check.reason, userId);
     return denied(origin, locale, denyMessage(check.reason));
   }
 

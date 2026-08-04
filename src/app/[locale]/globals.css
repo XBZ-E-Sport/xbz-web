@@ -18,6 +18,12 @@
 }
 
 html {
+  /* Dit au navigateur que la page est sombre. Sans ça il dessine TOUS ses
+     widgets natifs en clair sur un site noir : la liste déroulante d'un
+     <select>, les barres de défilement, l'autofill des formulaires, les
+     sélecteurs de date. Le fond du <select> fermé, lui, était déjà sombre
+     (c'est notre CSS) — d'où l'incohérence : boîte noire, menu blanc. */
+  color-scheme: dark;
   background: var(--color-xbz-bg);
   scroll-behavior: smooth;
   scroll-padding-top: 6rem;

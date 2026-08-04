@@ -37,10 +37,19 @@ const securityHeaders = [
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   },
   // Ignoré par les navigateurs en http/localhost → sans effet en dev.
+  //
+  // `preload` est une CANDIDATURE à la liste de préchargement des navigateurs,
+  // qu'il faut déposer sur hstspreload.org. Un sous-domaine de `vercel.app` ne
+  // peut pas y prétendre (vercel.app figure sur la Public Suffix List) : la
+  // directive est donc inerte aujourd'hui. On la garde telle quelle pour le
+  // jour où le site vivra sur son propre nom de domaine.
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ];
 
 const nextConfig: NextConfig = {
+  // Pas de `x-powered-by: Next.js` : annoncer sa pile à chaque réponse ne rend
+  // service qu'à celui qui cherche une faille connue pour cette pile.
+  poweredByHeader: false,
   images: {
     // Durée de conservation des images optimisées.
     //
