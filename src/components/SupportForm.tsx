@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import Honeypot from "@/components/Honeypot";
 import { useElapsed } from "@/hooks/useElapsed";
 import { FIELD_MAX } from "@/lib/limits";
+import { translateApiError } from "@/lib/formerror";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
@@ -18,9 +21,15 @@ const toneColor: Record<Tone, string> = {
   error: "text-red-500",
 };
 
+// Valeurs envoyées au serveur (liste blanche côté route) : elles ne changent
+// PAS avec la langue, seul leur libellé affiché est traduit.
 const SUJETS = ["Général", "Recrutement", "Partenariat", "Signalement", "Presse", "Bug technique"];
 
 export default function SupportForm() {
+  const t = useTranslations("supportForm");
+  const tErr = useTranslations("formErrors");
+  const tField = useTranslations("fieldLabels");
+  const tSujet = useTranslations("supportSubjects");
   const [status, setStatus] = useState<{ msg: string; tone: Tone }>({ msg: "", tone: "idle" });
   const [submitting, setSubmitting] = useState(false);
   // Anti-spam : temps de remplissage depuis le montage (rejet serveur si trop rapide).
@@ -33,7 +42,7 @@ export default function SupportForm() {
     data.elapsed = elapsed();
 
     setSubmitting(true);
-    setStatus({ msg: "⏳ Envoi en cours...", tone: "loading" });
+    setStatus({ msg: `⏳ ${t("sending")}`, tone: "loading" });
 
     try {
       const res = await fetch("/api/support", {
@@ -43,12 +52,12 @@ export default function SupportForm() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error ?? "Erreur lors de l’envoi.");
+        throw new Error(translateApiError(json, tErr, tField));
       }
-      setStatus({ msg: "✅ Message envoyé ! Le staff te répondra bientôt.", tone: "ok" });
+      setStatus({ msg: `✅ ${t("success")}`, tone: "ok" });
       form.reset();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erreur lors de l’envoi.";
+      const msg = err instanceof Error ? err.message : tErr("generic");
       setStatus({ msg: `❌ ${msg}`, tone: "error" });
     } finally {
       setSubmitting(false);
@@ -61,7 +70,7 @@ export default function SupportForm() {
 
       <div>
         <label htmlFor="support-nom" className={labelCls}>
-          Nom / Pseudo
+          {t("name")}
         </label>
         <input
           id="support-nom"
@@ -70,14 +79,14 @@ export default function SupportForm() {
           type="text"
           required
           autoComplete="name"
-          placeholder="Ton nom ou pseudo"
+          placeholder={t("namePlaceholder")}
           className={inputCls}
         />
       </div>
 
       <div>
         <label htmlFor="support-email" className={labelCls}>
-          Email
+          {t("email")}
         </label>
         <input
           id="support-email"
@@ -93,12 +102,12 @@ export default function SupportForm() {
 
       <div>
         <label htmlFor="support-sujet" className={labelCls}>
-          Sujet
+          {t("subject")}
         </label>
         <select id="support-sujet" name="sujet" defaultValue="Général" className={inputCls}>
           {SUJETS.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {tSujet(s)}
             </option>
           ))}
         </select>
@@ -106,7 +115,7 @@ export default function SupportForm() {
 
       <div>
         <label htmlFor="support-message" className={labelCls}>
-          Message
+          {t("message")}
         </label>
         <textarea
           id="support-message"
@@ -115,7 +124,7 @@ export default function SupportForm() {
           rows={5}
           required
           minLength={10}
-          placeholder="Explique ta demande en quelques lignes..."
+          placeholder={t("messagePlaceholder")}
           className={inputCls}
         />
       </div>
@@ -130,17 +139,18 @@ export default function SupportForm() {
           className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-xbz-blue"
         />
         <label htmlFor="support-consent" className="text-[13px] leading-relaxed text-neutral-400">
-          J’accepte que les informations transmises soient utilisées par XBZ Esport pour traiter
-          ma demande et me répondre. Voir la{" "}
-          <a
-            href="/confidentialite"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-xbz-cyan hover:underline"
-          >
-            politique de confidentialité
-          </a>
-          .
+          {t.rich("consent", {
+            privacy: (chunks) => (
+              <Link
+                href="/confidentialite"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-xbz-cyan hover:underline"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
         </label>
       </div>
 
@@ -149,7 +159,7 @@ export default function SupportForm() {
         disabled={submitting}
         className="mt-1 rounded-xl bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
       >
-        {submitting ? "Envoi..." : "Envoyer le message"}
+        {submitting ? t("submitting") : t("submit")}
       </button>
 
       <p aria-live="polite" className={`min-h-5 text-center text-sm ${toneColor[status.tone]}`}>

@@ -1,12 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { exchangeMock, signOutMock, checkMock, markMock, clearMock } = vi.hoisted(() => ({
+const { exchangeMock, signOutMock, checkMock, markMock, clearMock, jar } = vi.hoisted(() => ({
   exchangeMock: vi.fn(),
   signOutMock: vi.fn(),
   checkMock: vi.fn(),
   markMock: vi.fn(),
   clearMock: vi.fn(),
+  // Cookies du navigateur au retour de Discord.
+  jar: new Map<string, string>(),
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined),
+  }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -51,6 +59,7 @@ beforeEach(() => {
   checkMock.mockReset().mockResolvedValue({ ok: true, roles: ["role-admin"] });
   markMock.mockReset();
   clearMock.mockReset();
+  jar.clear();
 });
 
 describe("GET /auth/callback", () => {
@@ -123,12 +132,34 @@ describe("GET /auth/callback", () => {
     );
   });
 
-  it("garde la langue du chemin de retour, y compris en cas de refus", async () => {
-    // La route vit hors du segment [locale] : `next` est sa seule source de
-    // langue. Un staff anglophone refusé ne doit pas atterrir sur /fr/login.
-    expect(location(await call("?code=abc&next=/en/admin"))).toBe(`${ORIGIN}/en/admin`);
+  it("renvoie dans la langue du cookie, sans aucun paramètre d'URL", async () => {
+    // C'est TOUT le mécanisme : l'URL de callback doit rester identique au
+    // caractère près à celle déclarée chez Supabase (sinon la correspondance
+    // échoue et le code OAuth part sur l'accueil). Le cookie est donc la seule
+    // source de langue au retour de Discord.
+    jar.set("XBZ_LOCALE", "en");
+    expect(location(await call("?code=abc"))).toBe(`${ORIGIN}/en/admin`);
+  });
 
-    exchangeMock.mockResolvedValue({ data: { session: null }, error: { message: "bad code" } });
-    expect(location(await call("?code=abc&next=/en/admin"))).toContain(`${ORIGIN}/en/login?error=`);
+  it("garde la langue du cookie en cas de refus", async () => {
+    // Un staff anglophone refusé ne doit pas atterrir sur /fr/login.
+    jar.set("XBZ_LOCALE", "en");
+    checkMock.mockResolvedValue({ ok: false, reason: "missing_role" });
+    expect(location(await call("?code=abc"))).toContain(`${ORIGIN}/en/login?error=`);
+  });
+
+  it("retombe sur le français sans cookie, ou avec un cookie fantaisiste", async () => {
+    expect(location(await call("?code=abc"))).toBe(`${ORIGIN}/fr/admin`);
+
+    jar.set("XBZ_LOCALE", "de");
+    expect(location(await call("?code=abc"))).toBe(`${ORIGIN}/fr/admin`);
+  });
+
+  it("laisse ?next primer sur le cookie quand il porte une langue", async () => {
+    // Un lien profond reste explicite : il gagne contre la mémoire du cookie.
+    jar.set("XBZ_LOCALE", "fr");
+    expect(location(await call("?code=abc&next=/en/admin/rosters"))).toBe(
+      `${ORIGIN}/en/admin/rosters`,
+    );
   });
 });

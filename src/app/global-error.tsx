@@ -7,6 +7,12 @@ import { reportClientError } from "@/lib/client-report";
 // Error boundary racine : remplace le layout quand une erreur non gérée casse
 // le rendu. Doit fournir ses propres <html>/<body>. On remonte l'erreur au sink
 // et on affiche un repli sobre avec un bouton de réessai.
+//
+// SEUL écran du site non traduit, volontairement : il vit hors du segment
+// `[locale]` et remplace le layout — donc hors du fournisseur de traductions.
+// Y appeler next-intl échouerait précisément quand tout le reste a déjà échoué.
+// L'écran d'erreur traduit, lui, c'est `src/app/[locale]/error.tsx`, qui couvre
+// tous les cas où le layout tient encore.
 export default function GlobalError({
   error,
   reset,

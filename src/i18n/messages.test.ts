@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import {
   parse,
   isArgumentElement,
@@ -116,7 +118,54 @@ describe("messages fr/en", () => {
   });
 });
 
+/**
+ * Espaces de noms réellement demandés par le code applicatif.
+ *
+ * Les fichiers de test sont exclus : celui des pages prérendues cite
+ * `getTranslations("ns")` dans un commentaire, qui n'est pas un vrai usage.
+ */
+function usedNamespaces(dir: string): Set<string> {
+  const found = new Set<string>();
+  const pattern =
+    /(?:useTranslations|getTranslations)\(\s*["'`]([\w.]+)["'`]|namespace:\s*["'`]([\w.]+)["'`]/g;
+
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current)) {
+      const full = join(current, entry);
+      if (statSync(full).isDirectory()) {
+        walk(full);
+      } else if (/\.tsx?$/.test(entry) && !/\.(test|spec)\.tsx?$/.test(entry)) {
+        for (const match of readFileSync(full, "utf8").matchAll(pattern)) {
+          // Seul le premier segment compte : `leClub.poles` vit dans `leClub`.
+          found.add((match[1] ?? match[2]).split(".")[0]);
+        }
+      }
+    }
+  };
+
+  walk(dir);
+  return found;
+}
+
+const namespacesInCode = usedNamespaces(join(process.cwd(), "src"));
+
 describe("messages ↔ code", () => {
+  it("n'a aucun espace de noms orphelin", () => {
+    // Un bloc de traductions que plus personne ne lit, c'est le signe qu'un
+    // composant est revenu à des libellés en dur — le cas exact du formulaire
+    // de support, resté français sur /en/support alors que ses traductions
+    // existaient. Rien d'autre ne le signale : ni le build, ni le runtime.
+    const orphans = Object.keys(frTree).filter((ns) => !namespacesInCode.has(ns));
+    expect(orphans).toEqual([]);
+  });
+
+  it("ne demande aucun espace de noms inexistant", () => {
+    // Une faute de frappe dans `useTranslations("recrutmentForm")` ne se voit
+    // qu'à l'affichage, sous forme de clés brutes.
+    const unknown = [...namespacesInCode].filter((ns) => !(ns in frTree)).sort();
+    expect(unknown).toEqual([]);
+  });
+
   it("traduit chaque code d'erreur d'API", () => {
     for (const locale of [frTree, enTree]) {
       const codes = Object.keys(locale.formErrors as Tree);

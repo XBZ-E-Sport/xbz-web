@@ -67,6 +67,19 @@ test.describe("Langues", () => {
     }
   });
 
+  test("les formulaires eux-mêmes sont traduits, pas seulement la page", async ({ page }) => {
+    // La page de support est prérendue au build, mais son formulaire est un
+    // composant client : il est traduit par le fournisseur, pas par la page.
+    // Une coquille anglaise autour d'un formulaire français ne casse rien —
+    // aucune erreur au build, aucune au runtime — et se voit seulement à l'œil.
+    await page.goto("/en/support");
+    await expect(page.getByRole("button", { name: "Send the message" })).toBeVisible();
+    await expect(page.getByLabel("Name / Username")).toBeVisible();
+
+    await page.goto("/fr/support");
+    await expect(page.getByRole("button", { name: "Envoyer le message" })).toBeVisible();
+  });
+
   test("la redirection des URL nues ne dépend pas du visiteur", async ({ page }) => {
     // Après une bascule en anglais, `/support` mène quand même à `/fr/support`.
     // C'est voulu : une redirection permanente qui varierait selon le cookie

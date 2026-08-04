@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { DISCORD_SCOPES } from "@/lib/discord-guard";
+import { LOCALE_COOKIE } from "@/i18n/routing";
 import { siteConfig, localizedPath } from "@/lib/site";
 
 // Toutes les URL portent leur langue : on redirige vers `/fr/admin` (ou
@@ -35,12 +36,24 @@ export async function loginWithDiscord() {
   // rejetterait la redirection. On retombe sur le domaine configuré.
   const origin = (await headers()).get("origin") ?? siteConfig.url;
 
+  // On grave la langue AVANT de partir chez Discord : c'est le seul bagage que
+  // la personne emportera. next-intl ne pose ce cookie que s'il détecte un
+  // écart (langue changée au sélecteur, ou `accept-language` divergent) — un
+  // anglophone arrivé droit sur /en/login n'en a donc aucun, et le callback
+  // n'aurait rien à lire.
+  const { name: cookieName, ...cookieOptions } = LOCALE_COOKIE;
+  (await cookies()).set(cookieName, locale, cookieOptions);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "discord",
     options: {
-      // `next` porte la langue : au retour de Discord, la route de callback est
-      // hors du segment `[locale]` et n'a aucun autre moyen de la connaître.
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(localizedPath("/admin", locale))}`,
+      // AUCUNE query string ici, volontairement. Supabase compare le
+      // `redirectTo` à sa liste d'URL autorisées ; un `?next=…` accolé fait
+      // échouer la correspondance avec une entrée exacte, et Supabase renvoie
+      // alors sur le Site URL — le code OAuth atterrit sur l'accueil au lieu du
+      // callback, sans le moindre message d'erreur.
+      // La langue voyage par le cookie `XBZ_LOCALE`, que le callback relit.
+      redirectTo: `${origin}/auth/callback`,
       // `guilds.members.read` : indispensable pour lire les rôles de la personne
       // sur le serveur XBZ au retour de l'OAuth (voir @/lib/discord-guard).
       scopes: DISCORD_SCOPES,

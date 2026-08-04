@@ -12,12 +12,31 @@ import { defineRouting } from "next-intl/routing";
  * `/fr/…` — les liens déjà partagés continuent de marcher et Google
  * transfère le référencement acquis vers la nouvelle adresse.
  */
+/**
+ * Cookie qui mémorise la langue choisie.
+ *
+ * Sorti de la config parce que deux endroits en dépendent HORS de next-intl :
+ * l'action de connexion Discord l'écrit, et `/auth/callback` le relit — cette
+ * route vit hors du segment `[locale]`, elle n'a aucun autre indice de langue.
+ *
+ * `sameSite: "lax"` n'est pas un détail de confort : le retour d'OAuth est une
+ * navigation de premier niveau venue d'un autre domaine (Supabase → notre
+ * callback). En « lax » le cookie part avec la requête ; en « strict » il
+ * resterait à quai et un staff anglophone reviendrait toujours en français.
+ */
+export const LOCALE_COOKIE = {
+  name: "XBZ_LOCALE",
+  maxAge: 60 * 60 * 24 * 365,
+  sameSite: "lax",
+  path: "/",
+} as const;
+
 export const routing = defineRouting({
   locales: ["fr", "en"],
   defaultLocale: "fr",
   localePrefix: "always",
   // Mémorise la langue choisie via le sélecteur (cookie posé par next-intl).
-  localeCookie: { name: "XBZ_LOCALE", maxAge: 60 * 60 * 24 * 365 },
+  localeCookie: LOCALE_COOKIE,
   // On ne devine la langue ni depuis Accept-Language, ni depuis le cookie :
   // une URL nue (`/equipes`) part TOUJOURS vers `/fr/equipes`. Une redirection
   // permanente qui varierait selon le visiteur serait incachable par le CDN, et
