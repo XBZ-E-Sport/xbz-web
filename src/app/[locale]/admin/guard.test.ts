@@ -17,6 +17,15 @@ import { join } from "node:path";
  */
 const ADMIN_DIR = "src/app/[locale]/admin";
 
+function adminActionFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) adminActionFiles(full, out);
+    else if (entry === "actions.ts") out.push(full);
+  }
+  return out;
+}
+
 function adminPages(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
@@ -47,5 +56,26 @@ describe("contrôle d'accès du back-office", () => {
 
   it("le layout garde aussi la coquille (navigation, email du staff)", () => {
     expect(readFileSync(join(ADMIN_DIR, "layout.tsx"), "utf8")).toContain("requireStaff(");
+  });
+
+  it("chaque server action du back-office passe par la garde", () => {
+    // Une server action est un endpoint POST joignable directement : la garde
+    // du layout ne la protège pas. Chaque fonction exportée doit appeler
+    // requireStaff() ou assertStaff() elle-même.
+    const actionFiles = adminActionFiles(ADMIN_DIR);
+    const nonGardees: string[] = [];
+
+    for (const file of actionFiles) {
+      const src = readFileSync(file, "utf8");
+      // Corps de chaque `export async function nom(...) { … }` jusqu'à la
+      // prochaine déclaration exportée (suffisant : ces fichiers sont plats).
+      const blocs = src.split(/\nexport async function /).slice(1);
+      for (const bloc of blocs) {
+        const nom = bloc.slice(0, bloc.indexOf("("));
+        if (!/requireStaff\(|assertStaff\(/.test(bloc)) nonGardees.push(`${file} → ${nom}`);
+      }
+    }
+
+    expect(nonGardees).toEqual([]);
   });
 });

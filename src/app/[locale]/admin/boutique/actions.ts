@@ -3,7 +3,7 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
-import { processAndUploadImage } from "@/lib/storageimage";
+import { processAndUploadImage } from "@/lib/storage-image";
 import { productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 

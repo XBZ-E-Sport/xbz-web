@@ -103,6 +103,16 @@ const fetchArticles = unstable_cache(
   { tags: [CACHE_TAGS.articles], revalidate: CACHE_TTL_SECONDS },
 );
 
+/**
+ * Slugs de tous les articles publiés.
+ *
+ * Sert à prégénérer les pages de détail au build. Réutilise la lecture déjà
+ * mise en cache par la liste — pas de requête supplémentaire.
+ */
+export async function getArticleSlugs(): Promise<string[]> {
+  return (await fetchArticles()).map((row) => row.slug);
+}
+
 /** Liste des actualités publiées, les plus récentes d'abord, dans `locale`. */
 export async function getArticles(locale: string): Promise<Article[]> {
   return (await fetchArticles()).map((row) => toArticle(row, locale));

@@ -2,6 +2,7 @@ import { Link } from "@/i18n/navigation";
 import { Toaster } from "sonner";
 import { requireStaff } from "@/lib/adminguard";
 import { signOut } from "@/app/[locale]/login/actions";
+import { revalidateAllPublicContent } from "./actions";
 
 // Back-office : auth + données live → jamais prérendu au build (tout le sous-arbre /admin).
 export const dynamic = "force-dynamic";
@@ -36,6 +37,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <h1 className="font-display text-2xl font-bold">Back-office XBZ</h1>
         <div className="flex items-center gap-3 text-sm text-neutral-400">
           <span className="hidden sm:inline">{user.email}</span>
+          {/* Sortie de secours quand la base a été modifiée hors du back-office
+              (éditeur SQL Supabase) : rien n'a alors invalidé le cache, et le
+              site public reste sur l'ancien contenu jusqu'à une heure. */}
+          <form action={revalidateAllPublicContent}>
+            <button
+              title="À utiliser après une modification faite directement en SQL : le site public reprend la base immédiatement."
+              className="rounded-lg border border-white/15 px-3 py-1.5 transition hover:border-xbz-cyan hover:text-white hover:cursor-pointer"
+            >
+              Rafraîchir le site
+            </button>
+          </form>
           <form action={signOut}>
             <button className="rounded-lg border border-white/15 px-3 py-1.5 transition hover:border-red-400 hover:text-white hover:cursor-pointer">
               Déconnexion

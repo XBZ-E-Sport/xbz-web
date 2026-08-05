@@ -1,15 +1,30 @@
 import { notFound } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { getRosterBySlug } from "@/lib/roster";
-import { getPoleBySlug } from "@/lib/equipes";
+import { getEquipeSlugs, getPoleBySlug } from "@/lib/equipes";
 import { pageMetadata } from "@/lib/site";
 import PlayerCard from "@/components/PlayerCard";
 
-// Données lues en base à chaque requête (back-office pilote rosters et pôles).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. Roster ou pôle venait d'une lecture BDD par affichage.
+//
+// `force-static` est indispensable, et pas seulement à cause du segment
+// `[locale]` : la doc de Next le dit pour les routes dynamiques — sans lui, une
+// page dont le slug n'était pas connu au build ne serait jamais mise en cache
+// après coup. Un membre ajouté cet après-midi resterait en rendu par visite
+// jusqu'au prochain déploiement.
+//
+// Les slugs inconnus de `generateStaticParams` restent servis à la demande
+// (`dynamicParams` vaut true par défaut), puis mis en cache.
+export const dynamic = "force-static";
+export const revalidate = 3600;
+
+/** Prégénère les rosters ET les pôles : ils partagent cette route. */
+export async function generateStaticParams() {
+  return (await getEquipeSlugs()).map((roster) => ({ roster }));
+}
 
 type PageProps = { params: Promise<{ locale: string; roster: string }> };
 
@@ -45,12 +60,14 @@ export default async function EquipeDetailPage({ params }: PageProps) {
   const { locale, roster: slug } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("equipeDetail");
+  const t = await getTranslations({ locale, namespace: "equipeDetail" });
 
   const roster = await getRosterBySlug(slug, locale);
   if (roster) {
     return (
       <DetailLayout
+        backLabel={t("backToTeams")}
+        locale={locale}
         eyebrow={roster.rank}
         title={roster.name}
         description={roster.description}
@@ -68,6 +85,8 @@ export default async function EquipeDetailPage({ params }: PageProps) {
   if (pole) {
     return (
       <DetailLayout
+        backLabel={t("backToTeams")}
+        locale={locale}
         eyebrow={pole.category === "esport" ? t("poleEsport") : t("poleStaff")}
         title={pole.name}
         description={pole.description}
@@ -91,6 +110,8 @@ function DetailLayout({
   emptyLabel,
   count,
   children,
+  backLabel,
+  locale,
 }: {
   eyebrow?: string | null;
   title: string;
@@ -98,15 +119,20 @@ function DetailLayout({
   emptyLabel: string;
   count: number;
   children: React.ReactNode;
+  // Reçus en props plutôt que lus par un hook : sous `force-static` il n'y a
+  // pas de requête, donc aucun contexte de langue à l'intérieur d'un
+  // sous-composant. Ils viennent du corps de la page, qui a la langue.
+  backLabel: string;
+  locale: string;
 }) {
-  const t = useTranslations("equipeDetail");
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
       <Link
         href="/equipes"
+        locale={locale}
         className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
       >
-        <span aria-hidden="true">←</span> {t("backToTeams")}
+        <span aria-hidden="true">←</span> {backLabel}
       </Link>
 
       <header className="mb-14 mt-6 text-center">

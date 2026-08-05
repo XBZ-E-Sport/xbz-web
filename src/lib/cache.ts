@@ -37,3 +37,19 @@ export const CACHE_TTL_SECONDS = 3600; // 1 h
 export function revalidateLocalizedPath(path: string): void {
   revalidatePath(path === "/" ? "/[locale]" : `/[locale]${path}`, "page");
 }
+
+/**
+ * Chemins de route (avec segments dynamiques) des pages de détail publiques.
+ *
+ * `revalidateLocalizedPath("/equipes/[roster]/[joueur]")` invalide TOUTES les
+ * fiches membres d'un coup, dans les deux langues : Next accepte un motif de
+ * route, pas seulement un chemin littéral. Énumérer les slugs un par un
+ * obligerait à interroger la base pour savoir quoi invalider — et surtout à
+ * penser à chaque cas (changement de roster, suppression…). Marquer périmé est
+ * bon marché : les pages ne sont régénérées qu'à leur prochaine visite.
+ */
+export const DETAIL_ROUTES = [
+  "/actualite/[slug]",
+  "/equipes/[roster]",
+  "/equipes/[roster]/[joueur]",
+] as const;

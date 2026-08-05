@@ -3,7 +3,7 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
-import { processAndUploadImage } from "@/lib/storageimage";
+import { processAndUploadImage } from "@/lib/storage-image";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
 // Rôles d'un joueur de roster (garde-fou : un rôle inconnu retombe sur "Joueur").
@@ -320,6 +320,10 @@ export async function upsertPlayer(formData: FormData) {
   // Revalidation ciblée selon le parent.
   revalidateTag(CACHE_TAGS.equipes, "max"); // invalide le cache data (fetchGroups, rosters, pôles…)
   revalidateLocalizedPath("/equipes");
+  // La fiche du membre lui-même : elle est prégénérée depuis le passage en ISR,
+  // et personne ne l'invalidait. Un changement de pseudo, de bio ou de photo
+  // serait resté invisible sur sa page pendant une heure.
+  revalidateLocalizedPath("/equipes/[roster]/[joueur]");
   if (rosterId) {
     const { data: roster } = await admin
       .from("rosters")
@@ -338,7 +342,11 @@ export async function upsertPlayer(formData: FormData) {
       .eq("id", poleId)
       .maybeSingle();
     revalidateLocalizedPath("/admin/poles");
-    if (pole?.slug) revalidateLocalizedPath(`/admin/poles/${pole.slug}`);
+    if (pole?.slug) {
+      revalidateLocalizedPath(`/admin/poles/${pole.slug}`);
+      // Un pôle a aussi sa page publique de détail — elle manquait ici.
+      revalidateLocalizedPath(`/equipes/${pole.slug}`);
+    }
   }
 }
 

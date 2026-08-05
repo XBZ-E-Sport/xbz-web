@@ -5,7 +5,9 @@ import { after } from "next/server";
 // Garde d'autorisation partagée (@/lib/adminguard) : une seule implémentation
 // pour TOUTES les server actions — une copie locale finirait par diverger.
 import { requireStaff } from "@/lib/adminguard";
-import { revalidateLocalizedPath } from "@/lib/cache";
+import { revalidateTag } from "next/cache";
+
+import { CACHE_TAGS, DETAIL_ROUTES, revalidateLocalizedPath } from "@/lib/cache";
 
 // Aligné sur le bot Discord : ses boutons écrivent accepte/refuse/entretien.
 const STATUTS = ["en_attente", "accepte", "refuse", "entretien"] as const;
@@ -73,4 +75,29 @@ export async function updateStatut(formData: FormData) {
   notifyBot(id, statut, user.email ?? "le staff");
 
   revalidateLocalizedPath("/admin");
+}
+
+/**
+ * Purge tout le cache du site public.
+ *
+ * Le site sert du HTML prégénéré (ISR) au-dessus d'un cache de données d'une
+ * heure. Les écritures faites DEPUIS le back-office invalident ce qu'il faut au
+ * moment où elles ont lieu — mais une modification faite directement en SQL
+ * dans Supabase ne passe par aucun de ces chemins. Le site continue alors
+ * d'afficher l'ancien contenu jusqu'à une heure, sans que rien ne cloche.
+ *
+ * C'est précisément le cas d'un `truncate` + réinsertion depuis l'éditeur SQL :
+ * la base est à jour, le site non. Ce bouton est la sortie de secours.
+ */
+export async function revalidateAllPublicContent() {
+  await requireStaff();
+
+  for (const tag of Object.values(CACHE_TAGS)) revalidateTag(tag, "max");
+
+  // Toutes les pages publiques qui lisent la base…
+  for (const path of ["/", "/equipes", "/actualite", "/boutique", "/presentation", "/recrutement"]) {
+    revalidateLocalizedPath(path);
+  }
+  // …y compris les pages de détail, prégénérées elles aussi.
+  for (const route of DETAIL_ROUTES) revalidateLocalizedPath(route);
 }

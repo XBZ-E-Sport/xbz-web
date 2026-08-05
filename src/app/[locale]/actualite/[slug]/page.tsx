@@ -2,13 +2,30 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
-import { getArticleBySlug } from "@/lib/actualite";
+import { getArticleBySlug, getArticleSlugs } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl, pageMetadata } from "@/lib/site";
 
-// Article lu en base à chaque visite (piloté par le back-office).
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. L'article venait d'une lecture BDD par affichage.
+//
+// `force-static` est indispensable, et pas seulement à cause du segment
+// `[locale]` : la doc de Next le dit pour les routes dynamiques — sans lui, une
+// page dont le slug n'était pas connu au build ne serait jamais mise en cache
+// après coup. Un article publié cet après-midi resterait en rendu par visite
+// jusqu'au prochain déploiement.
+//
+// Les slugs inconnus de `generateStaticParams` restent servis à la demande
+// (`dynamicParams` vaut true par défaut), puis mis en cache. Un article
+// fraîchement publié est donc accessible immédiatement.
+export const dynamic = "force-static";
+export const revalidate = 3600;
+
+/** Prégénère les articles connus au build ; la langue vient du layout. */
+export async function generateStaticParams() {
+  return (await getArticleSlugs()).map((slug) => ({ slug }));
+}
 
 type PageProps = { params: Promise<{ locale: string; slug: string }> };
 
@@ -32,8 +49,8 @@ export default async function ArticlePage({ params }: PageProps) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("article");
-  const tCat = await getTranslations("articleCategories");
+  const t = await getTranslations({ locale, namespace: "article" });
+  const tCat = await getTranslations({ locale, namespace: "articleCategories" });
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) notFound();
@@ -65,6 +82,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
       <Link
         href="/actualite"
+        locale={locale}
         className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
       >
         <span aria-hidden="true">←</span> {t("backToNews")}
@@ -98,6 +116,7 @@ export default async function ArticlePage({ params }: PageProps) {
         <p className="text-neutral-300">{t("ctaText")}</p>
         <Link
           href="/recrutement"
+          locale={locale}
           className="mt-4 inline-block rounded-xl border border-white/25 px-7 py-3 font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
         >
           {t("ctaButton")}

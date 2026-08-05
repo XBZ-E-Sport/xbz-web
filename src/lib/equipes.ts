@@ -335,3 +335,28 @@ export const getEquipesUrls = unstable_cache(
   ["equipes-urls"],
   { tags: [CACHE_TAGS.equipes], revalidate: CACHE_TTL_SECONDS },
 );
+
+/**
+ * Slugs des pages de détail `/equipes/[roster]` — rosters ET pôles confondus,
+ * qui partagent la même route.
+ *
+ * Dérivé de `getEquipesUrls()` plutôt que d'une requête dédiée : c'est la même
+ * lecture, déjà mise en cache pour le sitemap. Une requête de plus au build ne
+ * servirait qu'à obtenir deux fois la même chose.
+ */
+export async function getEquipeSlugs(): Promise<string[]> {
+  const urls = await getEquipesUrls();
+  return urls
+    .map((u) => u.split("/")) // ["", "equipes", roster] ou [..., joueur]
+    .filter((parts) => parts.length === 3)
+    .map((parts) => parts[2]);
+}
+
+/** Couples (roster, joueur) des pages `/equipes/[roster]/[joueur]`. */
+export async function getJoueurRoutes(): Promise<{ roster: string; joueur: string }[]> {
+  const urls = await getEquipesUrls();
+  return urls
+    .map((u) => u.split("/"))
+    .filter((parts) => parts.length === 4)
+    .map((parts) => ({ roster: parts[2], joueur: parts[3] }));
+}

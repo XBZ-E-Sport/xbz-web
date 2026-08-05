@@ -4,11 +4,28 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { getPlayer, type Player } from "@/lib/roster";
-import { getPoleBySlug } from "@/lib/equipes";
+import { getJoueurRoutes, getPoleBySlug } from "@/lib/equipes";
 import { pageMetadata } from "@/lib/site";
 import Flag from "@/components/Flag";
 
-export const dynamic = "force-dynamic";
+// Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
+// par visite. La fiche du membre venait d'une lecture BDD par affichage.
+//
+// `force-static` est indispensable, et pas seulement à cause du segment
+// `[locale]` : la doc de Next le dit pour les routes dynamiques — sans lui, une
+// page dont le slug n'était pas connu au build ne serait jamais mise en cache
+// après coup. Un membre ajouté cet après-midi resterait en rendu par visite
+// jusqu'au prochain déploiement.
+//
+// Les slugs inconnus de `generateStaticParams` restent servis à la demande
+// (`dynamicParams` vaut true par défaut), puis mis en cache.
+export const dynamic = "force-static";
+export const revalidate = 3600;
+
+/** Prégénère chaque membre sous son roster/pôle d'appartenance. */
+export async function generateStaticParams() {
+  return getJoueurRoutes();
+}
 
 /**
  * Résout un membre par slug parent + slug membre : d'abord un joueur de roster,
@@ -60,11 +77,11 @@ export default async function PlayerPage({ params }: PageProps) {
   const { locale, roster: parentSlug, joueur: memberSlug } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations("joueur");
-  const tNav = await getTranslations("nav");
+  const t = await getTranslations({ locale, namespace: "joueur" });
+  const tNav = await getTranslations({ locale, namespace: "nav" });
   // Le rôle est une liste fermée en base : on le traduit à l'affichage.
   // `.has()` garde intacte une valeur hors liste saisie à la main.
-  const tRole = await getTranslations("playerRoles");
+  const tRole = await getTranslations({ locale, namespace: "playerRoles" });
 
   const res = await resolveMember(parentSlug, memberSlug, locale);
   if (!res) notFound();
@@ -87,6 +104,7 @@ export default async function PlayerPage({ params }: PageProps) {
     <div className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-32">
       <Link
         href={`/equipes/${parent.slug}`}
+        locale={locale}
         className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-400 transition hover:text-white"
       >
         <span aria-hidden="true">←</span> {parent.name}

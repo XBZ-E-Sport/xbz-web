@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
+
+import { DETAIL_ROUTES } from "@/lib/cache";
 
 /**
  * Garde-fou : les fichiers spéciaux de Next doivent porter leur nom EXACT.
@@ -96,5 +98,24 @@ describe("conventions de fichiers dans src/app", () => {
       .map((f) => f.label);
 
     expect(offenders).toEqual([]);
+  });
+
+  it("déclare chaque page de détail publique dans DETAIL_ROUTES", () => {
+    // Ces pages sont prégénérées (ISR) : si personne ne les invalide, une modif
+    // du back-office reste invisible jusqu'à une heure. Le cas s'est produit —
+    // la fiche d'un membre n'était rafraîchie par aucune action, alors que la
+    // liste et la page du roster l'étaient.
+    //
+    // `DETAIL_ROUTES` est ce que le bouton « Rafraîchir le site » balaie :
+    // toute nouvelle page à segment dynamique doit y entrer.
+    const routes = files
+      .filter((f) => f.stem === "page" && f.label.startsWith("[locale]/"))
+      .map((f) => "/" + dirname(f.label).replace(/^\[locale\]\/?/, ""))
+      .filter((r) => r.includes("[")) // seulement les routes à segment dynamique
+      .filter((r) => !r.startsWith("/admin")) // le back-office n'est pas mis en cache
+      .filter((r) => !r.includes("[...")); // l'attrape-tout 404 n'a rien à invalider
+
+    const oubliees = routes.filter((r) => !DETAIL_ROUTES.includes(r as never));
+    expect(oubliees).toEqual([]);
   });
 });
