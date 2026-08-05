@@ -17,6 +17,23 @@ jobs:
       matrix:
         node-version: [22.x]
 
+    # Depuis le passage des pages publiques en ISR, `next build` PRÉRENDU les
+    # pages qui lisent la base : il construit donc un client Supabase, et
+    # `createClient()` lève « supabaseUrl is required » si l'URL manque — avant
+    # même la moindre requête réseau, donc hors de portée des try/catch du
+    # chargeur de données. Sans ces variables, le build échoue.
+    #
+    # Des valeurs bidon suffisent : la CI valide le typage, le lint et la
+    # compilation, pas le contenu. Les pages se prérendent vides (la lecture
+    # échoue, le chargeur renvoie une liste vide), et c'est très bien ici.
+    # Si les secrets d'un Supabase de test existent, ils sont utilisés à la
+    # place — mêmes noms que le job e2e.
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.TEST_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_placeholder' }}
+      SUPABASE_SECRET_KEY: ${{ secrets.TEST_SUPABASE_SECRET_KEY || 'sb_secret_placeholder' }}
+
     steps:
     - uses: actions/checkout@v7
     - name: Use Node.js ${{ matrix.node-version }}
