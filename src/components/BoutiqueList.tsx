@@ -36,17 +36,25 @@ function ProductCard({ product }: { product: Product }) {
   const t = useTranslations("boutique");
   const tCat = useTranslations("productCategories");
   const locale = useLocale();
+  // Une image qui ne charge pas laissait un cadre vide, définitivement : ni le
+  // build ni le runtime ne s'en plaignent, seul l'œil le voit. Le fichier peut
+  // être corrompu au stockage, supprimé du bucket, ou l'URL saisie à la main
+  // peut être morte — dans les trois cas l'emoji de repli vaut mieux qu'un trou.
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(product.image) && !imageFailed;
+
   return (
     <li className="card-xbz flex flex-col overflow-hidden">
       {/* Visuel : image produit si dispo, sinon emoji de repli */}
       <div className="relative flex h-40 items-center justify-center overflow-hidden bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
-        {product.image ? (
+        {showImage ? (
           <Image
-            src={product.image}
+            src={product.image!}
             alt=""
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <span aria-hidden="true" className="text-6xl">

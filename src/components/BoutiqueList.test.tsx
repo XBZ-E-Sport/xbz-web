@@ -62,4 +62,19 @@ describe("BoutiqueList", () => {
     renderIntl(<BoutiqueList products={[products[1]] } />, { locale: "en" });
     expect(screen.getByText("€12.00")).toBeTruthy();
   });
+
+  it("retombe sur l'emoji quand l'image ne charge pas", () => {
+    // Cas vécu : un visuel stocké corrompu (69 % de son contenu remplacé par
+    // « � »). L'optimiseur d'images répondait 400 et la carte affichait un
+    // cadre vide, sans que rien ne le signale.
+    const avecImage = [{ ...products[0], image: "https://exemple.test/casse.webp", icon: "🧢" }];
+    renderIntl(<BoutiqueList products={avecImage} />);
+
+    const img = document.querySelector("img") as HTMLImageElement;
+    expect(img).toBeTruthy();
+    fireEvent.error(img);
+
+    expect(screen.getByText("🧢")).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull();
+  });
 });

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidateTag } from "next/cache";
-import sharp from "sharp";
 
 import { assertStaff } from "@/lib/adminguard";
+import { processAndUploadImage } from "@/lib/storageimage";
 import { productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
@@ -44,35 +44,19 @@ function normalizeCategory(value: string): string {
 type AdminClient = Awaited<ReturnType<typeof assertStaff>>;
 
 // --- Visuels produits : upload vers Supabase Storage (bucket public "products") ---
+// Traitement + vérification mutualisés avec les photos de membres
+// (@/lib/storage-image) : une seule implémentation, un seul garde-fou.
 const IMAGE_BUCKET = "products";
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 Mo à l'entrée
 const MAX_DIMENSION = 1000; // px
 
-/**
- * Redimensionne + compresse l'image (WebP) avant l'envoi dans le bucket,
- * et renvoie son URL publique.
- */
-async function uploadImage(admin: AdminClient, file: File, slug: string): Promise<string> {
-  if (!file.type.startsWith("image/")) throw new Error("Le fichier doit être une image.");
-  if (file.size > MAX_IMAGE_BYTES) throw new Error("Image trop lourde (5 Mo max).");
-
-  const input = Buffer.from(await file.arrayBuffer());
-  const output = await sharp(input)
-    .rotate() // respecte l'orientation EXIF
-    .resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 80 })
-    .toBuffer();
-
-  const path = `${slug || "produit"}-${Date.now()}.webp`;
-  const { error } = await admin.storage.from(IMAGE_BUCKET).upload(path, output, {
-    contentType: "image/webp",
-    upsert: true,
+const uploadImage = (admin: AdminClient, file: File, slug: string) =>
+  processAndUploadImage(admin, file, {
+    bucket: IMAGE_BUCKET,
+    slug,
+    fallbackName: "produit",
+    maxDimension: MAX_DIMENSION,
+    label: "image",
   });
-  if (error) throw new Error(`Upload image : ${error.message}`);
-
-  const { data } = admin.storage.from(IMAGE_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
-}
 
 /** Slug libre pour `products` (suffixe -2, -3… si déjà pris). */
 async function uniqueProductSlug(
