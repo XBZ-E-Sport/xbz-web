@@ -77,4 +77,25 @@ describe("BoutiqueList", () => {
     expect(screen.getByText("🧢")).toBeTruthy();
     expect(document.querySelector("img")).toBeNull();
   });
+
+  it("charge sans attendre les images de la première rangée, en différé ensuite", () => {
+    // Les cartes sans photo affichent un emoji, présent dès le premier octet de
+    // HTML. Une image en `lazy` arrivait donc visiblement APRÈS ses voisines.
+    // `priority` la met en chargement immédiat et la précharge — c'est ce qui
+    // aligne l'apparition. Au-delà de la première rangée, `lazy` reste correct.
+    const avecImages = Array.from({ length: 4 }, (_, i) => ({
+      ...products[0],
+      slug: `p${i}`,
+      name: `Produit ${i}`,
+      image: `https://exemple.test/p${i}.webp`,
+    }));
+    renderIntl(<BoutiqueList products={avecImages} />);
+
+    const imgs = [...document.querySelectorAll("img")];
+    expect(imgs).toHaveLength(4);
+    // `priority` retire l'attribut `loading` (donc chargement immédiat, la
+    // valeur par défaut du navigateur) ; sans lui, next/image pose `lazy`.
+    expect(imgs.slice(0, 3).map((i) => i.getAttribute("loading"))).toEqual([null, null, null]);
+    expect(imgs[3].getAttribute("loading")).toBe("lazy");
+  });
 });

@@ -32,7 +32,7 @@ function formatPrice(price: number, locale: string): string {
   }).format(price);
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, eager }: { product: Product; eager: boolean }) {
   const t = useTranslations("boutique");
   const tCat = useTranslations("productCategories");
   const locale = useLocale();
@@ -54,6 +54,13 @@ function ProductCard({ product }: { product: Product }) {
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover"
+            // Première rangée : chargement immédiat + préchargement dans le
+            // <head>, au lieu du `lazy` par défaut de next/image. Les autres
+            // cartes affichent un emoji, présent dès le premier octet de HTML —
+            // une image en différé arrivait donc visiblement après elles.
+            // Au-delà de la première rangée, `lazy` reste le bon choix : ces
+            // cartes sont sous la ligne de flottaison.
+            priority={eager}
             onError={() => setImageFailed(true)}
           />
         ) : (
@@ -208,8 +215,10 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
         <p className="card-xbz p-10 text-center text-neutral-400">{t("emptyCategory")}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((product) => (
-            <ProductCard key={product.slug} product={product} />
+          {shown.map((product, i) => (
+            // 3 colonnes au plus large : les trois premières cartes sont
+            // visibles sans défiler.
+            <ProductCard key={product.slug} product={product} eager={i < 3} />
           ))}
         </ul>
       )}
