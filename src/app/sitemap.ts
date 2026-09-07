@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { getArticles } from "@/lib/actualite";
 import { getEquipesUrls } from "@/lib/equipes";
+import { getOffers } from "@/lib/offres";
 import { absoluteUrl, localizedPath } from "@/lib/site";
 import { routing } from "@/i18n/routing";
 
@@ -21,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/recrutement", priority: 0.9, changeFrequency: "weekly" },
     { path: "/actualite", priority: 0.7, changeFrequency: "weekly" },
     { path: "/boutique", priority: 0.6, changeFrequency: "monthly" },
+    { path: "/carrieres", priority: 0.7, changeFrequency: "weekly" },
     { path: "/support", priority: 0.5, changeFrequency: "monthly" },
     { path: "/mentions-legales", priority: 0.3, changeFrequency: "monthly" },
     { path: "/confidentialite", priority: 0.3, changeFrequency: "monthly" },
@@ -78,5 +80,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   );
 
-  return [...staticEntries, ...articleEntries, ...equipesEntries];
+  // Offres d'emploi : c'est par le sitemap qu'Indeed découvre les URL à crawler.
+  const offers = await getOffers(routing.defaultLocale);
+  const offerEntries: MetadataRoute.Sitemap = offers.flatMap((offer) => {
+    const path = `/carrieres/${offer.slug}`;
+    return routing.locales.map((locale) => ({
+      url: url(path, locale),
+      lastModified: new Date(offer.datePosted),
+      changeFrequency: "weekly" as const,
+      priority: rank(0.6, locale),
+      alternates: localized(path),
+    }));
+  });
+
+  return [...staticEntries, ...articleEntries, ...equipesEntries, ...offerEntries];
 }

@@ -22,7 +22,8 @@
     "homeAria": "XBZ Esport — Accueil",
     "mainNav": "Navigation principale",
     "newTab": " (ouvre dans un nouvel onglet)",
-    "joinDiscord": "Rejoindre le Discord"
+    "joinDiscord": "Rejoindre le Discord",
+    "carrieres": "Carrières"
   },
   "language": {
     "label": "Langue",
@@ -519,5 +520,42 @@
     "Coach": "Coach",
     "Manager": "Manager",
     "Sub": "Remplaçant"
+  },
+  "carrieres": {
+    "eyebrow": "Carrières",
+    "metaTitle": "Carrières — XBZ Esport",
+    "metaDescription": "Rejoins XBZ Esport : découvre nos offres d'emploi et postule en ligne.",
+    "title": "Nos offres d'emploi",
+    "intro": "XBZ Esport recrute. Découvre les postes ouverts et rejoins l'aventure.",
+    "empty": "Aucune offre ouverte pour le moment. Reviens bientôt !",
+    "remote": "Télétravail",
+    "postedOn": "Publiée le {date}",
+    "seeOffer": "Voir l'offre"
+  },
+  "employmentTypes": {
+    "FULL_TIME": "Temps plein",
+    "PART_TIME": "Temps partiel",
+    "CONTRACTOR": "Prestation",
+    "TEMPORARY": "CDD / intérim",
+    "INTERN": "Stage / alternance",
+    "VOLUNTEER": "Bénévolat"
+  },
+  "salaryPeriods": {
+    "HOUR": "heure",
+    "MONTH": "mois",
+    "YEAR": "an"
+  },
+  "offerDetail": {
+    "metaNotFound": "Offre introuvable — XBZ Esport",
+    "back": "Toutes les offres",
+    "postedOn": "Publiée le {date}",
+    "contractType": "Type de contrat",
+    "location": "Localisation",
+    "remoteLocation": "Télétravail",
+    "department": "Service",
+    "salary": "Rémunération",
+    "validUntil": "Valable jusqu'au",
+    "applyLead": "Ce poste te correspond ?",
+    "apply": "Postuler"
   }
 }

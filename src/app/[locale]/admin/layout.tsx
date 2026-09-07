@@ -87,6 +87,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         >
           🛒 Boutique
         </Link>
+        <Link
+          href="/admin/offres"
+          className="rounded-lg bg-white/5 px-4 py-2 text-sm font-semibold text-neutral-200 transition hover:bg-white/10"
+        >
+          💼 Offres d’emploi
+        </Link>
       </nav>
 
       {children}
