@@ -70,6 +70,7 @@ test.describe("Langues", () => {
       "/en/boutique",
       "/en/presentation",
       "/en/recrutement",
+      "/en/carrieres",
     ]) {
       await page.goto(path);
       const hrefs = await page.locator('a[href^="/fr/"]').evaluateAll((links) =>

@@ -13,6 +13,7 @@ export const CACHE_TAGS = {
   articles: "articles",
   products: "products",
   equipes: "equipes",
+  offres: "offres",
 } as const;
 
 // Statiquement analysable (contrainte Next : pas d'expression type 60 * 60).
@@ -52,4 +53,5 @@ export const DETAIL_ROUTES = [
   "/actualite/[slug]",
   "/equipes/[roster]",
   "/equipes/[roster]/[joueur]",
+  "/carrieres/[slug]",
 ] as const;

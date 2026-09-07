@@ -22,7 +22,8 @@
     "homeAria": "XBZ Esport — Home",
     "mainNav": "Main navigation",
     "newTab": " (opens in a new tab)",
-    "joinDiscord": "Join the Discord"
+    "joinDiscord": "Join the Discord",
+    "carrieres": "Careers"
   },
   "language": {
     "label": "Language",
@@ -519,5 +520,42 @@
     "Coach": "Coach",
     "Manager": "Manager",
     "Sub": "Substitute"
+  },
+  "carrieres": {
+    "eyebrow": "Careers",
+    "metaTitle": "Careers — XBZ Esport",
+    "metaDescription": "Join XBZ Esport: browse our job openings and apply online.",
+    "title": "Our job openings",
+    "intro": "XBZ Esport is hiring. Discover the open positions and join the journey.",
+    "empty": "No open positions right now. Check back soon!",
+    "remote": "Remote",
+    "postedOn": "Posted on {date}",
+    "seeOffer": "View the offer"
+  },
+  "employmentTypes": {
+    "FULL_TIME": "Full-time",
+    "PART_TIME": "Part-time",
+    "CONTRACTOR": "Contractor",
+    "TEMPORARY": "Fixed-term / temp",
+    "INTERN": "Internship",
+    "VOLUNTEER": "Volunteer"
+  },
+  "salaryPeriods": {
+    "HOUR": "hour",
+    "MONTH": "month",
+    "YEAR": "year"
+  },
+  "offerDetail": {
+    "metaNotFound": "Offer not found — XBZ Esport",
+    "back": "All openings",
+    "postedOn": "Posted on {date}",
+    "contractType": "Contract type",
+    "location": "Location",
+    "remoteLocation": "Remote",
+    "department": "Department",
+    "salary": "Compensation",
+    "validUntil": "Valid until",
+    "applyLead": "Is this role for you?",
+    "apply": "Apply"
   }
 }
