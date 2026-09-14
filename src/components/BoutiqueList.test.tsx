@@ -98,4 +98,24 @@ describe("BoutiqueList", () => {
     expect(imgs.slice(0, 3).map((i) => i.getAttribute("loading"))).toEqual([null, null, null]);
     expect(imgs[3].getAttribute("loading")).toBe("lazy");
   });
+
+  it("rend un formulaire d'achat pour un produit achetable (available)", () => {
+    // Le bouton POST l'action serveur de paiement ; le prix n'est PAS dans le
+    // DOM envoyé — seul le slug part, le montant est relu en base.
+    const buyable = [{ ...products[0], available: true }];
+    renderIntl(<BoutiqueList products={buyable} />);
+
+    const btn = screen.getByRole("button", { name: fr.boutique.buyNow });
+    expect(btn.closest("form")).toBeTruthy();
+    // Slug transmis, jamais le prix.
+    const slug = document.querySelector('input[name="slug"]') as HTMLInputElement | null;
+    expect(slug?.value).toBe("tshirt");
+    expect(document.querySelector('input[name="price"]')).toBeNull();
+  });
+
+  it("affiche « bientôt » pour un produit non achetable, sans bouton d'achat", () => {
+    renderIntl(<BoutiqueList products={[{ ...products[0], available: false }]} />);
+    expect(screen.getByText(fr.boutique.comingSoon)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: fr.boutique.buyNow })).toBeNull();
+  });
 });

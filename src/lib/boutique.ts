@@ -91,3 +91,24 @@ const fetchProducts = unstable_cache(
 export async function getProducts(locale: string): Promise<Product[]> {
   return (await fetchProducts()).map((row) => toProduct(row, locale));
 }
+
+/**
+ * Un produit ACHETABLE, lu pour créer un paiement Stripe.
+ *
+ * Le prix vient d'ici, jamais du navigateur : c'est LA règle d'une boutique.
+ * Un client peut falsifier le formulaire, mais le montant facturé est toujours
+ * celui de la base. Renvoie null si le produit n'existe pas, est masqué
+ * (`active = false`) ou n'est pas marqué achetable (`available = false`).
+ */
+export async function getProductForCheckout(
+  slug: string,
+  locale: string,
+): Promise<{ name: string; priceCents: number } | null> {
+  const row = (await fetchProducts()).find((p) => p.slug === slug);
+  if (!row || !row.available) return null;
+
+  const product = toProduct(row, locale);
+  // Centimes entiers : Stripe raisonne en plus petite unité monétaire, et un
+  // `numeric` euros peut arriver avec des décimales flottantes.
+  return { name: product.name, priceCents: Math.round(product.price * 100) };
+}

@@ -8,8 +8,10 @@ import { useLocale, useTranslations } from "next-intl";
 // Supabase serveur (server-only) → un import de valeur ferait planter le bundle
 // client. L'ordre des catégories est dérivé des clés de `categoryStyles`.
 import type { Product, ProductCategory } from "@/lib/boutique";
-
-const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
+// Action serveur : importée par référence (elle ne tire aucun code serveur dans
+// le bundle client). Le clic « Acheter » la POST, elle crée la session Stripe
+// et redirige vers le paiement hébergé.
+import { createCheckoutSession } from "@/app/[locale]/boutique/actions";
 
 // Nombre de produits ajoutés à chaque « page » (pagination / lazy loading).
 const PAGE_SIZE = 6;
@@ -89,16 +91,18 @@ function ProductCard({ product, eager }: { product: Product; eager: boolean }) {
 
         <div className="mt-4">
           {product.available ? (
-            // Achetable : lien d'achat externe s'il existe, sinon commande via Discord.
-            <a
-              href={product.url || DISCORD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg bg-xbz-blue px-4 py-2 text-center text-sm font-bold text-white transition hover:brightness-110"
-            >
-              {product.url ? t("buy") : t("orderOnDiscord")}
-              <span className="sr-only">{t("newTab")}</span>
-            </a>
+            // Achat sur le site : le formulaire POST l'action serveur, qui crée
+            // la session Stripe et redirige vers le paiement hébergé. Aucun prix
+            // ne transite — seul le slug part, le montant est relu en base.
+            <form action={createCheckoutSession}>
+              <input type="hidden" name="slug" value={product.slug} />
+              <button
+                type="submit"
+                className="block w-full rounded-lg bg-xbz-blue px-4 py-2 text-center text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer"
+              >
+                {t("buyNow")}
+              </button>
+            </form>
           ) : (
             <span className="block rounded-lg border border-white/15 px-4 py-2 text-center text-sm font-semibold text-neutral-400">
               {t("comingSoon")}
@@ -163,8 +167,50 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
   const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#04141f]";
   const chipIdle = "border border-white/15 text-neutral-300 hover:border-white/40 hover:text-white";
 
+  // Bannière de retour de paiement (erreur ou annulation). L'action serveur
+  // redirige vers /boutique?erreur=… ou ?annule=1. La page étant statique (ISR),
+  // on lit la query CÔTÉ CLIENT — pas via searchParams, qui serait vide au
+  // build — puis on la retire de l'URL pour qu'un rafraîchissement ne la répète pas.
+  const [banner, setBanner] = useState<string | null>(null);
+  useEffect(() => {
+    let msg: string | null = null;
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("annule")) msg = t("errCancelled");
+      else if (q.get("erreur")) {
+        const map: Record<string, string> = {
+          indisponible: t("errIndispo"),
+          introuvable: t("errNotFound"),
+          paiement: t("errPayment"),
+        };
+        msg = map[q.get("erreur") ?? ""] ?? t("errPayment");
+      }
+    } catch {
+      // Pas d'accès à l'URL : pas de bannière, ce n'est pas grave.
+    }
+    if (!msg) return;
+    // On retire la query pour qu'un rafraîchissement ne répète pas le message.
+    window.history.replaceState(null, "", window.location.pathname);
+    // Lecture unique de l'URL au montage puis report dans l'état : c'est
+    // l'usage même d'un effet (synchroniser depuis un système externe). La règle
+    // ne sait pas le distinguer d'un setState en cascade — d'où la désactivation
+    // ciblée, sur cette ligne seulement.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBanner(msg);
+    // Clés `t` stables pour une langue donnée ; on ne relit qu'au montage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
+      {banner && (
+        <p
+          role="status"
+          className="mb-6 rounded-lg border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-200"
+        >
+          {banner}
+        </p>
+      )}
       {/* Barre de contrôle : filtres + tri */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div role="group" aria-label={t("filterAria")} className="flex flex-wrap gap-2">

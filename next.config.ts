@@ -21,7 +21,12 @@ const csp = [
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // Le bouton « Acheter » soumet un formulaire à notre action serveur (self),
+  // qui répond par une redirection vers la page de paiement Stripe. Certains
+  // navigateurs vérifient `form-action` sur la CIBLE de cette redirection : on
+  // autorise donc explicitement l'hôte du Checkout hébergé. C'est le SEUL ajout
+  // qu'impose Stripe — aucun script ni iframe tiers n'est chargé sur nos pages.
+  "form-action 'self' https://checkout.stripe.com",
   "frame-ancestors 'none'",
   // Force HTTPS en prod ; omis en dev (localhost en http, casserait le HMR).
   ...(isDev ? [] : ["upgrade-insecure-requests"]),

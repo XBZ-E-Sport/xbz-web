@@ -232,7 +232,18 @@
     "resultCountFiltered": "{count, plural, one {# product} other {# products}} in the {category} category.",
     "loadMore": "Load more products",
     "ctaTitle": "Get notified when we open",
-    "ctaText": "Join the Discord to be notified the moment the shop goes live, and never miss a drop."
+    "ctaText": "Join the Discord to be notified the moment the shop goes live, and never miss a drop.",
+    "buyNow": "Buy",
+    "errIndispo": "The online shop opens soon — hang tight!",
+    "errNotFound": "This product is no longer available.",
+    "errPayment": "Payment couldn't start. Please try again in a moment.",
+    "errCancelled": "Payment cancelled — your cart is waiting whenever you're ready.",
+    "thanksTitle": "Thanks for your order!",
+    "thanksLead": "Your payment is confirmed. You'll receive a receipt by email.",
+    "thanksEmail": "A confirmation email is on its way to {email}.",
+    "thanksAmount": "Amount paid: {amount}",
+    "thanksProcessing": "Your order is recorded. The staff is getting it ready to ship.",
+    "thanksBack": "Back to the shop"
   },
   "fieldLabels": {
     "nom": "Name / First name",
