@@ -12,6 +12,7 @@
     "leClub": "The club",
     "presentation": "About",
     "equipes": "Teams",
+    "calendrier": "Calendar",
     "actualite": "News",
     "boutique": "Shop",
     "recrutement": "Recruitment",
@@ -75,7 +76,10 @@
     "latestHeading": "LATEST NEWS",
     "seeAll": "See all →",
     "exploreHeading": "EXPLORE THE CLUB",
-    "partnersHeading": "THEY SUPPORT US"
+    "partnersHeading": "THEY SUPPORT US",
+    "nextMatchHeading": "NEXT MATCH",
+    "nextMatchCta": "See the schedule",
+    "nextMatchVs": "VS"
   },
   "leClub": {
     "metaTitle": "The club — XBZ Esport",
@@ -519,6 +523,11 @@
       "title": "Our partners",
       "subtitle": "They support XBZ Esport every day."
     },
+    "calendrier": {
+      "eyebrow": "Schedule",
+      "title": "Schedule & results",
+      "subtitle": "Upcoming matches and results for XBZ teams."
+    },
     "articleNotFound": "Article not found"
   },
   "playerRoles": {
@@ -541,6 +550,24 @@
     "newTab": " (opens in a new tab)",
     "ctaTitle": "Become a partner",
     "ctaText": "Want to associate your brand with XBZ Esport? Reach out on Discord, let's talk."
+  },
+  "calendrier": {
+    "eyebrow": "Schedule",
+    "metaTitle": "Schedule & results — XBZ Esport",
+    "metaDescription": "Upcoming matches and results for XBZ Esport teams.",
+    "title": "Schedule & results",
+    "intro": "Our teams' upcoming matches and the results of recent games.",
+    "upcomingHeading": "Upcoming matches",
+    "resultsHeading": "Results",
+    "emptyUpcoming": "No match scheduled yet. Check back soon!",
+    "emptyResults": "Results will show up here after the first matches.",
+    "vs": "VS",
+    "watch": "Watch",
+    "newTab": " (opens in a new tab)",
+    "cancelled": "Cancelled",
+    "win": "Win",
+    "loss": "Loss",
+    "draw": "Draw"
   },
   "carrieres": {
     "eyebrow": "Careers",

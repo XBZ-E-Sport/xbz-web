@@ -7,6 +7,7 @@ import { getArticles } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { getStructureStats } from "@/lib/equipes";
 import { getPartners } from "@/lib/partenaires";
+import { getNextMatch, formatMatchDateTime } from "@/lib/matchs";
 import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl } from "@/lib/site";
 
@@ -61,6 +62,7 @@ export default async function Home({ params }: PageProps) {
     getStructureStats(),
     getPartners(locale),
   ]);
+  const nextMatch = await getNextMatch();
   const openCount = structure.openSlots;
   const stats = [
     { value: structure.teams, label: t("statsTeams") },
@@ -146,6 +148,79 @@ export default async function Home({ params }: PageProps) {
 
       {/* ===== APERÇU (bref, pour inciter à explorer chaque page) ===== */}
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24">
+        {/* Prochain match (mis en avant) */}
+        {nextMatch && (
+          <section aria-labelledby="next-match-heading" className="mb-20">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <h2
+                id="next-match-heading"
+                className="font-display text-xl font-bold tracking-[2px] text-neutral-300"
+              >
+                {t("nextMatchHeading")}
+              </h2>
+              <Link
+                href="/calendrier"
+                locale={locale}
+                className="shrink-0 text-sm font-semibold text-xbz-cyan hover:underline"
+              >
+                {t("nextMatchCta")}
+              </Link>
+            </div>
+            <Link
+              href="/calendrier"
+              locale={locale}
+              className="card-xbz block p-6 transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
+            >
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  {nextMatch.competition && (
+                    <span className="font-semibold uppercase tracking-wide text-xbz-cyan">
+                      {nextMatch.competition}
+                    </span>
+                  )}
+                  <span className="rounded bg-white/10 px-2 py-0.5 font-bold text-neutral-300">
+                    {nextMatch.format}
+                  </span>
+                </div>
+                <time dateTime={nextMatch.startsAt} className="text-neutral-400 first-letter:uppercase">
+                  {formatMatchDateTime(nextMatch.startsAt, locale)}
+                </time>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <div className="text-center">
+                  <div className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/90">
+                    <Image src="/logo-xbz.png" alt="" fill sizes="56px" className="object-contain p-2" />
+                  </div>
+                  <p className="mt-2 font-display text-sm text-white">
+                    {nextMatch.roster?.name ?? "XBZ Esport"}
+                  </p>
+                </div>
+                <span className="font-display text-lg font-bold text-neutral-500">
+                  {t("nextMatchVs")}
+                </span>
+                <div className="text-center">
+                  <div className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/90">
+                    {nextMatch.opponentLogo ? (
+                      <Image
+                        src={nextMatch.opponentLogo}
+                        alt={nextMatch.opponent}
+                        fill
+                        sizes="56px"
+                        className="object-contain p-2"
+                      />
+                    ) : (
+                      <span aria-hidden="true" className="font-display text-xl font-black text-neutral-800">
+                        {nextMatch.opponent.charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 font-display text-sm text-white">{nextMatch.opponent}</p>
+                </div>
+              </div>
+            </Link>
+          </section>
+        )}
+
         {/* Stats */}
         <section aria-labelledby="stats-heading" className="mb-20">
           <h2 id="stats-heading" className="sr-only">

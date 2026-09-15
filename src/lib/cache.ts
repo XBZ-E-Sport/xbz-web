@@ -15,6 +15,7 @@ export const CACHE_TAGS = {
   equipes: "equipes",
   offres: "offres",
   partenaires: "partenaires",
+  matchs: "matchs",
 } as const;
 
 // Statiquement analysable (contrainte Next : pas d'expression type 60 * 60).

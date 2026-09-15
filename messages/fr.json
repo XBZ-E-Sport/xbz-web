@@ -12,6 +12,7 @@
     "leClub": "Le club",
     "presentation": "Présentation",
     "equipes": "Équipes",
+    "calendrier": "Calendrier",
     "actualite": "Actualité",
     "boutique": "Boutique",
     "recrutement": "Recrutement",
@@ -75,7 +76,10 @@
     "latestHeading": "DERNIÈRES ACTUS",
     "seeAll": "Tout voir →",
     "exploreHeading": "EXPLORER LE CLUB",
-    "partnersHeading": "ILS NOUS SOUTIENNENT"
+    "partnersHeading": "ILS NOUS SOUTIENNENT",
+    "nextMatchHeading": "PROCHAIN MATCH",
+    "nextMatchCta": "Voir le calendrier",
+    "nextMatchVs": "VS"
   },
   "leClub": {
     "metaTitle": "Le club — XBZ Esport",
@@ -516,6 +520,11 @@
       "title": "Nos partenaires",
       "subtitle": "Ils soutiennent XBZ Esport au quotidien."
     },
+    "calendrier": {
+      "eyebrow": "Calendrier",
+      "title": "Calendrier & résultats",
+      "subtitle": "Prochains matchs et résultats des équipes XBZ."
+    },
     "roster": "Roster",
     "member": "Membre",
     "memberNotFound": "Membre introuvable",
@@ -541,6 +550,24 @@
     "newTab": " (ouvre dans un nouvel onglet)",
     "ctaTitle": "Devenir partenaire",
     "ctaText": "Envie d'associer votre marque à XBZ Esport ? Écrivez-nous sur le Discord, on en discute."
+  },
+  "calendrier": {
+    "eyebrow": "Calendrier",
+    "metaTitle": "Calendrier & résultats — XBZ Esport",
+    "metaDescription": "Les prochains matchs et les résultats des équipes XBZ Esport.",
+    "title": "Calendrier & résultats",
+    "intro": "Les prochains matchs de nos équipes et les résultats des dernières rencontres.",
+    "upcomingHeading": "Prochains matchs",
+    "resultsHeading": "Résultats",
+    "emptyUpcoming": "Aucun match programmé pour le moment. Reviens bientôt !",
+    "emptyResults": "Les résultats s'afficheront ici après les premiers matchs.",
+    "vs": "VS",
+    "watch": "Regarder",
+    "newTab": " (ouvre dans un nouvel onglet)",
+    "cancelled": "Annulé",
+    "win": "Victoire",
+    "loss": "Défaite",
+    "draw": "Nul"
   },
   "carrieres": {
     "eyebrow": "Carrières",
