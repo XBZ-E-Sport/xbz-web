@@ -50,6 +50,21 @@ const nextConfig: NextConfig = {
   // Pas de `x-powered-by: Next.js` : annoncer sa pile à chaque réponse ne rend
   // service qu'à celui qui cherche une faille connue pour cette pile.
   poweredByHeader: false,
+  // --- sharp / libvips sur Vercel -----------------------------------------
+  // Le back-office traite les images uploadées avec sharp. sharp charge sa lib
+  // native libvips (`libvips-cpp.so`) via un lien ELF résolu au dlopen — un lien
+  // que l'analyse statique du tracing de fichiers de Vercel ne voit pas. Résultat
+  // vérifié dans le .nft.json : l'addon `.node` est bien embarqué, mais le `.so`
+  // ne l'est pas, d'où `ERR_DLOPEN_FAILED: libvips-cpp.so… : No such file` en prod
+  // au rendu des pages /admin/{boutique,rosters,poles} (leur graphe d'import
+  // passe par sharp). On force donc l'inclusion du paquet libvips dans la trace
+  // des routes admin. Crochets de `[locale]` échappés : la clé est un motif glob.
+  outputFileTracingIncludes: {
+    "/\\[locale\\]/admin/**": [
+      "./node_modules/@img/sharp-libvips-linux-x64/**",
+      "./node_modules/@img/sharp-linux-x64/**",
+    ],
+  },
   images: {
     // Durée de conservation des images optimisées.
     //

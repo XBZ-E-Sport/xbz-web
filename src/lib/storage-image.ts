@@ -1,8 +1,22 @@
 import "server-only";
 
-import sharp from "sharp";
-
 import type { createAdminClient } from "@/lib/supabase/admin";
+
+// sharp tire une lib native (libvips). On la charge PARESSEUSEMENT — au premier
+// traitement d'image réel, jamais à l'évaluation du module.
+//
+// Les pages admin (boutique, rosters, pôles) importent leurs server actions, qui
+// importent ce fichier : un `import sharp from "sharp"` en tête chargerait donc
+// libvips au simple RENDU de ces pages. Si le binaire natif manque à l'exécution
+// (ex. le .so libvips non embarqué dans la fonction serverless), le rendu plante
+// en 500 alors qu'aucune image n'est traitée. Avec l'import différé, seule une
+// vraie action d'upload touche sharp — et son échec éventuel reste un message
+// d'erreur propre, pas une page cassée.
+let sharpPromise: Promise<(typeof import("sharp"))["default"]> | null = null;
+function loadSharp() {
+  sharpPromise ??= import("sharp").then((m) => m.default);
+  return sharpPromise;
+}
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -44,6 +58,7 @@ export async function processAndUploadImage(
   if (!file.type.startsWith("image/")) throw new Error(`Le fichier doit être une ${label}.`);
   if (file.size > MAX_INPUT_BYTES) throw new Error(`${cap(label)} trop lourde (5 Mo max).`);
 
+  const sharp = await loadSharp();
   const input = Buffer.from(await file.arrayBuffer());
   const output = await sharp(input)
     .rotate() // respecte l'orientation EXIF (photos de téléphone)
@@ -81,6 +96,7 @@ async function assertStoredImageIsReadable(
     throw new Error(`Relecture ${label} impossible : ${error?.message ?? "fichier introuvable"}.`);
   }
 
+  const sharp = await loadSharp();
   const stored = Buffer.from(await data.arrayBuffer());
   try {
     const meta = await sharp(stored).metadata();
