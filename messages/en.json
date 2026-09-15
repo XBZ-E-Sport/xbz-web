@@ -23,7 +23,8 @@
     "mainNav": "Main navigation",
     "newTab": " (opens in a new tab)",
     "joinDiscord": "Join the Discord",
-    "carrieres": "Careers"
+    "carrieres": "Careers",
+    "partenaires": "Partners"
   },
   "language": {
     "label": "Language",
@@ -73,7 +74,8 @@
     "statsOpenSlots": "Open positions",
     "latestHeading": "LATEST NEWS",
     "seeAll": "See all →",
-    "exploreHeading": "EXPLORE THE CLUB"
+    "exploreHeading": "EXPLORE THE CLUB",
+    "partnersHeading": "THEY SUPPORT US"
   },
   "leClub": {
     "metaTitle": "The club — XBZ Esport",
@@ -512,6 +514,11 @@
     "roster": "Roster",
     "member": "Member",
     "memberNotFound": "Member not found",
+    "partenaires": {
+      "eyebrow": "Partners",
+      "title": "Our partners",
+      "subtitle": "They support XBZ Esport every day."
+    },
     "articleNotFound": "Article not found"
   },
   "playerRoles": {
@@ -520,6 +527,20 @@
     "Coach": "Coach",
     "Manager": "Manager",
     "Sub": "Substitute"
+  },
+  "partenaires": {
+    "eyebrow": "Partners",
+    "metaTitle": "Partners & sponsors — XBZ Esport",
+    "metaDescription": "The partners and sponsors backing XBZ Esport every day.",
+    "title": "Our partners & sponsors",
+    "intro": "They support the structure every day. Thanks to everyone helping XBZ grow.",
+    "sponsorsHeading": "Our sponsors",
+    "partnersHeading": "Our partners",
+    "empty": "Our partners will be announced soon. Stay tuned!",
+    "visit": "Visit the website",
+    "newTab": " (opens in a new tab)",
+    "ctaTitle": "Become a partner",
+    "ctaText": "Want to associate your brand with XBZ Esport? Reach out on Discord, let's talk."
   },
   "carrieres": {
     "eyebrow": "Careers",

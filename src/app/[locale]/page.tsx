@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { getArticles } from "@/lib/actualite";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { getStructureStats } from "@/lib/equipes";
+import { getPartners } from "@/lib/partenaires";
 import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl } from "@/lib/site";
 
@@ -51,13 +52,14 @@ export default async function Home({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const [t, tNav, tCat, tSite, latest, structure] = await Promise.all([
+  const [t, tNav, tCat, tSite, latest, structure, partners] = await Promise.all([
     getTranslations({ locale, namespace: "home" }),
     getTranslations({ locale, namespace: "nav" }),
     getTranslations({ locale, namespace: "articleCategories" }),
     getTranslations({ locale, namespace: "site" }),
     getArticles(locale).then((a) => a.slice(0, 3)),
     getStructureStats(),
+    getPartners(locale),
   ]);
   const openCount = structure.openSlots;
   const stats = [
@@ -201,6 +203,53 @@ export default async function Home({ params }: PageProps) {
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">
                       {article.excerpt}
                     </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* Partenaires & sponsors — bandeau de logos (teaser vers /partenaires) */}
+        {partners.length > 0 && (
+          <section aria-labelledby="partners-heading" className="mb-20">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <h2
+                id="partners-heading"
+                className="font-display text-xl font-bold tracking-[2px] text-neutral-300"
+              >
+                {t("partnersHeading")}
+              </h2>
+              <Link
+                href="/partenaires"
+                locale={locale}
+                className="shrink-0 text-sm font-semibold text-xbz-cyan hover:underline"
+              >
+                {t("seeAll")}
+              </Link>
+            </div>
+            <ul className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+              {partners.map((partner) => (
+                <li key={partner.id}>
+                  <Link
+                    href="/partenaires"
+                    locale={locale}
+                    aria-label={partner.name}
+                    className="relative flex h-16 w-32 items-center justify-center overflow-hidden rounded-xl bg-white/90 transition hover:brightness-105 motion-safe:hover:-translate-y-0.5"
+                  >
+                    {partner.logo ? (
+                      <Image
+                        src={partner.logo}
+                        alt={partner.name}
+                        fill
+                        sizes="128px"
+                        className="object-contain p-3"
+                      />
+                    ) : (
+                      <span className="px-2 text-center font-display text-sm font-bold text-neutral-800">
+                        {partner.name}
+                      </span>
+                    )}
                   </Link>
                 </li>
               ))}

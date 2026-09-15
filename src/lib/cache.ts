@@ -14,6 +14,7 @@ export const CACHE_TAGS = {
   products: "products",
   equipes: "equipes",
   offres: "offres",
+  partenaires: "partenaires",
 } as const;
 
 // Statiquement analysable (contrainte Next : pas d'expression type 60 * 60).
