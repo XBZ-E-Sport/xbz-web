@@ -8,6 +8,37 @@ type ClientErrorInput = {
   digest?: string;
 };
 
+// Schémas d'URL propres aux scripts NON servis par le site : extensions de
+// navigateur (Chrome/Firefox/Safari/Edge) et URL cross-origin masquée de Safari.
+const THIRD_PARTY_ORIGIN = /(?:chrome|moz|safari|safari-web)-?extension:\/\/|webkit-masked-url:/i;
+
+/**
+ * Vrai quand l'erreur ne vient PAS de notre code.
+ *
+ * Deux cas, tous deux 100 % hors de notre contrôle et sans valeur pour le staff :
+ *  1. un script injecté par une EXTENSION de navigateur plante dans la page
+ *     (sa pile pointe vers `chrome-extension://…` / `moz-extension://…`) ;
+ *  2. une erreur cross-origin OPAQUE (« Script error. » sans pile ni fichier),
+ *     que le navigateur masque pour raisons de sécurité — rien d'exploitable.
+ *
+ * Cas vécu : l'extension `eppiocemhmnlbhjplcgkofciiegomcon` plantait sur
+ * `/fr/equipes` avec « Cannot read properties of undefined (reading 'M_ID') »,
+ * remonté au Discord staff comme un bug du site — alors que `M_ID` n'existe
+ * nulle part chez nous. Ces erreurs ne doivent plus polluer le canal.
+ */
+export function isThirdPartyError(input: {
+  message?: string;
+  stack?: string;
+  filename?: string;
+}): boolean {
+  const { message, stack, filename } = input;
+  if (filename && THIRD_PARTY_ORIGIN.test(filename)) return true;
+  if (stack && THIRD_PARTY_ORIGIN.test(stack)) return true;
+  // Erreur cross-origin masquée : message générique, aucun détail.
+  if ((message === "Script error." || message === "Script error") && !stack) return true;
+  return false;
+}
+
 export function reportClientError(input: ClientErrorInput): void {
   try {
     const body = JSON.stringify({
