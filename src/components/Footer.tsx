@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/equipes", key: "equipes" },
   { href: "/calendrier", key: "calendrier" },
   { href: "/actualite", key: "actualite" },
+  { href: "/galerie", key: "galerie" },
   { href: "/boutique", key: "boutique" },
   { href: "/partenaires", key: "partenaires" },
   { href: "/recrutement", key: "recrutement" },

@@ -14,6 +14,7 @@
     "equipes": "Teams",
     "calendrier": "Calendar",
     "actualite": "News",
+    "galerie": "Gallery",
     "boutique": "Shop",
     "recrutement": "Recruitment",
     "support": "Support",
@@ -528,6 +529,11 @@
       "title": "Schedule & results",
       "subtitle": "Upcoming matches and results for XBZ teams."
     },
+    "galerie": {
+      "eyebrow": "Gallery",
+      "title": "Media gallery",
+      "subtitle": "The club's highlights in pictures and videos."
+    },
     "articleNotFound": "Article not found"
   },
   "playerRoles": {
@@ -550,6 +556,27 @@
     "newTab": " (opens in a new tab)",
     "ctaTitle": "Become a partner",
     "ctaText": "Want to associate your brand with XBZ Esport? Reach out on Discord, let's talk."
+  },
+  "galerie": {
+    "eyebrow": "Gallery",
+    "metaTitle": "Media gallery — XBZ Esport",
+    "metaDescription": "Photos and videos of the club: events, matches, creative content and backstage.",
+    "title": "Media gallery",
+    "intro": "The club's highlights in pictures and videos.",
+    "empty": "The gallery is filling up soon. Check back!",
+    "emptyCategory": "No media in this category yet.",
+    "filterAria": "Filter by category",
+    "filterAll": "All",
+    "resultCount": "{count, plural, one {# item} other {# items}}.",
+    "openPhoto": "Open photo",
+    "openVideo": "Open video (new tab)",
+    "close": "Close"
+  },
+  "mediaCategories": {
+    "events": "Events",
+    "matches": "Matches",
+    "creation": "Creative",
+    "backstage": "Backstage"
   },
   "calendrier": {
     "eyebrow": "Schedule",
