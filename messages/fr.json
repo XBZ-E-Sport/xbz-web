@@ -39,6 +39,7 @@
     "supportContact": "Support & contact",
     "legal": "Mentions légales",
     "privacy": "Confidentialité",
+    "cgv": "CGV",
     "footerNav": "Liens du pied de page",
     "rights": "Tous droits réservés.",
     "signature": "Structure esport Rocket League 💙"
@@ -185,7 +186,9 @@
     "poleEsport": "Pôle esport",
     "poleStaff": "Pôle staff",
     "emptyRoster": "L’effectif de ce roster arrive bientôt.",
-    "emptyPole": "Les membres de ce pôle arrivent bientôt."
+    "emptyPole": "Les membres de ce pôle arrivent bientôt.",
+    "matchsHeading": "Les matchs",
+    "allMatchs": "Tout le calendrier"
   },
   "joueur": {
     "metaNotFound": "Membre introuvable — XBZ Esport",
@@ -408,6 +411,40 @@
     "discordSubmit": "Se connecter avec Discord",
     "discordNotice": "Réservé aux membres du serveur XBZ ayant le rôle <role>Administrateur</role> ou <role>Fondateur</role>."
   },
+  "cgv": {
+    "eyebrow": "Boutique",
+    "metaTitle": "Conditions générales de vente — XBZ Esport",
+    "metaDescription": "Les conditions générales de vente de la boutique en ligne XBZ Esport.",
+    "title": "Conditions générales de vente",
+    "effective": "En vigueur au [JJ/MM/AAAA].",
+    "objetTitle": "Objet",
+    "objetBody": "Les présentes conditions générales de vente (CGV) régissent les ventes de produits proposés sur la boutique en ligne du site XBZ Esport. Toute commande implique l'acceptation pleine et entière des présentes CGV, que le client reconnaît avoir lues avant de valider sa commande.",
+    "vendeurTitle": "Vendeur",
+    "vendeurBody": "Les produits sont vendus par [RAISON SOCIALE], [forme juridique] au capital de [MONTANT] €, immatriculée sous le numéro [SIREN/SIRET], dont le siège est situé [ADRESSE COMPLÈTE].\n\nContact : [EMAIL] — également joignable via le Discord du club.",
+    "produitsTitle": "Produits",
+    "produitsBody": "Les produits proposés sont décrits et présentés avec la plus grande exactitude possible. Les photographies sont les plus fidèles possibles mais ne peuvent garantir une similitude parfaite (couleurs, détails). Les produits sont proposés dans la limite des stocks disponibles.",
+    "prixTitle": "Prix",
+    "prixBody": "Les prix sont indiqués en euros, toutes taxes comprises (TTC), hors frais de livraison précisés avant la validation de la commande. [RAISON SOCIALE] se réserve le droit de modifier ses prix à tout moment ; les produits sont facturés sur la base des tarifs en vigueur au moment de la commande.\n\n[Le cas échéant : TVA non applicable, article 293 B du Code général des impôts.]",
+    "commandeTitle": "Commande",
+    "commandeBody": "La commande est définitivement validée après confirmation du paiement. Un email de confirmation récapitulant la commande est envoyé à l'adresse indiquée par le client. [RAISON SOCIALE] se réserve le droit d'annuler toute commande en cas de litige, de défaut de paiement ou de rupture de stock.",
+    "paiementTitle": "Paiement",
+    "paiementBody": "Le paiement s'effectue en ligne par carte bancaire, via la plateforme sécurisée Stripe. Aucune donnée bancaire n'est saisie ni conservée par XBZ Esport : le paiement est traité directement par Stripe. La commande n'est enregistrée qu'après confirmation du paiement par Stripe.",
+    "livraisonTitle": "Livraison",
+    "livraisonBody": "Les produits sont livrés à l'adresse indiquée lors de la commande, dans un délai indicatif de [DÉLAI] jours ouvrés à compter de la confirmation du paiement. Les frais de livraison sont indiqués avant la validation de la commande. La livraison est assurée sur [ZONE : France métropolitaine / Union européenne]. En cas de retard, le client est informé dès que possible.",
+    "retractationTitle": "Droit de rétractation",
+    "retractationBody": "Conformément aux articles L.221-18 et suivants du Code de la consommation, le client dispose d'un délai de quatorze (14) jours à compter de la réception des produits pour exercer son droit de rétractation, sans avoir à justifier de motif ni à payer de pénalité.\n\nPour l'exercer, le client informe [RAISON SOCIALE] de sa décision par une déclaration dénuée d'ambiguïté (courrier postal ou email à [EMAIL]) avant l'expiration du délai. Les produits doivent être retournés en parfait état, dans leur emballage d'origine, à l'adresse [ADRESSE DE RETOUR]. Les frais de retour restent à la charge du client. Le remboursement intervient dans les quatorze (14) jours suivant la récupération des produits ou la preuve de leur expédition.\n\nLe droit de rétractation ne s'applique pas aux produits confectionnés ou personnalisés à la demande du client (article L.221-28 du Code de la consommation).",
+    "retractationFormTitle": "Formulaire type de rétractation",
+    "retractationForm": "À l'attention de [RAISON SOCIALE], [ADRESSE], [EMAIL] :\nJe vous notifie par la présente ma rétractation du contrat portant sur la commande ci-dessous :\n— Commandé le [date] / reçu le [date]\n— Numéro de commande : [numéro]\n— Nom du client : [nom]\n— Adresse du client : [adresse]\n— Date : [date]\n— Signature (uniquement en cas de notification papier) :",
+    "garantiesTitle": "Garanties légales",
+    "garantiesBody": "Tous les produits bénéficient de la garantie légale de conformité (articles L.217-3 et suivants du Code de la consommation) et de la garantie contre les vices cachés (articles 1641 et suivants du Code civil). En cas de produit non conforme ou défectueux, le client contacte [RAISON SOCIALE] à [EMAIL].",
+    "responsabiliteTitle": "Responsabilité",
+    "responsabiliteBody": "[RAISON SOCIALE] ne saurait être tenue responsable de l'inexécution du contrat en cas de rupture de stock, de force majeure, de perturbation ou de grève des services de transport, ou de tout autre événement indépendant de sa volonté.",
+    "donneesTitle": "Données personnelles",
+    "donneesBody": "Les données collectées lors de la commande sont nécessaires à son traitement et à sa livraison. Elles sont traitées conformément à notre politique de confidentialité.",
+    "donneesLink": "Voir la politique de confidentialité",
+    "litigesTitle": "Droit applicable et litiges",
+    "litigesBody": "Les présentes CGV sont soumises au droit français. En cas de litige, le client peut recourir gratuitement à un médiateur de la consommation : [NOM ET COORDONNÉES DU MÉDIATEUR]. À défaut de résolution amiable, les tribunaux français sont compétents. Le client peut également utiliser la plateforme européenne de règlement en ligne des litiges : https://ec.europa.eu/consumers/odr."
+  },
   "legal": {
     "metaTitle": "Mentions légales — XBZ Esport",
     "metaDescription": "Mentions légales et informations sur l'éditeur du site XBZ Esport.",
@@ -534,6 +571,11 @@
     "roster": "Roster",
     "member": "Membre",
     "memberNotFound": "Membre introuvable",
+    "cgv": {
+      "eyebrow": "Boutique",
+      "title": "Conditions générales de vente",
+      "subtitle": "Les CGV de la boutique XBZ Esport."
+    },
     "articleNotFound": "Article introuvable"
   },
   "playerRoles": {

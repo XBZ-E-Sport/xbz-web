@@ -18,6 +18,7 @@ export type MatchResult = "win" | "loss" | "draw";
 
 export type Match = {
   id: string;
+  rosterId: string | null;
   opponent: string;
   opponentLogo: string | null;
   competition: string;
@@ -32,7 +33,7 @@ export type Match = {
 };
 
 const MATCH_COLS =
-  "id, opponent, opponent_logo, competition, format, starts_at, status, " +
+  "id, roster_id, opponent, opponent_logo, competition, format, starts_at, status, " +
   "score_xbz, score_opponent, stream_url, rosters(slug, name)";
 
 function normalizeStatus(value: string): MatchStatus {
@@ -59,6 +60,7 @@ function deriveResult(
 
 type MatchRow = {
   id: string;
+  roster_id: string | null;
   opponent: string;
   opponent_logo: string | null;
   competition: string | null;
@@ -76,6 +78,7 @@ function toMatch(row: MatchRow): Match {
   const status = normalizeStatus(row.status);
   return {
     id: row.id,
+    rosterId: row.roster_id ?? null,
     opponent: row.opponent,
     opponentLogo: row.opponent_logo ?? null,
     competition: row.competition ?? "",
@@ -120,6 +123,19 @@ const fetchMatchRows = unstable_cache(
  */
 export async function getMatchBoards(): Promise<{ upcoming: Match[]; results: Match[] }> {
   const rows = (await fetchMatchRows()).map(toMatch);
+  const upcoming = rows.filter((m) => m.status !== "finished");
+  const results = rows.filter((m) => m.status === "finished").reverse();
+  return { upcoming, results };
+}
+
+/**
+ * Les matchs d'UN roster (à venir + résultats), pour sa page d'équipe. Dérivé
+ * du même cache que le calendrier — pas de requête supplémentaire.
+ */
+export async function getRosterMatchBoards(
+  rosterId: string,
+): Promise<{ upcoming: Match[]; results: Match[] }> {
+  const rows = (await fetchMatchRows()).map(toMatch).filter((m) => m.rosterId === rosterId);
   const upcoming = rows.filter((m) => m.status !== "finished");
   const results = rows.filter((m) => m.status === "finished").reverse();
   return { upcoming, results };

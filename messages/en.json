@@ -39,6 +39,7 @@
     "supportContact": "Support & contact",
     "legal": "Legal notice",
     "privacy": "Privacy",
+    "cgv": "Terms of sale",
     "footerNav": "Footer links",
     "rights": "All rights reserved.",
     "signature": "Rocket League esports organisation 💙"
@@ -185,7 +186,9 @@
     "poleEsport": "Esports division",
     "poleStaff": "Staff division",
     "emptyRoster": "This roster’s line-up is coming soon.",
-    "emptyPole": "The members of this division are coming soon."
+    "emptyPole": "The members of this division are coming soon.",
+    "matchsHeading": "Matches",
+    "allMatchs": "Full schedule"
   },
   "joueur": {
     "metaNotFound": "Member not found — XBZ Esport",
@@ -408,6 +411,40 @@
     "discordSubmit": "Sign in with Discord",
     "discordNotice": "Restricted to members of the XBZ server holding the <role>Administrateur</role> or <role>Fondateur</role> role."
   },
+  "cgv": {
+    "eyebrow": "Shop",
+    "metaTitle": "Terms of sale — XBZ Esport",
+    "metaDescription": "The terms and conditions of sale of the XBZ Esport online shop.",
+    "title": "Terms of sale",
+    "effective": "In force as of [DD/MM/YYYY].",
+    "objetTitle": "Purpose",
+    "objetBody": "These terms of sale govern the sale of products offered on the XBZ Esport online shop. Any order implies full acceptance of these terms, which the customer acknowledges having read before placing the order.",
+    "vendeurTitle": "Seller",
+    "vendeurBody": "Products are sold by [LEGAL NAME], [legal form] with capital of [AMOUNT] €, registered under number [SIREN/SIRET], with registered office at [FULL ADDRESS].\n\nContact: [EMAIL] — also reachable via the club's Discord.",
+    "produitsTitle": "Products",
+    "produitsBody": "Products are described and presented as accurately as possible. Photographs are as faithful as possible but cannot guarantee a perfect likeness (colours, details). Products are offered while stocks last.",
+    "prixTitle": "Prices",
+    "prixBody": "Prices are shown in euros, all taxes included, excluding delivery charges specified before the order is confirmed. [LEGAL NAME] reserves the right to change its prices at any time; products are invoiced on the basis of the rates in force at the time of the order.\n\n[Where applicable: VAT not applicable, Article 293 B of the French General Tax Code.]",
+    "commandeTitle": "Orders",
+    "commandeBody": "The order is definitively confirmed once payment is validated. A confirmation email summarising the order is sent to the address provided by the customer. [LEGAL NAME] reserves the right to cancel any order in the event of a dispute, payment default or out-of-stock situation.",
+    "paiementTitle": "Payment",
+    "paiementBody": "Payment is made online by bank card, through the secure Stripe platform. No bank details are entered or stored by XBZ Esport: payment is processed directly by Stripe. The order is recorded only after Stripe confirms payment.",
+    "livraisonTitle": "Delivery",
+    "livraisonBody": "Products are delivered to the address given at the time of the order, within an indicative period of [TIME] working days from payment confirmation. Delivery charges are shown before the order is confirmed. Delivery is available to [AREA: mainland France / European Union]. In the event of delay, the customer is informed as soon as possible.",
+    "retractationTitle": "Right of withdrawal",
+    "retractationBody": "In accordance with Articles L.221-18 et seq. of the French Consumer Code, the customer has fourteen (14) days from receipt of the products to exercise their right of withdrawal, without giving any reason or paying a penalty.\n\nTo exercise it, the customer informs [LEGAL NAME] of their decision by an unambiguous statement (postal letter or email to [EMAIL]) before the deadline. Products must be returned in perfect condition, in their original packaging, to [RETURN ADDRESS]. Return costs remain the customer's responsibility. The refund is made within fourteen (14) days of recovering the products or receiving proof of their return shipment.\n\nThe right of withdrawal does not apply to products made or personalised to the customer's specifications (Article L.221-28 of the French Consumer Code).",
+    "retractationFormTitle": "Model withdrawal form",
+    "retractationForm": "To [LEGAL NAME], [ADDRESS], [EMAIL]:\nI hereby give notice of my withdrawal from the contract for the order below:\n— Ordered on [date] / received on [date]\n— Order number: [number]\n— Customer name: [name]\n— Customer address: [address]\n— Date: [date]\n— Signature (only if notified on paper):",
+    "garantiesTitle": "Legal guarantees",
+    "garantiesBody": "All products benefit from the legal guarantee of conformity (Articles L.217-3 et seq. of the French Consumer Code) and the guarantee against hidden defects (Articles 1641 et seq. of the French Civil Code). In the event of a non-conforming or defective product, the customer contacts [LEGAL NAME] at [EMAIL].",
+    "responsabiliteTitle": "Liability",
+    "responsabiliteBody": "[LEGAL NAME] cannot be held liable for failure to perform the contract in the event of stock shortage, force majeure, disruption or strike of transport services, or any other event beyond its control.",
+    "donneesTitle": "Personal data",
+    "donneesBody": "The data collected when placing an order is necessary for its processing and delivery. It is handled in accordance with our privacy policy.",
+    "donneesLink": "See the privacy policy",
+    "litigesTitle": "Applicable law and disputes",
+    "litigesBody": "These terms are governed by French law. In the event of a dispute, the customer may use a consumer mediator free of charge: [MEDIATOR NAME AND CONTACT]. Failing an amicable settlement, the French courts have jurisdiction. The customer may also use the European online dispute resolution platform: https://ec.europa.eu/consumers/odr."
+  },
   "legal": {
     "metaTitle": "Legal notice — XBZ Esport",
     "metaDescription": "Legal notice and information about the publisher of the XBZ Esport website.",
@@ -533,6 +570,11 @@
       "eyebrow": "Gallery",
       "title": "Media gallery",
       "subtitle": "The club's highlights in pictures and videos."
+    },
+    "cgv": {
+      "eyebrow": "Shop",
+      "title": "Terms of sale",
+      "subtitle": "The terms of sale of the XBZ Esport shop."
     },
     "articleNotFound": "Article not found"
   },

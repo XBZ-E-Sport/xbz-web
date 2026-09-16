@@ -29,6 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/support", priority: 0.5, changeFrequency: "monthly" },
     { path: "/mentions-legales", priority: 0.3, changeFrequency: "monthly" },
     { path: "/confidentialite", priority: 0.3, changeFrequency: "monthly" },
+    { path: "/cgv", priority: 0.3, changeFrequency: "monthly" },
   ];
 
   /** URL absolue d'un chemin non préfixé, dans une langue donnée. */

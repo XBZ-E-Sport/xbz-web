@@ -4,8 +4,10 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getRosterBySlug } from "@/lib/roster";
 import { getEquipeSlugs, getPoleBySlug } from "@/lib/equipes";
+import { getRosterMatchBoards } from "@/lib/matchs";
 import { pageMetadata } from "@/lib/site";
 import PlayerCard from "@/components/PlayerCard";
+import MatchCard, { type MatchLabels } from "@/components/MatchCard";
 
 // Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
 // par visite. Roster ou pôle venait d'une lecture BDD par affichage.
@@ -73,6 +75,7 @@ export default async function EquipeDetailPage({ params }: PageProps) {
         description={roster.description}
         emptyLabel={t("emptyRoster")}
         count={roster.players.length}
+        after={await RosterMatchs({ rosterId: roster.id, locale })}
       >
         {roster.players.map((player) => (
           <PlayerCard key={player.id} player={player} parentSlug={roster.slug} />
@@ -112,6 +115,7 @@ function DetailLayout({
   children,
   backLabel,
   locale,
+  after,
 }: {
   eyebrow?: string | null;
   title: string;
@@ -124,6 +128,8 @@ function DetailLayout({
   // sous-composant. Ils viennent du corps de la page, qui a la langue.
   backLabel: string;
   locale: string;
+  /** Contenu additionnel sous les membres (ex. les matchs d'un roster). */
+  after?: React.ReactNode;
 }) {
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
@@ -156,6 +162,72 @@ function DetailLayout({
       ) : (
         <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">{children}</ul>
       )}
+
+      {after}
     </div>
+  );
+}
+
+/**
+ * Section « Matchs » d'un roster (à venir + résultats récents), affichée sous
+ * ses membres. Rendue vide (null) si le roster n'a aucun match — on ne pollue
+ * pas la page d'une équipe qui n'a pas encore joué.
+ */
+async function RosterMatchs({ rosterId, locale }: { rosterId: string; locale: string }) {
+  const { upcoming, results } = await getRosterMatchBoards(rosterId);
+  const recentResults = results.slice(0, 4); // le calendrier complet est sur /calendrier
+  if (upcoming.length + recentResults.length === 0) return null;
+
+  const t = await getTranslations({ locale, namespace: "calendrier" });
+  const tEquipe = await getTranslations({ locale, namespace: "equipeDetail" });
+  const labels: MatchLabels = {
+    vs: t("vs"),
+    watch: t("watch"),
+    newTab: t("newTab"),
+    cancelled: t("cancelled"),
+    result: { win: t("win"), loss: t("loss"), draw: t("draw") },
+  };
+  const subHead = "mb-4 text-sm font-semibold uppercase tracking-wide text-neutral-400";
+
+  return (
+    <section aria-labelledby="roster-matchs" className="mt-16">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <h2
+          id="roster-matchs"
+          className="font-display text-xl font-bold tracking-[2px] text-neutral-300"
+        >
+          {tEquipe("matchsHeading")}
+        </h2>
+        <Link
+          href="/calendrier"
+          locale={locale}
+          className="shrink-0 text-sm font-semibold text-xbz-cyan hover:underline"
+        >
+          {tEquipe("allMatchs")}
+        </Link>
+      </div>
+
+      {upcoming.length > 0 && (
+        <>
+          <h3 className={subHead}>{t("upcomingHeading")}</h3>
+          <ul className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {upcoming.map((match) => (
+              <MatchCard key={match.id} match={match} locale={locale} labels={labels} />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {recentResults.length > 0 && (
+        <>
+          <h3 className={subHead}>{t("resultsHeading")}</h3>
+          <ul className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            {recentResults.map((match) => (
+              <MatchCard key={match.id} match={match} locale={locale} labels={labels} />
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }

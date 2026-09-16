@@ -24,6 +24,7 @@ const infoLinks = [
   { href: "/support", key: "supportContact" },
   { href: "/mentions-legales", key: "legal" },
   { href: "/confidentialite", key: "privacy" },
+  { href: "/cgv", key: "cgv" },
 ] as const;
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

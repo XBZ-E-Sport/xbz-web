@@ -33,7 +33,9 @@ vi.mock("next/cache", () => ({
   unstable_cache: (fn: (...a: unknown[]) => unknown) => fn,
 }));
 
-const { getMatchBoards, getNextMatch, formatMatchDateTime } = await import("@/lib/matchs");
+const { getMatchBoards, getRosterMatchBoards, getNextMatch, formatMatchDateTime } = await import(
+  "@/lib/matchs"
+);
 
 const base = {
   opponent: "Rivals",
@@ -101,6 +103,17 @@ describe("matchs", () => {
       { ...base, id: "next", starts_at: "2026-09-20T18:00:00", status: "scheduled", score_xbz: null, score_opponent: null },
     ];
     expect((await getNextMatch())?.id).toBe("next");
+  });
+
+  it("getRosterMatchBoards ne renvoie que les matchs du roster demandé", async () => {
+    rows.value = [
+      { ...base, id: "a", roster_id: "r1", starts_at: "2026-09-10T18:00:00", status: "finished", score_xbz: 3, score_opponent: 1 },
+      { ...base, id: "b", roster_id: "r1", starts_at: "2026-09-20T18:00:00", status: "scheduled", score_xbz: null, score_opponent: null },
+      { ...base, id: "c", roster_id: "r2", starts_at: "2026-09-21T18:00:00", status: "scheduled", score_xbz: null, score_opponent: null },
+    ];
+    const { upcoming, results } = await getRosterMatchBoards("r1");
+    expect(upcoming.map((m) => m.id)).toEqual(["b"]);
+    expect(results.map((m) => m.id)).toEqual(["a"]);
   });
 
   it("formate l'heure sans dérive de fuseau (18:00 saisi → 18:00 affiché)", () => {
