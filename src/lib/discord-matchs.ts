@@ -9,7 +9,8 @@
 
 import "server-only";
 
-import { formatMatchDateTime } from "@/lib/matchs";
+// Logo du club (asset public) — icône d'auteur / vignette des embeds Discord.
+const LOGO = "https://www.xbz-esport.org/logo-xbz.png";
 
 export type MatchNotif = {
   rosterName: string | null;
@@ -81,39 +82,79 @@ function clamp(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
-function matchLine(m: MatchNotif): string {
-  const xbz = m.rosterName ?? "XBZ";
-  const compet = m.competition ? ` — ${m.competition}` : "";
-  const stream = m.streamUrl ? `\n📺 ${m.streamUrl}` : "";
-  return `**${xbz}** vs **${m.opponent}**${compet} (${m.format})\n🕓 ${formatMatchDateTime(m.startsAt, "fr")}${stream}`;
+/**
+ * Instant RÉEL d'un match (secondes UNIX), pour les timestamps dynamiques de
+ * Discord (`<t:…>`). `starts_at` est une heure murale FR : on la convertit en
+ * UTC en récupérant le décalage de Paris À CETTE DATE (donc juste, été comme
+ * hiver). Discord affiche ensuite « dans 1h » / la date, traduits par membre.
+ */
+export function parisWallClockToUnix(startsAt: string): number {
+  const naiveUtc = matchStartMs(startsAt); // l'heure murale lue comme de l'UTC
+  const offsetMs = nowParisMs(new Date(naiveUtc)) - naiveUtc; // décalage de Paris à cette date
+  return Math.floor((naiveUtc - offsetMs) / 1000);
 }
 
-/** Payload webhook Discord pour le rappel d'un match imminent. */
+const matchTitle = (m: MatchNotif) => clamp(`${m.rosterName ?? "XBZ Esport"}  🆚  ${m.opponent}`, 240);
+const streamLink = (m: MatchNotif) =>
+  m.streamUrl ? `\n\n📺 **[Regarder le stream](${clamp(m.streamUrl, 400)})**` : "";
+
+/** Colonnes compétition / format d'un match (champs d'embed). */
+function matchFields(m: MatchNotif) {
+  const fields: { name: string; value: string; inline?: boolean }[] = [];
+  if (m.competition) fields.push({ name: "🏆 Compétition", value: clamp(m.competition, 120), inline: true });
+  fields.push({ name: "🎮 Format", value: m.format, inline: true });
+  return fields;
+}
+
+/** Payload webhook Discord pour le rappel d'un match imminent (une carte). */
 export function buildReminderPayload(m: MatchNotif) {
+  const unix = parisWallClockToUnix(m.startsAt);
   return {
     username: "XBZ · Matchs",
+    avatar_url: LOGO,
     embeds: [
       {
-        title: clamp(`⏰ Match bientôt : ${m.rosterName ?? "XBZ"} vs ${m.opponent}`, 240),
-        description: clamp(matchLine(m), 4000),
+        author: { name: "⏰ Match bientôt", icon_url: LOGO },
+        title: matchTitle(m),
+        description: `**Coup d'envoi <t:${unix}:R>**\n🗓️ <t:${unix}:F>${streamLink(m)}`,
         color: 0x0066ff,
+        fields: matchFields(m),
+        footer: { text: "XBZ Esport · Calendrier" },
       },
     ],
   };
 }
 
-/** Payload webhook Discord pour le digest des matchs du jour. */
+/**
+ * Payload webhook Discord pour le digest du jour : un embed d'en-tête + une
+ * carte par match (Discord accepte jusqu'à 10 embeds ; on plafonne à 9 cartes).
+ */
 export function buildDigestPayload(matches: MatchNotif[]) {
-  return {
-    username: "XBZ · Matchs",
-    embeds: [
-      {
-        title: `📅 Les matchs du jour (${matches.length})`,
-        description: clamp(matches.map((m) => `• ${matchLine(m)}`).join("\n\n"), 4000),
-        color: 0x00c8ff,
-      },
-    ],
+  const MAX_CARDS = 9;
+  const shown = matches.slice(0, MAX_CARDS);
+  const extra = matches.length - shown.length;
+
+  const header = {
+    title: "📅 Les matchs du jour",
+    description:
+      (matches.length > 1 ? `**${matches.length} matchs** au programme aujourd'hui 👇` : `**1 match** au programme aujourd'hui 👇`) +
+      (extra > 0 ? `\n_(+ ${extra} autres — voir le calendrier)_` : ""),
+    color: 0x00c8ff,
+    thumbnail: { url: LOGO },
   };
+
+  const cards = shown.map((m) => {
+    const unix = parisWallClockToUnix(m.startsAt);
+    const compet = m.competition ? `🏆 ${clamp(m.competition, 100)}  ·  ` : "";
+    const stream = m.streamUrl ? `  ·  📺 [stream](${clamp(m.streamUrl, 400)})` : "";
+    return {
+      title: matchTitle(m),
+      description: `${compet}🎮 ${m.format}\n🕓 <t:${unix}:t>  ·  **<t:${unix}:R>**${stream}`,
+      color: 0x0066ff,
+    };
+  });
+
+  return { username: "XBZ · Matchs", avatar_url: LOGO, embeds: [header, ...cards] };
 }
 
 /** Poste un payload sur le webhook Discord. Renvoie false si non configuré/échec. */

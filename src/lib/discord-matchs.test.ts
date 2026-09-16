@@ -8,6 +8,7 @@ vi.mock("next/cache", () => ({ unstable_cache: (fn: (...a: unknown[]) => unknown
 const {
   nowParisMs,
   matchStartMs,
+  parisWallClockToUnix,
   isWithinReminderWindow,
   parisDayStr,
   isSameDay,
@@ -55,19 +56,26 @@ describe("discord-matchs — temps (heure murale FR)", () => {
     expect(isSameDay("2026-07-01T18:00:00", "2026-07-01")).toBe(true);
     expect(isSameDay("2026-07-02T09:00:00", "2026-07-01")).toBe(false);
   });
+
+  it("convertit l'heure murale FR en instant UNIX réel (été = UTC+2)", () => {
+    // 18:00 heure de Paris en été = 16:00 UTC.
+    expect(parisWallClockToUnix("2026-07-01T18:00:00")).toBe(Date.parse("2026-07-01T16:00:00Z") / 1000);
+  });
 });
 
 describe("discord-matchs — messages", () => {
-  it("le rappel cite l'adversaire dans le titre", () => {
+  it("le rappel : titre = confrontation, timestamp dynamique en description", () => {
     const p = buildReminderPayload(notif());
     expect(p.embeds[0].title).toContain("Rivals");
-    expect(p.embeds[0].description).toContain("Roster SSL");
+    expect(p.embeds[0].title).toContain("Roster SSL");
+    expect(p.embeds[0].description).toContain("<t:"); // horodatage Discord dynamique
   });
 
-  it("le digest liste les matchs et affiche le nombre", () => {
+  it("le digest : en-tête avec le nombre + une carte par match", () => {
     const p = buildDigestPayload([notif(), notif({ opponent: "Team B" })]);
-    expect(p.embeds[0].title).toContain("(2)");
-    expect(p.embeds[0].description).toContain("Rivals");
-    expect(p.embeds[0].description).toContain("Team B");
+    expect(p.embeds).toHaveLength(3); // en-tête + 2 cartes
+    expect(p.embeds[0].description).toContain("2 matchs");
+    expect(p.embeds[1].title).toContain("Rivals");
+    expect(p.embeds[2].title).toContain("Team B");
   });
 });
