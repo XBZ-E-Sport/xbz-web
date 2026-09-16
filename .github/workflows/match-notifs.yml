@@ -1,0 +1,45 @@
+# Notifications Discord des matchs, déclenchées par GitHub Actions (gratuit).
+#
+# Remplace les crons Vercel : on appelle l'endpoint authentifié du site depuis
+# GitHub, aussi souvent qu'on veut, sans plan Vercel payant.
+#
+# Pré-requis :
+#   - Secret de dépôt CRON_SECRET (Settings > Secrets and variables > Actions),
+#     avec la MÊME valeur que la variable CRON_SECRET de Vercel.
+#   - La variable DISCORD_MATCHS_WEBHOOK_URL doit être définie côté Vercel.
+#
+# À placer dans : .github/workflows/match-notifs.yml
+name: Notifs matchs Discord
+
+on:
+  schedule:
+    - cron: "0 * * * *" # rappel « match bientôt » : toutes les heures (UTC)
+    - cron: "0 8 * * *" # digest « matchs du jour » : chaque jour à 08:00 UTC (~10h FR)
+  workflow_dispatch: {} # bouton « Run workflow » pour tester à la main
+
+# Une exécution à la fois : évite tout chevauchement.
+concurrency:
+  group: match-notifs
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://xbz-esport.org
+    steps:
+      - name: Rappel avant match
+        # Sur le cron horaire, et sur déclenchement manuel.
+        if: github.event.schedule == '0 * * * *' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "$BASE_URL/api/cron/matchs?job=remind"
+
+      - name: Digest du jour
+        # Sur le cron quotidien de 08:00, et sur déclenchement manuel.
+        if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
+        run: |
+          curl -fsS --max-time 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "$BASE_URL/api/cron/matchs?job=digest"
