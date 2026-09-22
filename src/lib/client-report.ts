@@ -39,6 +39,34 @@ export function isThirdPartyError(input: {
   return false;
 }
 
+// Codes React de la famille « décalage d'hydratation » (le HTML prérendu ne
+// correspond plus à ce que React reconstruit au client) :
+//   #418 #423 #425 → contenu / HTML rendu ≠ client
+//   #421 #422      → hydratation d'une frontière Suspense
+const REACT_HYDRATION_CODE = /Minified React error #(?:418|421|422|423|425)\b/;
+// Filet pour un build NON minifié (dev/preview) : les mêmes erreurs, en clair.
+const REACT_HYDRATION_TEXT = /hydrat(?:ion|ing)|content does not match|didn't match the client/i;
+
+/**
+ * Vrai pour une erreur d'HYDRATATION React.
+ *
+ * En production ces erreurs arrivent MINIFIÉES : pile 100 % interne à React,
+ * aucun stack de composant → rien d'actionnable depuis le monitoring. Et leur
+ * cause n°1 côté visiteur n'est pas un bug du site : c'est la TRADUCTION
+ * automatique de la page (Google Traduction, « Traduire cette page » de
+ * Chrome/Edge, extensions). Le traducteur remplace les nœuds de texte pendant
+ * l'hydratation → React voit un texte différent → #418. React récupère seul
+ * (re-rendu client), le visiteur ne voit rien : seul le canal d'erreurs trinque.
+ *
+ * On les écarte donc du sink. Une VRAIE régression d'hydratation, elle, se
+ * reproduit SANS traduction et se voit en dev/preview (message complet + stack
+ * de composant) — là où elle est réellement corrigeable.
+ */
+export function isReactHydrationError(message?: string): boolean {
+  if (!message) return false;
+  return REACT_HYDRATION_CODE.test(message) || REACT_HYDRATION_TEXT.test(message);
+}
+
 export function reportClientError(input: ClientErrorInput): void {
   try {
     const body = JSON.stringify({

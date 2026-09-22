@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { isThirdPartyError } from "@/lib/client-report";
+import { isThirdPartyError, isReactHydrationError } from "@/lib/client-report";
 
 describe("isThirdPartyError", () => {
   it("écarte le plantage exact d'une extension (cas vécu M_ID)", () => {
@@ -43,5 +43,40 @@ describe("isThirdPartyError", () => {
     // « Script error. » est le seul message générique qu'on écarte ; un message
     // réel sans pile reste remonté.
     expect(isThirdPartyError({ message: "Échec de chargement du roster" })).toBe(false);
+  });
+});
+
+describe("isReactHydrationError", () => {
+  it("écarte le #418 minifié tel qu'il arrive en prod (cas vécu /fr)", () => {
+    // Le message exact remonté au Discord staff : erreur d'hydratation, cause
+    // n°1 = la traduction auto de la page, jamais un bug du site.
+    expect(
+      isReactHydrationError(
+        "Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message",
+      ),
+    ).toBe(true);
+  });
+
+  it("écarte toute la famille d'hydratation minifiée (#421/#422/#423/#425)", () => {
+    for (const code of [421, 422, 423, 425]) {
+      expect(isReactHydrationError(`Minified React error #${code}; visit https://react.dev/errors/${code}`)).toBe(true);
+    }
+  });
+
+  it("écarte aussi les messages en clair (dev/preview non minifié)", () => {
+    expect(isReactHydrationError("Hydration failed because the server rendered HTML didn't match the client.")).toBe(true);
+    expect(isReactHydrationError("Text content does not match server-rendered HTML.")).toBe(true);
+    expect(isReactHydrationError("There was an error while hydrating.")).toBe(true);
+  });
+
+  it("GARDE les autres erreurs React minifiées (pas de l'hydratation)", () => {
+    // #185 (boucle de setState) est un vrai bug applicatif : il doit remonter.
+    expect(isReactHydrationError("Minified React error #185; visit https://react.dev/errors/185")).toBe(false);
+  });
+
+  it("GARDE une erreur applicative normale et le message vide", () => {
+    expect(isReactHydrationError("Cannot read properties of undefined (reading 'slug')")).toBe(false);
+    expect(isReactHydrationError(undefined)).toBe(false);
+    expect(isReactHydrationError("")).toBe(false);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { reportClientError } from "@/lib/client-report";
+import { reportClientError, isReactHydrationError } from "@/lib/client-report";
 
 // Error boundary racine : remplace le layout quand une erreur non gérée casse
 // le rendu. Doit fournir ses propres <html>/<body>. On remonte l'erreur au sink
@@ -21,6 +21,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    // Décalage d'hydratation (souvent la traduction auto de la page) : bénin et
+    // non actionnable en prod — on ne pollue pas le canal d'erreurs avec.
+    if (isReactHydrationError(error.message)) return;
     reportClientError({ message: error.message, stack: error.stack, digest: error.digest });
   }, [error]);
 
