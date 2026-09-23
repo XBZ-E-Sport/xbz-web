@@ -44,7 +44,7 @@ const orgJsonLd = (description: string) => ({
   name: siteConfig.name,
   alternateName: siteConfig.shortName,
   url: siteConfig.url,
-  logo: absoluteUrl("/logo-xbz.png"),
+  logo: absoluteUrl("/logo-xbz-light.png"),
   description,
   ...(siteConfig.discord ? { sameAs: [siteConfig.discord] } : {}),
 });
@@ -83,22 +83,34 @@ export default async function Home({ params }: PageProps) {
         aria-labelledby="hero-title"
         className="relative z-10 flex min-h-[88svh] flex-col items-center justify-center gap-7 px-6 py-24 text-center"
       >
-        {/* Logo décoratif : le nom du club est déjà porté par le <h1> juste après */}
-        <Image
-          src="/logo-xbz.png"
-          alt=""
-          width={208}
-          height={208}
-          preload
-          className="h-32 w-32 drop-shadow-[0_0_25px_rgba(0,102,255,0.45)] sm:h-48 sm:w-48"
-        />
+        {/* Corbeau — emblème de la marque. Halo rouge derrière pour détacher la
+            silhouette noire du fond sombre (l'illustration a déjà les yeux rouges). */}
+        <div className="relative flex items-center justify-center">
+          <div
+            aria-hidden="true"
+            className="absolute h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(220,37,21,0.4),transparent_70%)] blur-2xl sm:h-64 sm:w-64"
+          />
+          <Image
+            src="/corbeau.png"
+            alt=""
+            width={573}
+            height={374}
+            priority
+            className="relative h-28 w-auto drop-shadow-[0_0_22px_rgba(220,37,21,0.45)] motion-safe:animate-raven-float sm:h-40"
+          />
+        </div>
 
         <h1
           id="hero-title"
-          className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_35px_rgba(0,102,255,0.55)] sm:text-6xl sm:tracking-widest md:text-7xl"
+          className="font-impact text-5xl font-bold uppercase tracking-wide text-white glow-brand sm:text-7xl sm:tracking-widest md:text-8xl"
         >
           XBZ Esport
         </h1>
+
+        {/* Slogan de marque (dégradé rouge → jaune → rouge) */}
+        <p className="bg-gradient-to-r from-xbz-blue via-xbz-cyan to-xbz-blue bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
+          {t("slogan")}
+        </p>
 
         <p className="max-w-xl text-balance text-lg leading-relaxed text-neutral-300 sm:text-xl">
           {t.rich("heroTagline", {
@@ -131,7 +143,7 @@ export default async function Home({ params }: PageProps) {
             href={DISCORD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-xl bg-[#5865F2] px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer motion-safe:hover:-translate-y-0.5"
+            className="cut bg-xbz-blue px-7 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer motion-safe:hover:-translate-y-0.5"
           >
             {tNav("joinDiscord")}
             <span className="sr-only">{tNav("newTab")}</span>
@@ -139,7 +151,7 @@ export default async function Home({ params }: PageProps) {
           <Link
             href="/recrutement"
             locale={locale}
-            className="rounded-xl border border-white/25 px-7 py-3.5 text-center font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
+            className="rounded-[2px] border border-white/25 px-7 py-3.5 text-center font-bold text-white transition hover:border-white/60 hover:bg-white/5 motion-safe:hover:-translate-y-0.5"
           >
             {t("joinUs")}
           </Link>
@@ -189,7 +201,7 @@ export default async function Home({ params }: PageProps) {
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                 <div className="text-center">
                   <div className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/90">
-                    <Image src="/logo-xbz.png" alt="" fill sizes="56px" className="object-contain p-2" />
+                    <Image src="/logo-xbz-light.png" alt="" fill sizes="56px" className="object-contain p-2" />
                   </div>
                   <p className="mt-2 font-display text-sm text-white">
                     {nextMatch.roster?.name ?? "XBZ Esport"}
@@ -232,7 +244,7 @@ export default async function Home({ params }: PageProps) {
             {stats.map((s) => (
               <div key={s.label} className="card-xbz flex flex-col-reverse gap-2 p-6 text-center">
                 <dt className="text-sm text-neutral-400">{s.label}</dt>
-                <dd className="font-display text-4xl font-black text-xbz-cyan">{s.value}</dd>
+                <dd className="font-impact text-5xl font-bold text-xbz-cyan">{s.value}</dd>
               </div>
             ))}
           </dl>

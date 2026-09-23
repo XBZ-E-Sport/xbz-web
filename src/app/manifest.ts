@@ -16,8 +16,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/fr",
     scope: "/",
     display: "standalone",
-    background_color: "#070710", // fond de l'écran de démarrage (sombre, comme le site)
-    theme_color: "#070710", // teinte de la barre d'état / d'adresse
+    background_color: "#0a0a0a", // fond de l'écran de démarrage (sombre, comme le site)
+    theme_color: "#0a0a0a", // teinte de la barre d'état / d'adresse
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

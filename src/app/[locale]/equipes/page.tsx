@@ -37,11 +37,11 @@ export const revalidate = 3600;
 const roleStyles: Record<GroupVariant, string> = {
   founder: "bg-white/10 text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]",
   staff: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff] shadow-[0_0_12px_rgba(160,90,255,0.25)]",
-  member: "bg-xbz-blue/10 text-[#7fc8ff] shadow-[0_0_12px_rgba(0,102,255,0.2)]",
-  creative: "bg-[rgba(0,200,255,0.12)] text-[#7fe6ff] shadow-[0_0_12px_rgba(0,200,255,0.2)]",
+  member: "bg-xbz-blue/10 text-[#f4a79b] shadow-[0_0_12px_rgba(220,37,21,0.2)]",
+  creative: "bg-[rgba(252,205,5,0.12)] text-[#ffd964] shadow-[0_0_12px_rgba(252,205,5,0.2)]",
 };
 const availabilityStyles = {
-  open: "animate-pulse bg-linear-to-r from-[#7ad7ff] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(0,102,255,0.6)]",
+  open: "animate-pulse bg-linear-to-r from-[#f4a79b] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(220,37,21,0.6)]",
   closed: "bg-linear-to-r from-xbz-orange to-xbz-dark-red text-[#111] shadow-[0_0_25px_rgba(255,15,16,0.6)]",
 } as const;
 
@@ -87,7 +87,7 @@ function GroupCard({
 
   const slotsStyle = isFull
     ? "border-[rgba(255,15,16,0.4)] bg-[rgba(255,15,16,0.12)] text-[#ff7a7a]"
-    : "border-xbz-blue/30 bg-xbz-blue/10 text-[#7fc8ff]";
+    : "border-xbz-blue/30 bg-xbz-blue/10 text-[#f4a79b]";
   const badgeClass = "inline-block rounded-lg px-2.5 py-1 text-[11px] font-black";
   const slotsLabel = isFull
     ? t("slotsFullLabel", { capacity })
@@ -176,7 +176,7 @@ export default async function EquipesPage({ params }: PageProps) {
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
           {tNav("equipes")}
         </p>
-        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {t("title")}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-lg leading-relaxed text-neutral-300">

@@ -74,7 +74,7 @@ export default function MatchCard({
       {/* Confrontation : XBZ vs adversaire */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-center">
-          <TeamLogo src="/logo-xbz.png" name="XBZ" />
+          <TeamLogo src="/logo-xbz-light.png" name="XBZ" />
           <p className="mt-2 font-display text-sm text-white">{xbzName}</p>
         </div>
 

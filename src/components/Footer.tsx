@@ -61,10 +61,13 @@ export default async function Footer({ locale }: { locale: string }) {
             aria-label={tNav("homeAria")}
             className="inline-flex items-center gap-3"
           >
-            <Image src="/logo-xbz.png" alt="" width={40} height={40} className="h-10 w-10" />
-            <span className="font-display text-lg font-black uppercase tracking-wide text-white">
-              {siteConfig.name}
-            </span>
+            <Image
+              src="/logo-xbz-wide.png"
+              alt={siteConfig.name}
+              width={610}
+              height={163}
+              className="h-8 w-auto"
+            />
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-neutral-400">
             {tSite("description").replace(`${siteConfig.name} — `, "")}
@@ -74,7 +77,7 @@ export default async function Footer({ locale }: { locale: string }) {
               href={DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5865F2] px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-xbz-blue px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
             >
               {tNav("joinDiscord")}
               <span className="sr-only">{tNav("newTab")}</span>

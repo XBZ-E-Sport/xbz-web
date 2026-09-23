@@ -78,7 +78,7 @@ export default async function LoginPage({ params, searchParams }: PageProps) {
         <form action={loginWithDiscord}>
           <button
             type="submit"
-            className="w-full rounded-xl bg-[#5865F2] px-4 py-3 font-bold text-white transition hover:brightness-110 hover:cursor-pointer"
+            className="w-full rounded-xl bg-xbz-blue px-4 py-3 font-bold text-white transition hover:brightness-110 hover:cursor-pointer"
           >
             {t("discordSubmit")}
           </button>

@@ -19,9 +19,9 @@ type Filter = ProductCategory | "Tous";
 type SortKey = "defaut" | "prix-asc" | "prix-desc";
 
 const categoryStyles: Record<ProductCategory, string> = {
-  Textile: "bg-xbz-blue/15 text-[#7fc8ff]",
+  Textile: "bg-xbz-blue/15 text-[#f4a79b]",
   Accessoire: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
-  Gaming: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
+  Gaming: "bg-[rgba(252,205,5,0.15)] text-[#ffd964]",
 };
 
 /** Prix en euros, formaté selon la langue (« 19,90 € » / « €19.90 »). */
@@ -159,8 +159,8 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
   }, [hasMore]);
 
   const chipBase =
-    "rounded-full px-4 py-1.5 text-sm font-semibold transition focus-visible:outline-none";
-  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#04141f]";
+    "rounded-[2px] px-4 py-1.5 text-sm font-semibold transition focus-visible:outline-none";
+  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#231a17]";
   const chipIdle = "border border-white/15 text-neutral-300 hover:border-white/40 hover:text-white";
 
   return (

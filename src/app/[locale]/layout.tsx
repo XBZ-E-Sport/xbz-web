@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { Orbitron } from "next/font/google";
+import { Bruno_Ace_SC, Special_Gothic_Expanded_One, Sarabun, Oswald } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -10,11 +10,43 @@ import Footer from "@/components/Footer";
 import { siteConfig, localizedPath } from "@/lib/site";
 import { routing } from "@/i18n/routing";
 
-// Orbitron auto-hébergée par Next (RGPD-friendly), exposée en variable CSS
-const orbitron = Orbitron({
+// Polices de la charte, auto-hébergées par Next (RGPD-friendly), exposées en
+// variables CSS. Les noms de variables NE doivent PAS entrer en collision avec
+// les clés @theme (--font-display/-subtitle/-impact/-sans), qui les référencent.
+//
+// Titres — Bruno Ace SC (charte). Poids unique 400.
+const fontTitle = Bruno_Ace_SC({
   subsets: ["latin"],
-  weight: ["700", "800", "900"],
-  variable: "--font-orbitron",
+  weight: "400",
+  variable: "--font-title",
+  display: "swap",
+});
+// Sous-titres — Special Gothic Expanded One (charte). Poids unique 400.
+// `adjustFontFallback: false` : next/font n'a pas les métriques de cette police
+// récente pour générer un fallback anti-CLS et log un warning à chaque requête.
+// On désactive donc ce fallback auto (inopérant de toute façon) → plus de warning.
+const fontSubtitle = Special_Gothic_Expanded_One({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-subtitle-family",
+  display: "swap",
+  adjustFontFallback: false,
+  fallback: ["system-ui", "sans-serif"],
+});
+// Corps — Sarabun (charte).
+const fontBody = Sarabun({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+// Mots-chocs — Oswald condensé : vrais gros poids là où Bruno Ace SC / Special
+// Gothic n'ont que le 400 (hero « FROM ZERO TO LEGEND », gros scores, 404).
+const fontImpact = Oswald({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-impact-family",
+  display: "swap",
 });
 
 /** Prégénère les deux langues au build (rendu statique conservé). */
@@ -67,7 +99,7 @@ export async function generateMetadata({ params }: Omit<LayoutProps, "children">
 // Couleur de thème mobile (barre d'adresse/statut) — sombre, comme le site.
 // En Next 16, `themeColor` vit dans l'export `viewport` (plus dans `metadata`).
 export const viewport: Viewport = {
-  themeColor: "#070710",
+  themeColor: "#0a0a0a",
 };
 
 export default async function LocaleLayout({ children, params }: LayoutProps) {
@@ -88,7 +120,10 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
   const messages = await getMessages({ locale });
 
   return (
-    <html lang={locale} className={orbitron.variable}>
+    <html
+      lang={locale}
+      className={`${fontTitle.variable} ${fontSubtitle.variable} ${fontBody.variable} ${fontImpact.variable}`}
+    >
       <body className="font-sans antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a href="#main" className="skip-link">

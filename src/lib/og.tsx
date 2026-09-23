@@ -14,9 +14,9 @@ import { siteConfig } from "@/lib/site";
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
 
-const BG = "linear-gradient(135deg, #070710 0%, #0b1b2e 55%, #06121f 100%)";
-const SUBTITLE_COLOR = "#8fb8d6";
-const FOOTER_COLOR = "#5f7d95";
+const BG = "linear-gradient(135deg, #0a0a0a 0%, #1c1a17 55%, #121013 100%)";
+const SUBTITLE_COLOR = "#b3aca7";
+const FOOTER_COLOR = "#7a736d";
 
 /** Domaine affiché en pied de bannière (sans protocole). */
 function siteHost(): string {
@@ -57,8 +57,8 @@ export function ogImage({
   eyebrow,
   title,
   subtitle,
-  accent = "#00bfff",
-  accentTo = "#0066ff",
+  accent = "#fccd05",
+  accentTo = "#dc2515",
 }: OgFrameOptions): ImageResponse {
   const safeTitle = clamp(title, 80);
   const safeSubtitle = subtitle ? clamp(subtitle, 120) : null;

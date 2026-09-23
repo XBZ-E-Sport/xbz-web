@@ -18,8 +18,8 @@ export function formatDate(iso: string, locale = "fr"): string {
 
 /** Couleur du badge selon la catégorie d'article (source unique). */
 export const articleCategoryStyles: Record<ArticleCategory, string> = {
-  Compétition: "bg-xbz-blue/15 text-[#7fc8ff]",
-  Recrutement: "bg-[rgba(0,200,255,0.15)] text-[#7fe6ff]",
+  Compétition: "bg-xbz-blue/15 text-[#f4a79b]",
+  Recrutement: "bg-[rgba(252,205,5,0.15)] text-[#ffd964]",
   Annonce: "bg-white/10 text-white",
   Communauté: "bg-[rgba(88,101,242,0.18)] text-[#b6bdff]",
   Création: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",

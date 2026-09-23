@@ -1,68 +1,71 @@
 @import "tailwindcss";
 
 @theme {
-  --color-xbz-bg: #050509;
-  --color-xbz-bg-soft: #0f0f18;
-  --color-xbz-blue: #0066ff;
-  --color-xbz-cyan: #00bfff;
+  /* Base sombre : quasi-noir en FOND, charbon #2e2c2d en SURFACE (cartes/panneaux). */
+  --color-xbz-bg: #0a0a0a;
+  --color-xbz-bg-soft: #2e2c2d;
+  --color-xbz-charbon: #2e2c2d;
+  --color-xbz-white: #f2f3f4;
+
+  /* Marque. On GARDE volontairement les NOMS de tokens (xbz-blue / xbz-cyan) :
+     seules les VALEURS changent, ce qui recolore d'un coup les ~131 utilities
+     existantes (bg-/text-/border-/from-/to-xbz-blue|cyan) sans toucher 55 fichiers.
+     xbz-blue = ROUGE primaire, xbz-cyan = JAUNE accent (nom trompeur, inoffensif ;
+     renommage sémantique prévu plus tard via des alias). */
+  --color-xbz-blue: #dc2515; /* ROUGE primaire (ex-bleu) */
+  --color-xbz-cyan: #fccd05; /* JAUNE accent (ex-cyan) — usage laser uniquement */
   --color-xbz-orange: #ff7c4f;
   --color-xbz-dark-red: #ff0f10;
 
-  --font-display: var(--font-orbitron);
+  /* Typographies de la charte + une display condensée (Oswald) pour les mots-chocs,
+     là où Bruno Ace SC / Special Gothic n'ont qu'un poids 400 (pas de vrai gras). */
+  --font-display: var(--font-title), system-ui, sans-serif;
+  --font-subtitle: var(--font-subtitle-family), system-ui, sans-serif;
+  --font-impact: var(--font-impact-family), system-ui, sans-serif;
+  --font-sans: var(--font-body), system-ui, sans-serif;
+
+  /* Rayon quasi nul : esthétique anguleuse (piloté globalement). */
+  --radius-xbz: 2px;
 
   /* Courbe d'animation douce partagée par tout le site */
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Défauts appliqués à toutes les utilities `transition` de Tailwind */
   --default-transition-timing-function: var(--ease-smooth);
   --default-transition-duration: 220ms;
 }
 
 html {
-  /* Dit au navigateur que la page est sombre. Sans ça il dessine TOUS ses
-     widgets natifs en clair sur un site noir : la liste déroulante d'un
-     <select>, les barres de défilement, l'autofill des formulaires, les
-     sélecteurs de date. Le fond du <select> fermé, lui, était déjà sombre
-     (c'est notre CSS) — d'où l'incohérence : boîte noire, menu blanc. */
   color-scheme: dark;
   background: var(--color-xbz-bg);
   scroll-behavior: smooth;
   scroll-padding-top: 6rem;
 }
 
+/* ===== FOND TRAVAILLÉ ========================================================
+   Remplace les deux flous bleus. Empilement de calques, 100 % CSS, aucun asset,
+   aucune lib, compatible CSP. De haut en bas :
+     1. projecteur ROUGE (haut, ancré hors-cadre pour une lueur propre)
+     2. spark JAUNE (bas-droite, très discret)
+     3. trame hairline neutre (matière « tech », à peine visible)
+     4. halo sombre au centre-haut (donne de la profondeur)
+     5. wash charbon en diagonale (la base)
+   `fixed` : les calques restent ancrés au viewport quelle que soit la hauteur.
+   (Le grain a été retiré : trop bruité. On le réintroduira plus fin plus tard.) */
 body {
-  color: white;
+  color: var(--color-xbz-white);
   min-height: 100vh;
   overflow-x: hidden;
+  background-color: #0b0a0c;
   background-image:
-    radial-gradient(rgba(0, 102, 255, 0.08) 1px, transparent 1px),
-    radial-gradient(circle at top, var(--color-xbz-bg-soft), transparent 60%);
-  background-size: 35px 35px, 100% 100%;
-  background-repeat: repeat, no-repeat;
+    radial-gradient(56rem 40rem at 18% -8%, rgba(220, 37, 21, 0.22), transparent 62%),
+    radial-gradient(42rem 32rem at 92% 110%, rgba(252, 205, 5, 0.06), transparent 62%),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 17px),
+    radial-gradient(140% 100% at 50% -10%, transparent 40%, rgba(0, 0, 0, 0.55) 100%),
+    linear-gradient(160deg, #18161b 0%, #100e13 55%, #08070a 100%);
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat, no-repeat;
+  background-attachment: fixed;
 }
 
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  top: 0;
-  width: 400px;
-  height: 100vh;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(circle, rgba(0, 102, 255, 0.35), transparent 70%);
-  filter: blur(30px);
-}
-body::before { left: 0; }
-body::after { right: 0; }
-
-@media (max-width: 768px) {
-  body::before,
-  body::after { display: none; }
-}
-
-/* Aucun mot ne doit provoquer de défilement horizontal.
-   Un titre comme « confidentialité » (36 px) dépasse la largeur utile d'un
-   téléphone étroit : sans césure, il élargissait tout le document. */
+/* Aucun mot ne doit provoquer de défilement horizontal. */
 h1, h2, h3, h4, p, li, dt, dd, figcaption, label, button, a {
   overflow-wrap: break-word;
 }
@@ -70,14 +73,27 @@ h1, h2, h3 {
   hyphens: auto;
 }
 
+/* Halo de marque externalisé (remplace le drop-shadow bleu dupliqué sur ~18 H1). */
+.glow-brand {
+  filter: drop-shadow(0 0 30px rgba(220, 37, 21, 0.45));
+}
+
+/* Coins coupés anguleux — prêts pour la Phase 3 (cartes, boutons, encarts). */
+.cut {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.cut-tl {
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px);
+}
+
 .btn-xbz {
   display: inline-block;
   padding: 14px 30px;
-  border-radius: 12px;
+  border-radius: var(--radius-xbz);
   font-weight: 700;
-  color: #000;
+  color: #fff;
   text-decoration: none;
-  background: linear-gradient(90deg, var(--color-xbz-blue), var(--color-xbz-cyan));
+  background: linear-gradient(135deg, #ff3a29 0%, var(--color-xbz-blue) 55%, #7a0f0a 100%);
   transition:
     transform 0.3s var(--ease-smooth),
     box-shadow 0.3s var(--ease-smooth),
@@ -86,8 +102,8 @@ h1, h2, h3 {
 }
 .btn-xbz:hover {
   transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 0 25px rgba(0, 102, 255, 0.4);
-  filter: brightness(1.1);
+  box-shadow: 0 0 25px rgba(220, 37, 21, 0.45);
+  filter: brightness(1.08);
 }
 .btn-xbz:active {
   transform: translateY(0) scale(0.98);
@@ -95,22 +111,24 @@ h1, h2, h3 {
 }
 
 .card-xbz {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(0, 102, 255, 0.15);
-  border-radius: 18px;
+  background: rgba(46, 44, 45, 0.45);
+  border: 1px solid rgba(220, 37, 21, 0.18);
+  border-radius: var(--radius-xbz);
+  /* Coin coupé anguleux (bas-droite). Rien ne dépasse d'une carte sur le site,
+     donc le clip ne rogne aucun badge. Un box-shadow serait rogné par le clip →
+     on garde la levée + la bordure rouge (et le liseré ::before) comme affordance. */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
   backdrop-filter: blur(12px);
   transition:
     transform 0.4s var(--ease-smooth),
     border-color 0.4s var(--ease-smooth),
-    box-shadow 0.4s var(--ease-smooth),
     background-color 0.4s var(--ease-smooth);
   will-change: transform;
 }
 .card-xbz:hover {
   transform: translateY(-6px);
-  border-color: rgba(0, 102, 255, 0.45);
-  background-color: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 18px 40px -16px rgba(0, 102, 255, 0.45);
+  border-color: rgba(220, 37, 21, 0.55);
+  background-color: rgba(46, 44, 45, 0.62);
 }
 
 /* Entrée en fondu ascendant (cartes, sections) */
@@ -128,6 +146,19 @@ h1, h2, h3 {
   animation: xbz-fade-up 0.5s var(--ease-smooth) both;
 }
 
+/* Lévitation lente du corbeau (emblème du hero). Coupée par prefers-reduced-motion. */
+@keyframes raven-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+.animate-raven-float {
+  animation: raven-float 5.5s ease-in-out infinite;
+}
 
 :focus-visible {
   outline: 2px solid var(--color-xbz-cyan);
@@ -143,7 +174,7 @@ main:focus {
   top: 0.75rem;
   left: 0.75rem;
   z-index: 100;
-  border-radius: 10px;
+  border-radius: var(--radius-xbz);
   background: var(--color-xbz-blue);
   padding: 0.65rem 1.1rem;
   font-weight: 700;

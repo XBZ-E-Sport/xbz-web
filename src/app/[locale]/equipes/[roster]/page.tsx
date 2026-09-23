@@ -147,7 +147,7 @@ function DetailLayout({
             {eyebrow}
           </p>
         )}
-        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {title}
         </h1>
         {description && (

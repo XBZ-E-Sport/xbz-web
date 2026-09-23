@@ -54,7 +54,7 @@ export default async function BoutiquePage({ params }: PageProps) {
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
           {tNav("boutique")}
         </p>
-        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {t("title")}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-lg leading-relaxed text-neutral-300">
@@ -88,7 +88,7 @@ export default async function BoutiquePage({ params }: PageProps) {
             href={DISCORD_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-xl bg-[#5865F2] px-8 py-3.5 text-center font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
+            className="rounded-xl bg-xbz-blue px-8 py-3.5 text-center font-bold text-white transition hover:brightness-110 motion-safe:hover:-translate-y-0.5"
           >
             {tNav("joinDiscord")}
             <span className="sr-only">{tNav("newTab")}</span>

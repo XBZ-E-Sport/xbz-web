@@ -29,7 +29,7 @@ export default function Error({
       <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
         {t("eyebrow")}
       </p>
-      <h1 className="font-display text-3xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-4xl">
+      <h1 className="font-display text-3xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-4xl">
         {tCommon("errorTitle")}
       </h1>
       <p className="mt-4 leading-relaxed text-neutral-300">{t("message")}</p>

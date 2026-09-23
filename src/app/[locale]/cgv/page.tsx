@@ -54,7 +54,7 @@ export default async function CgvPage({ params }: PageProps) {
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
           {t("eyebrow")}
         </p>
-        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {t("title")}
         </h1>
         <p className="mt-4 text-sm text-neutral-400">{t("effective")}</p>
@@ -75,7 +75,7 @@ export default async function CgvPage({ params }: PageProps) {
               ))}
 
             {id === "retractation" && (
-              <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="mt-5 rounded-xl border border-white/10 bg-white/3 p-5">
                 <p className="font-semibold text-white">{t("retractationFormTitle")}</p>
                 <p className="mt-2 whitespace-pre-line text-sm text-neutral-400">
                   {t("retractationForm")}

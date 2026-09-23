@@ -40,13 +40,13 @@ export default function GlobalError({
           gap: 20,
           padding: "24px",
           textAlign: "center",
-          background: "linear-gradient(135deg, #070710 0%, #0b1b2e 55%, #06121f 100%)",
+          background: "linear-gradient(135deg, #0a0a0a 0%, #1c1a17 55%, #121013 100%)",
           color: "white",
           fontFamily: "system-ui, sans-serif",
         }}
       >
         <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>Une erreur est survenue</h1>
-        <p style={{ maxWidth: 460, lineHeight: 1.5, color: "#9fb3c6", margin: 0 }}>
+        <p style={{ maxWidth: 460, lineHeight: 1.5, color: "#b3aca7", margin: 0 }}>
           Désolé, quelque chose s’est mal passé. L’équipe a été notifiée automatiquement. Tu peux
           réessayer ou revenir à l’accueil.
         </p>
@@ -61,7 +61,7 @@ export default function GlobalError({
               padding: "12px 28px",
               fontWeight: 700,
               color: "white",
-              background: "linear-gradient(90deg, #00bfff, #0066ff)",
+              background: "linear-gradient(90deg, #fccd05, #dc2515)",
             }}
           >
             Réessayer

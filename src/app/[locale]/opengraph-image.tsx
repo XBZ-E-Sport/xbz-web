@@ -39,7 +39,7 @@ export default async function OpengraphImage({
           textAlign: "center",
           padding: "80px",
           color: "white",
-          background: "linear-gradient(135deg, #070710 0%, #0b1b2e 55%, #06121f 100%)",
+          background: "linear-gradient(135deg, #0a0a0a 0%, #1c1a17 55%, #121013 100%)",
         }}
       >
         <div
@@ -58,7 +58,7 @@ export default async function OpengraphImage({
             display: "flex",
             marginTop: 30,
             fontSize: 42,
-            color: "#8fb8d6",
+            color: "#b3aca7",
           }}
         >
           {t("home.subtitle")}
@@ -69,8 +69,8 @@ export default async function OpengraphImage({
             marginTop: 48,
             fontSize: 30,
             fontWeight: 700,
-            color: "#04141f",
-            background: "linear-gradient(90deg, #00bfff, #0066ff)",
+            color: "#231a17",
+            background: "linear-gradient(90deg, #fccd05, #dc2515)",
             padding: "14px 36px",
             borderRadius: 999,
           }}

@@ -87,7 +87,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
         <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-xbz-cyan">
           {tLegal("eyebrow")}
         </p>
-        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(0,102,255,0.4)] sm:text-5xl">
+        <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {t("title")}
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance leading-relaxed text-neutral-400">

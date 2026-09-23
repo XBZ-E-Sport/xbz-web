@@ -68,7 +68,7 @@ export default async function ArticlePage({ params }: PageProps) {
     publisher: {
       "@type": "Organization",
       name: siteConfig.name,
-      logo: { "@type": "ImageObject", url: absoluteUrl("/logo-xbz.png") },
+      logo: { "@type": "ImageObject", url: absoluteUrl("/logo-xbz-light.png") },
     },
     mainEntityOfPage: absoluteUrl(`/actualite/${article.slug}`),
   };

@@ -209,7 +209,7 @@ export function jobPostingJsonLd(offer: Offer): Record<string, unknown> {
       "@type": "Organization",
       name: siteConfig.name,
       sameAs: siteConfig.url,
-      logo: absoluteUrl("/logo-xbz.png"),
+      logo: absoluteUrl("/logo-xbz-light.png"),
     },
     identifier: {
       "@type": "PropertyValue",

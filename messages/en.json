@@ -42,7 +42,7 @@
     "cgv": "Terms of sale",
     "footerNav": "Footer links",
     "rights": "All rights reserved.",
-    "signature": "Rocket League esports organisation 💙"
+    "signature": "Rocket League esports organisation ❤️"
   },
   "notFound": {
     "title": "Page not found",
@@ -67,6 +67,7 @@
   "home": {
     "metaDescription": "XBZ Esport, a competitive Rocket League organisation: teams, staff, recruitment, news and shop. Join a driven and ambitious team.",
     "heroTagline": "A competitive esports organisation on <game>Rocket League</game>. Join a driven, serious and ambitious team.",
+    "slogan": "From Zero To Legend",
     "openSlots": "{count, plural, one {# open position} other {# open positions}}",
     "recruitmentSoon": "Recruitment opening soon",
     "joinUs": "Join us",

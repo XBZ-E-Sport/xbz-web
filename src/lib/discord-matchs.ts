@@ -117,7 +117,7 @@ export function buildReminderPayload(m: MatchNotif) {
         author: { name: "⏰ Match bientôt", icon_url: LOGO },
         title: matchTitle(m),
         description: `**Coup d'envoi <t:${unix}:R>**\n🗓️ <t:${unix}:F>${streamLink(m)}`,
-        color: 0x0066ff,
+        color: 0xdc2515,
         fields: matchFields(m),
         footer: { text: "XBZ Esport · Calendrier" },
       },
@@ -139,7 +139,7 @@ export function buildDigestPayload(matches: MatchNotif[]) {
     description:
       (matches.length > 1 ? `**${matches.length} matchs** au programme aujourd'hui 👇` : `**1 match** au programme aujourd'hui 👇`) +
       (extra > 0 ? `\n_(+ ${extra} autres — voir le calendrier)_` : ""),
-    color: 0x00c8ff,
+    color: 0xfccd05,
     thumbnail: { url: LOGO },
   };
 
@@ -150,7 +150,7 @@ export function buildDigestPayload(matches: MatchNotif[]) {
     return {
       title: matchTitle(m),
       description: `${compet}🎮 ${m.format}\n🕓 <t:${unix}:t>  ·  **<t:${unix}:R>**${stream}`,
-      color: 0x0066ff,
+      color: 0xdc2515,
     };
   });
 
