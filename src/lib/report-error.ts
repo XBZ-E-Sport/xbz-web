@@ -35,6 +35,26 @@ function clamp(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 
+// Erreurs serveur BÉNIGNES et non actionnables : on ne les relaie pas au canal.
+//
+// « Failed to find Server Action » : l'ID haché d'une Server Action change à
+// CHAQUE déploiement. Le message ne peut donc survenir que si la requête porte
+// l'ID d'un AUTRE déploiement — jamais à cause d'un bug du code en ligne. Deux
+// origines, toutes deux hors de notre contrôle :
+//   1. skew de déploiement — un onglet resté ouvert AVANT une mise en prod
+//      soumet un formulaire APRÈS : l'ancien ID n'existe plus (Next le documente
+//      lui-même comme « from an older or newer deployment ») ; le client se
+//      répare en rechargeant ;
+//   2. robot / scanner qui POST des URL bidon (ex. /fr/index.php — aucun `.php`
+//      n'existe chez nous) : pur bruit d'internet, aucun visiteur réel.
+// Rien à corriger dans les deux cas → on écarte ce message du monitoring.
+const IGNORABLE_SERVER_ERROR = /Failed to find Server Action/i;
+
+/** Vrai pour une erreur SERVEUR connue comme bénigne (à ne pas relayer). */
+export function isIgnorableServerError(report: ErrorReport): boolean {
+  return report.source === "server" && IGNORABLE_SERVER_ERROR.test(report.message);
+}
+
 /** Construit le payload webhook Discord (embed) à partir d'un rapport. */
 export function buildDiscordPayload(report: ErrorReport, iso: string) {
   const fields: { name: string; value: string; inline?: boolean }[] = [
@@ -81,6 +101,8 @@ async function deliver(report: ErrorReport): Promise<void> {
 
 /** Point d'entrée unique : rapporte une erreur (dédupliquée) au sink. */
 export async function reportError(report: ErrorReport): Promise<void> {
+  // Bruit connu (skew de déploiement / robots) : jamais un bug du code en ligne.
+  if (isIgnorableServerError(report)) return;
   const signature = `${report.source}:${report.path ?? ""}:${report.message}`;
   if (!shouldSend(signature, Date.now())) return;
   await deliver(report);

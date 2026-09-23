@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { buildDiscordPayload } from "@/lib/report-error";
+import { buildDiscordPayload, isIgnorableServerError } from "@/lib/report-error";
 
 const ISO = "2026-07-23T10:00:00.000Z";
 
@@ -39,5 +39,44 @@ describe("buildDiscordPayload", () => {
     expect(names).toContain("c");
     expect(names).not.toContain("a");
     expect(names).not.toContain("b");
+  });
+});
+
+describe("isIgnorableServerError", () => {
+  it("écarte « Failed to find Server Action » (skew de déploiement / robots)", () => {
+    // Le message exact remonté à 3h : ID de Server Action d'un autre déploiement.
+    expect(
+      isIgnorableServerError({
+        source: "server",
+        message:
+          "Failed to find Server Action. This request might be from an older or newer deployment.",
+        path: "/fr",
+      }),
+    ).toBe(true);
+    // Même bruit via un scanner qui POST une URL bidon.
+    expect(
+      isIgnorableServerError({
+        source: "server",
+        message: "Failed to find Server Action \"abc123\".",
+        path: "/fr/index.php",
+      }),
+    ).toBe(true);
+  });
+
+  it("GARDE une vraie erreur serveur (bug applicatif)", () => {
+    expect(
+      isIgnorableServerError({
+        source: "server",
+        message: "Cannot read properties of undefined (reading 'rows')",
+        path: "/fr/boutique",
+      }),
+    ).toBe(false);
+  });
+
+  it("ne s'applique qu'aux erreurs SERVEUR", () => {
+    // Par prudence : ce filtre est réservé à la source serveur.
+    expect(
+      isIgnorableServerError({ source: "client", message: "Failed to find Server Action" }),
+    ).toBe(false);
   });
 });
