@@ -88,7 +88,11 @@ export default async function Home({ params }: PageProps) {
         <div className="relative flex items-center justify-center">
           <div
             aria-hidden="true"
-            className="absolute h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(220,37,21,0.4),transparent_70%)] blur-2xl sm:h-64 sm:w-64"
+            className="pointer-events-none absolute h-64 w-64 sm:h-80 sm:w-80"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, rgba(220,37,21,0.55), rgba(220,37,21,0.28) 28%, rgba(220,37,21,0.08) 55%, transparent 75%)",
+            }}
           />
           <Image
             src="/corbeau.png"

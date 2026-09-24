@@ -22,7 +22,11 @@ export default async function NotFound() {
       <div className="relative flex items-center justify-center">
         <div
           aria-hidden="true"
-          className="absolute h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(220,37,21,0.38),transparent_70%)] blur-2xl sm:h-52 sm:w-52"
+          className="pointer-events-none absolute h-56 w-56 sm:h-72 sm:w-72"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, rgba(220,37,21,0.5), rgba(220,37,21,0.24) 28%, rgba(220,37,21,0.07) 55%, transparent 75%)",
+          }}
         />
         <Image
           src="/corbeau.png"
