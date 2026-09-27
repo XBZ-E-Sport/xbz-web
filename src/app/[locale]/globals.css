@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Le test de garde de la couche Arène cite des noms de propriétés CSS (« transform »…) :
+   sans cette exclusion, Tailwind y verrait des classes et générerait des utilitaires inutiles. */
+@source not "../../components/Arena.test.tsx";
 
 @theme {
   /* Base sombre : quasi-noir en FOND, charbon #2e2c2d en SURFACE (cartes/panneaux). */
@@ -63,6 +66,10 @@ body {
     linear-gradient(160deg, #18161b 0%, #100e13 55%, #08070a 100%);
   background-repeat: no-repeat, no-repeat, repeat, no-repeat, no-repeat;
   background-attachment: fixed;
+  /* Contexte d'empilement : la couche « Arène » (fixed, z-index -1, plus bas) se
+     peint juste APRÈS ce fond et SOUS tout le contenu. Sans lui, z-index -1 la
+     ferait passer sous le fond du body — donc invisible. */
+  isolation: isolate;
 }
 
 /* Aucun mot ne doit provoquer de défilement horizontal. */
@@ -118,7 +125,10 @@ h1, h2, h3 {
      donc le clip ne rogne aucun badge. Un box-shadow serait rogné par le clip →
      on garde la levée + la bordure rouge (et le liseré ::before) comme affordance. */
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
-  backdrop-filter: blur(12px);
+  /* Pas de backdrop-filter : derrière une carte il n'y a que le fond (dégradés
+     lisses), le flou ne se voyait pas. Avec la couche « Arène » animée dessous,
+     il obligeait en revanche le GPU à refaire le flou de chaque carte à chaque
+     frame (mesuré au banc Chromium : ~70 % du coût de composition sur mobile). */
   transition:
     transform 0.4s var(--ease-smooth),
     border-color 0.4s var(--ease-smooth),
@@ -158,6 +168,320 @@ h1, h2, h3 {
 }
 .animate-raven-float {
   animation: raven-float 5.5s ease-in-out infinite;
+}
+
+/* ===== COUCHE « ARÈNE » =====================================================
+   Ambiance DERRIÈRE le contenu : un balayage lumineux rouge lent + quelques
+   éclats anguleux. Markup : src/components/Arena.tsx. 100 % CSS, aucun asset.
+   - Empilement : body est isolé (voir plus haut) → la couche fixed z-index:-1
+     se peint juste après le fond du body, SOUS tout le contenu (header compris).
+   - AUCUN filter/blur/blend : sur GPU mobile, la région d'un filtre est rognée
+     à la boîte de l'élément (le « carré » qu'on a eu derrière le corbeau). La
+     douceur vient UNIQUEMENT des dégradés et de l'opacité, et chaque élément
+     s'éteint à transparent sur les 4 bords de sa boîte.
+   - On n'anime que transform / opacity (compositeur : ni layout ni paint).
+     Keyframes à valeurs figées (pas de var()).
+   - ⚠️ En prod, Lightning CSS fusionne — voire SUPPRIME — un translate:/rotate:/
+     scale: posé dans le MÊME bloc qu'un transform. La bande n'a donc que
+     `transform` ; les éclats n'ont que rotate:/scale: (leur transform vient des
+     keyframes). Garder cette séparation.
+   Masquée : mouvement réduit, impression, contraste forcé ou renforcé, back-office. */
+.xbz-arena {
+  /* Formes des éclats (SVG data-URI, autorisé par la CSP img-src data:) : trait
+     fin non-scaling, arête vive, facette interne sur certaines. */
+  --xbz-arena-shard-a: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4a33' stop-opacity='0.14'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M10 88L50 8l40 64z' fill='url(%23f)' stroke='%23dc2515' stroke-opacity='0.62' stroke-width='1.25' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M10 88L50 8' fill='none' stroke='%23ff4a33' stroke-opacity='0.95' stroke-width='1.25' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M50 8L58 78' fill='none' stroke='%23ff4a33' stroke-opacity='0.3' stroke-width='1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --xbz-arena-shard-sliver: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ff4a33' stop-opacity='0.14'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M22 86L80 10 62 60z' fill='url(%23f)' stroke='%23dc2515' stroke-opacity='0.62' stroke-width='1.25' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M22 86L80 10' fill='none' stroke='%23ff4a33' stroke-opacity='0.95' stroke-width='1.25' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --xbz-arena-shard-c: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='.3' y1='0' x2='.7' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4a33' stop-opacity='0.14'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M24 94L36 6l52 54z' fill='url(%23f)' stroke='%23dc2515' stroke-opacity='0.62' stroke-width='1.25' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M36 6l52 54' fill='none' stroke='%23ff4a33' stroke-opacity='0.95' stroke-width='1.25' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M36 6L56 77' fill='none' stroke='%23ff4a33' stroke-opacity='0.3' stroke-width='1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --xbz-arena-shard-cut: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='1' y1='1' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23ff4a33' stop-opacity='0.14'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 88L88 12V70L70 88z' fill='url(%23f)' stroke='%23dc2515' stroke-opacity='0.62' stroke-width='1.25' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M88 70L70 88' fill='none' stroke='%23ff4a33' stroke-opacity='0.95' stroke-width='1.25' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M81 63L63 81' fill='none' stroke='%23ff4a33' stroke-opacity='0.45' stroke-width='1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --xbz-arena-shard-yellow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23ffe066' stop-opacity='0.12'/%3E%3Cstop offset='1' stop-color='%23fccd05' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M30 92L74 8 58 70z' fill='url(%23f)' stroke='%23fccd05' stroke-opacity='0.75' stroke-width='1.25' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M30 92L74 8' fill='none' stroke='%23ffe066' stroke-opacity='0.9' stroke-width='1.25' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  --xbz-arena-shard-far: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='.3' y1='0' x2='.7' y2='1'%3E%3Cstop offset='0' stop-color='%23ff4a33' stop-opacity='0.08'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M24 94L36 6l52 54z' fill='url(%23f)' stroke='%23dc2515' stroke-opacity='0.45' stroke-width='1' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M36 6l52 54' fill='none' stroke='%23ff4a33' stroke-opacity='0.6' stroke-width='1' stroke-linecap='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+.xbz-arena__sweep,
+.xbz-arena__shard {
+  position: absolute;
+}
+
+/* --- Balayage ---------------------------------------------------------------
+   Bande de lumière en « / », inclinée exactement comme la trame du fond
+   (115deg = 25° de la verticale → skewX(-25deg)). Traversée gauche → droite en
+   12 s, puis 18 s hors-champ : on la croise, on ne la regarde pas.
+   Elle démarre SOUS le header (66 px : h-16 + liseré + bordure, Header.tsx) :
+   elle ne passe jamais derrière son flou.
+   Rendu : UN SVG étiré (profil horizontal gaussien + cœur à peine plus chaud
+   sur le bord avant, × fondu vertical interne) → transparent exact sur les
+   4 bords, rastérisé une fois, sans mask-image.
+   INTENSITÉ : un seul bouton, `opacity` (statique). Pic effectif ≈ 0.14 × opacity. */
+.xbz-arena__sweep {
+  top: 4.5rem;
+  left: 0;
+  width: clamp(14rem, 34vw, 38rem);
+  height: 100vh;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='h'%3E%3Cstop offset='0' stop-color='%23dc2515' stop-opacity='0'/%3E%3Cstop offset='0.06' stop-color='%23dc2515' stop-opacity='0.009'/%3E%3Cstop offset='0.12' stop-color='%23dc2615' stop-opacity='0.013'/%3E%3Cstop offset='0.18' stop-color='%23de2817' stop-opacity='0.018'/%3E%3Cstop offset='0.24' stop-color='%23e12c19' stop-opacity='0.029'/%3E%3Cstop offset='0.29' stop-color='%23e5321c' stop-opacity='0.044'/%3E%3Cstop offset='0.34' stop-color='%23e9371f' stop-opacity='0.066'/%3E%3Cstop offset='0.38' stop-color='%23eb3a21' stop-opacity='0.09'/%3E%3Cstop offset='0.42' stop-color='%23ed3c22' stop-opacity='0.115'/%3E%3Cstop offset='0.45' stop-color='%23ed3d23' stop-opacity='0.129'/%3E%3Cstop offset='0.48' stop-color='%23ee3d23' stop-opacity='0.139'/%3E%3Cstop offset='0.5' stop-color='%23ee3d23' stop-opacity='0.14'/%3E%3Cstop offset='0.52' stop-color='%23ee3d23' stop-opacity='0.139'/%3E%3Cstop offset='0.55' stop-color='%23ed3d23' stop-opacity='0.129'/%3E%3Cstop offset='0.58' stop-color='%23ed3c22' stop-opacity='0.115'/%3E%3Cstop offset='0.62' stop-color='%23eb3a21' stop-opacity='0.09'/%3E%3Cstop offset='0.66' stop-color='%23e9371f' stop-opacity='0.066'/%3E%3Cstop offset='0.71' stop-color='%23e5321c' stop-opacity='0.044'/%3E%3Cstop offset='0.76' stop-color='%23e12c19' stop-opacity='0.029'/%3E%3Cstop offset='0.82' stop-color='%23de2817' stop-opacity='0.018'/%3E%3Cstop offset='0.88' stop-color='%23dc2615' stop-opacity='0.013'/%3E%3Cstop offset='0.94' stop-color='%23dc2515' stop-opacity='0.009'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0.5' stop-color='%23ff4a33' stop-opacity='0'/%3E%3Cstop offset='0.53' stop-color='%23ff4a33' stop-opacity='0.006'/%3E%3Cstop offset='0.56' stop-color='%23ff4a33' stop-opacity='0.018'/%3E%3Cstop offset='0.59' stop-color='%23ff4a33' stop-opacity='0.028'/%3E%3Cstop offset='0.62' stop-color='%23ff4a33' stop-opacity='0.018'/%3E%3Cstop offset='0.65' stop-color='%23ff4a33' stop-opacity='0.006'/%3E%3Cstop offset='0.68' stop-color='%23ff4a33' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='v' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='0'/%3E%3Cstop offset='0.04' stop-color='%23fff' stop-opacity='0.2'/%3E%3Cstop offset='0.09' stop-color='%23fff' stop-opacity='0.62'/%3E%3Cstop offset='0.14' stop-color='%23fff' stop-opacity='1'/%3E%3Cstop offset='0.5' stop-color='%23fff' stop-opacity='1'/%3E%3Cstop offset='0.62' stop-color='%23fff' stop-opacity='0.82'/%3E%3Cstop offset='0.74' stop-color='%23fff' stop-opacity='0.5'/%3E%3Cstop offset='0.86' stop-color='%23fff' stop-opacity='0.2'/%3E%3Cstop offset='0.94' stop-color='%23fff' stop-opacity='0.06'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cmask id='m'%3E%3Crect width='100' height='100' fill='url(%23v)'/%3E%3C/mask%3E%3C/defs%3E%3Cg mask='url(%23m)'%3E%3Crect width='100' height='100' fill='url(%23h)'/%3E%3Crect width='100' height='100' fill='url(%23c)'/%3E%3C/g%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+  opacity: 0.85;
+  /* Départ hors-champ : largeur + débord du skew (tan 25° × 50vh ≈ 23.3vh). */
+  transform: translateX(calc(-100% - 26vh)) skewX(-25deg);
+  /* -26 s : le premier passage démarre ~4 s après le chargement. */
+  animation: xbz-arena-sweep 30s linear -26s infinite;
+}
+
+/* 0 → 40 % : traversée (12 s) ; 40 → 100 % : attente hors-champ (18 s). */
+@keyframes xbz-arena-sweep {
+  0% {
+    transform: translateX(calc(-100% - 26vh)) skewX(-25deg);
+  }
+  40%,
+  100% {
+    transform: translateX(calc(100vw + 26vh)) skewX(-25deg);
+  }
+}
+
+/* --- Éclats -----------------------------------------------------------------
+   Rouges, sauf UN jaune (accent laser). Ceux de droite dérivent lentement
+   (40–64 s, quelques degrés) ; la variété vient de rotate:/scale: statiques par éclat (appliqués par-dessus
+   l'animation → ils orientent et dosent aussi la dérive).
+   Placement : jamais dans la bande des titres (les H1 des pages occupent le
+   centre, ~155–320 px du haut) ni sous le header, même au sommet de la dérive
+   (40 px vers le haut) → gouttières et moitié basse, une disposition par plage.
+   Reflet (braise) : même cycle que le balayage (30 s). Chaque éclat s'allume
+   quand la bande passe sur lui, puis refroidit. 2e délai de chaque éclat :
+     délai = instant de passage (dans le cycle) − 26 s (délai du balayage) − 1.2 s (pic)
+   Instants de passage, au centre de l'éclat, skew compris :
+             desktop 1440×900    tablette 820×1180   mobile 390×844      paysage 844×390
+     --1     2.3 s → -24.9 s     2.7 s → -24.5 s     3.4 s → -23.8 s     1.9 s → -25.3 s
+     --2     8.2 s →   -19 s     8.6 s → -18.6 s     8.0 s → -19.2 s     9.3 s → -17.9 s
+     --3     3.8 s → -23.4 s     4.6 s → -22.6 s         —                   —
+     --4     8.9 s → -18.3 s     9.2 s →   -18 s     9.2 s →   -18 s     9.3 s → -17.9 s
+     --5     9.0 s → -18.2 s         —                   —                   —
+   Entre deux formats de référence, le reflet peut arriver ~1 s à côté : la
+   retombée lente le masque. Changer 30s / 40 % / -26s, la géométrie de la bande
+   ou une position impose de recalculer ces délais.
+   Les éclats en trop sur petit écran sont masqués par visibility (pas display) :
+   leurs animations continuent, la synchro survit à un redimensionnement. */
+.xbz-arena__shard {
+  width: 3rem;
+  height: 3rem;
+  background: no-repeat center / contain;
+  opacity: 0.42;
+  animation: xbz-arena-glint 30s ease-in-out infinite;
+}
+/* Éclats qui dérivent (tous du côté droit : la zone que le compositeur redessine
+   en continu reste une colonne étroite — des éclats en mouvement aux deux bords
+   lui feraient redessiner toute la largeur de l'écran à chaque frame). */
+.xbz-arena__shard--drift {
+  animation:
+    xbz-arena-drift 48s ease-in-out infinite alternate,
+    xbz-arena-glint 30s ease-in-out infinite;
+}
+
+/* Dérive lente en aller-retour : ≤ 40 px vers le haut, quelques degrés. */
+@keyframes xbz-arena-drift {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(18px, -22px) rotate(3deg);
+  }
+  100% {
+    transform: translate(6px, -40px) rotate(-2deg);
+  }
+}
+
+/* Pic à 4 % (1.2 s), retour à 15 % (4.5 s) : montée vive, retombée lente. */
+@keyframes xbz-arena-glint {
+  0%,
+  15%,
+  100% {
+    opacity: 0.42;
+  }
+  4% {
+    opacity: 1;
+  }
+}
+
+/* Desktop (et tablette paysage ≥ 1024 px) : gouttières gauche/droite + bas. */
+.xbz-arena__shard--1 {
+  left: 5%;
+  top: 26%;
+  width: 3.6rem;
+  height: 3.6rem;
+  rotate: -12deg;
+  background-image: var(--xbz-arena-shard-a);
+  animation-delay: -24.9s;
+}
+.xbz-arena__shard--2 {
+  left: 90%;
+  top: max(20%, 8.5rem);
+  width: 2.6rem;
+  height: 2.6rem;
+  rotate: -10deg;
+  background-image: var(--xbz-arena-shard-sliver);
+  animation-duration: 44s, 30s;
+  animation-delay: -27s, -19s;
+}
+.xbz-arena__shard--3 {
+  left: 14%;
+  top: 70%;
+  width: 2.2rem;
+  height: 2.2rem;
+  rotate: 24deg;
+  scale: -1 1;
+  background-image: var(--xbz-arena-shard-c);
+  animation-delay: -23.4s;
+}
+/* Le seul jaune : petit, près du spark jaune bas-droite du fond. */
+.xbz-arena__shard--4 {
+  left: 84%;
+  top: 74%;
+  width: 2rem;
+  height: 2rem;
+  rotate: -4deg;
+  background-image: var(--xbz-arena-shard-yellow);
+  animation-duration: 40s, 30s;
+  animation-delay: -16s, -18.3s;
+}
+.xbz-arena__shard--5 {
+  left: 93%;
+  top: 46%;
+  width: 2.2rem;
+  height: 2.2rem;
+  rotate: 8deg;
+  background-image: var(--xbz-arena-shard-cut);
+  animation-duration: 64s, 30s;
+  animation-delay: -33s, -18.2s;
+}
+/* Éclat « lointain » : grand, pâle, trait plus fin, immobile et sans reflet (au
+   loin, on ne le voit pas bouger) → de la profondeur. Seulement sur grand
+   écran, dans la marge gauche. */
+.xbz-arena__shard--6 {
+  display: none;
+  left: 2.5%;
+  top: 58%;
+  width: 5.5rem;
+  height: 5.5rem;
+  rotate: 32deg;
+  opacity: 0.22;
+  background-image: var(--xbz-arena-shard-far);
+  animation: none;
+}
+@media (min-width: 1280px) {
+  .xbz-arena__shard--6 {
+    display: block;
+  }
+}
+
+/* Tablette portrait (768–1023 px) : le H1 prend presque toute la largeur →
+   éclats sur les bords et dans la moitié basse, --5 retiré. */
+@media (min-width: 768px) and (max-width: 1023.98px) and (min-height: 540px) {
+  .xbz-arena__shard--5 {
+    visibility: hidden;
+  }
+  .xbz-arena__shard--1 {
+    left: -1%;
+    top: 40%;
+    animation-delay: -24.5s;
+  }
+  .xbz-arena__shard--2 {
+    left: 92%;
+    top: 56%;
+    animation-delay: -27s, -18.6s;
+  }
+  .xbz-arena__shard--3 {
+    left: 9%;
+    top: 76%;
+    animation-delay: -22.6s;
+  }
+  .xbz-arena__shard--4 {
+    left: 86%;
+    top: 82%;
+    animation-delay: -16s, -18s;
+  }
+}
+
+/* Mobile (et téléphone en paysage) : 3 éclats à cheval sur les gouttières (le
+   texte occupe toute la largeur), sous la bande des titres. `scale: .7` réduit
+   la taille ET l'amplitude de dérive d'un coup (il écrase aussi le miroir de
+   --3, masqué ici : à réécrire en `scale: -0.7 0.7` si on le réaffiche). */
+@media (max-width: 767.98px), (max-height: 539.98px) {
+  .xbz-arena__sweep {
+    opacity: 0.8;
+  }
+  .xbz-arena__shard--3,
+  .xbz-arena__shard--5 {
+    visibility: hidden;
+  }
+  .xbz-arena__shard--6 {
+    display: none;
+  }
+  .xbz-arena__shard {
+    scale: 0.7;
+  }
+  .xbz-arena__shard--1 {
+    left: -2%;
+    width: 3rem;
+    height: 3rem;
+  }
+  .xbz-arena__shard--2 {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+  .xbz-arena__shard--4 {
+    left: 86%;
+    top: 88%;
+  }
+}
+@media (max-width: 767.98px) {
+  .xbz-arena__shard--1 {
+    top: 44%;
+    animation-delay: -23.8s;
+  }
+  .xbz-arena__shard--2 {
+    left: 88%;
+    top: 58%;
+    animation-delay: -27s, -19.2s;
+  }
+  .xbz-arena__shard--4 {
+    animation-delay: -16s, -18s;
+  }
+}
+/* Paysage : très peu de hauteur → éclats collés aux bords latéraux. */
+@media (max-height: 539.98px) {
+  .xbz-arena__shard--1 {
+    top: 38%;
+    animation-delay: -25.3s;
+  }
+  .xbz-arena__shard--2 {
+    left: 94%;
+    top: 50%;
+    animation-delay: -27s, -17.9s;
+  }
+  .xbz-arena__shard--4 {
+    animation-delay: -16s, -17.9s;
+  }
+}
+
+/* C'est de l'ambiance : rien à figer, la couche disparaît. En contraste forcé,
+   les SVG resteraient visibles sur un fond uni ; qui demande plus de contraste
+   n'a pas besoin d'une lumière qui passe derrière le texte. */
+@media (prefers-reduced-motion: reduce), print, (forced-colors: active), (prefers-contrast: more) {
+  .xbz-arena {
+    display: none;
+  }
+}
+/* Surcouche ouverte (menu mobile, lightbox de la galerie) : tout se fige — pas
+   de flou plein écran recalculé à chaque frame pour un décor qu'on ne voit plus. */
+body:has(#menu-mobile:not([hidden]), [aria-modal="true"]) .xbz-arena > * {
+  animation-play-state: paused;
+}
+/* Back-office (marqueur data-admin sur son layout) : outil de travail, pas de
+   décor animé derrière les formulaires. */
+body:has([data-admin]) .xbz-arena {
+  display: none;
 }
 
 :focus-visible {

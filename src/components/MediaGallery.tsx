@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
@@ -145,43 +146,49 @@ export default function MediaGallery({ medias }: { medias: Media[] }) {
         </ul>
       )}
 
-      {/* Lightbox photo */}
-      {lightbox && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={lightbox.title || t("openPhoto")}
-          onClick={() => setLightbox(null)}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
-        >
-          <button
-            ref={closeRef}
-            type="button"
+      {/* Lightbox photo, rendue dans <body> par un portail. Dans la page, elle
+          resterait prisonnière du contexte d'empilement `relative z-10` du
+          conteneur : son z-[100] n'y compterait que localement, le header (z-50)
+          passerait par-dessus — bouton de fermeture inaccessible — et le footer
+          aussi. Elle n'existe qu'après un clic : jamais rendue côté serveur. */}
+      {lightbox &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={lightbox.title || t("openPhoto")}
             onClick={() => setLightbox(null)}
-            aria-label={t("close")}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20 hover:cursor-pointer"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
           >
-            ✕
-          </button>
-          {/* Le clic sur l'image ne referme pas (stopPropagation) ; le fond, si. */}
-          <figure onClick={(e) => e.stopPropagation()} className="max-h-[85vh] max-w-4xl">
-            {lightbox.image && (
-              <Image
-                src={lightbox.image}
-                alt={lightbox.title || ""}
-                width={1280}
-                height={960}
-                className="h-auto max-h-[80vh] w-auto rounded-lg object-contain"
-              />
-            )}
-            {lightbox.title && (
-              <figcaption className="mt-3 text-center text-sm text-neutral-300">
-                {lightbox.title}
-              </figcaption>
-            )}
-          </figure>
-        </div>
-      )}
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={() => setLightbox(null)}
+              aria-label={t("close")}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20 hover:cursor-pointer"
+            >
+              ✕
+            </button>
+            {/* Le clic sur l'image ne referme pas (stopPropagation) ; le fond, si. */}
+            <figure onClick={(e) => e.stopPropagation()} className="max-h-[85vh] max-w-4xl">
+              {lightbox.image && (
+                <Image
+                  src={lightbox.image}
+                  alt={lightbox.title || ""}
+                  width={1280}
+                  height={960}
+                  className="h-auto max-h-[80vh] w-auto rounded-lg object-contain"
+                />
+              )}
+              {lightbox.title && (
+                <figcaption className="mt-3 text-center text-sm text-neutral-300">
+                  {lightbox.title}
+                </figcaption>
+              )}
+            </figure>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

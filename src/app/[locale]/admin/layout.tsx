@@ -29,8 +29,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // server actions (@/lib/adminguard), pour qu'il n'existe qu'une seule règle.
   const { user } = await requireStaff();
 
+  // `data-admin` : repère CSS qui masque la couche d'ambiance « Arène »
+  // (globals.css) — le back-office est un outil de travail, pas une vitrine.
   return (
-    <div className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-28">
+    <div data-admin className="relative z-10 mx-auto max-w-6xl px-6 pb-20 pt-28">
       {/* Retours d'action du back-office (enregistrement, suppression, erreurs). */}
       <Toaster theme="dark" position="bottom-right" richColors closeButton />
       <header className="mb-8 flex items-center justify-between gap-4 border-b border-white/10 pb-4">

@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Arena from "@/components/Arena";
 import { siteConfig, localizedPath } from "@/lib/site";
 import { routing } from "@/i18n/routing";
 
@@ -125,6 +126,9 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
       className={`${fontTitle.variable} ${fontSubtitle.variable} ${fontBody.variable} ${fontImpact.variable}`}
     >
       <body className="font-sans antialiased">
+        {/* Décor animé du fond, avant le contenu : fixed + z-index -1 dans le
+            body isolé → toujours SOUS le contenu. Non focusable, aria-hidden. */}
+        <Arena />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <a href="#main" className="skip-link">
             {t("skipToContent")}
