@@ -1,7 +1,7 @@
 @import "tailwindcss";
-/* Le test de garde de la couche Arène cite des noms de propriétés CSS (« transform »…) :
-   sans cette exclusion, Tailwind y verrait des classes et générerait des utilitaires inutiles. */
-@source not "../../components/Arena.test.tsx";
+/* Les tests citent des noms de propriétés CSS (« transform », « filter »…) : sans
+   cette exclusion, Tailwind y verrait des classes et générerait des utilitaires inutiles. */
+@source not "../../**/*.test.{ts,tsx}";
 
 @theme {
   /* Base sombre : quasi-noir en FOND, charbon #2e2c2d en SURFACE (cartes/panneaux). */
@@ -156,7 +156,15 @@ h1, h2, h3 {
   animation: xbz-fade-up 0.5s var(--ease-smooth) both;
 }
 
-/* Lévitation lente du corbeau (emblème du hero). Coupée par prefers-reduced-motion. */
+/* Lévitation lente du corbeau (emblème du hero et de la 404), employée avec la
+   variante `motion-safe:` (coupée par prefers-reduced-motion).
+   - Déclarée en @utility, pas en classe CSS simple : Tailwind v4 n'applique ses
+     variantes qu'à ses propres utilitaires. En classe simple,
+     `motion-safe:animate-raven-float` n'était jamais compilée → corbeau immobile.
+   - ⚠️ À poser sur un WRAPPER, jamais sur l'image qui porte le drop-shadow : un
+     filtre sur la couche animée elle-même est appliqué par le compositeur (sur
+     GPU mobile, région rognée à la boîte → le « carré »). Sur le wrapper, l'ombre
+     est peinte une fois dans la couche, qui ne fait que se déplacer. */
 @keyframes raven-float {
   0%,
   100% {
@@ -166,7 +174,7 @@ h1, h2, h3 {
     transform: translateY(-9px);
   }
 }
-.animate-raven-float {
+@utility animate-raven-float {
   animation: raven-float 5.5s ease-in-out infinite;
 }
 

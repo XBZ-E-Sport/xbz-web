@@ -28,14 +28,17 @@ export default async function NotFound() {
               "radial-gradient(circle, rgba(220,37,21,0.5), rgba(220,37,21,0.24) 28%, rgba(220,37,21,0.07) 55%, transparent 75%)",
           }}
         />
-        <Image
-          src="/corbeau.png"
-          alt=""
-          width={573}
-          height={374}
-          priority
-          className="relative h-24 w-auto drop-shadow-[0_0_20px_rgba(220,37,21,0.45)] motion-safe:animate-raven-float sm:h-32"
-        />
+        {/* Lévitation sur le wrapper, pas sur l'image ombrée (cf. globals.css). */}
+        <span className="relative block motion-safe:animate-raven-float">
+          <Image
+            src="/corbeau.png"
+            alt=""
+            width={573}
+            height={374}
+            priority
+            className="block h-24 w-auto drop-shadow-[0_0_20px_rgba(220,37,21,0.45)] sm:h-32"
+          />
+        </span>
       </div>
 
       <p

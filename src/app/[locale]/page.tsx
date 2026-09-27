@@ -94,14 +94,19 @@ export default async function Home({ params }: PageProps) {
                 "radial-gradient(circle, rgba(220,37,21,0.55), rgba(220,37,21,0.28) 28%, rgba(220,37,21,0.08) 55%, transparent 75%)",
             }}
           />
-          <Image
-            src="/corbeau.png"
-            alt=""
-            width={573}
-            height={374}
-            priority
-            className="relative h-28 w-auto drop-shadow-[0_0_22px_rgba(220,37,21,0.45)] motion-safe:animate-raven-float sm:h-40"
-          />
+          {/* La lévitation est sur ce wrapper, pas sur l'image : l'ombre reste
+              peinte dans la couche qui se déplace, jamais un filtre sur la couche
+              animée elle-même (le « carré » sur GPU mobile). */}
+          <span className="relative block motion-safe:animate-raven-float">
+            <Image
+              src="/corbeau.png"
+              alt=""
+              width={573}
+              height={374}
+              priority
+              className="block h-28 w-auto drop-shadow-[0_0_22px_rgba(220,37,21,0.45)] sm:h-40"
+            />
+          </span>
         </div>
 
         <h1
