@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
-import { getOffers } from "@/lib/offres";
+import { formatOfferLocation, getOffers } from "@/lib/offres";
 import { formatDate } from "@/lib/format";
 import { pageMetadata } from "@/lib/site";
 
@@ -52,9 +52,7 @@ export default async function CarrieresPage({ params }: PageProps) {
       ) : (
         <ul className="flex flex-col gap-4">
           {offers.map((offer) => {
-            const location = offer.remote
-              ? t("remote")
-              : [offer.city, offer.region].filter(Boolean).join(", ") || offer.country;
+            const location = formatOfferLocation(offer, locale, t("remote"));
             return (
               <li key={offer.slug}>
                 <Link

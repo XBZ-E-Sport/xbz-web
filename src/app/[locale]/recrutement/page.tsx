@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import RecrutementForm from "@/components/RecrutementForm";
 import { getOpenRolesByCategory, getOpenRosters } from "@/lib/equipes";
+import { getOfferRoles } from "@/lib/offres";
 import { pageMetadata } from "@/lib/site";
 
 type PageProps = { params: Promise<{ locale: string }> };
@@ -42,9 +43,10 @@ export default async function RecrutementPage({ params }: PageProps) {
   const t = await getTranslations({ locale, namespace: "recrutement" });
   const tNav = await getTranslations({ locale, namespace: "nav" });
 
-  const [rolesByCategory, rosters] = await Promise.all([
+  const [rolesByCategory, rosters, offers] = await Promise.all([
     getOpenRolesByCategory(),
     getOpenRosters(),
+    getOfferRoles(),
   ]);
   return (
     <div className="relative z-10 mx-auto max-w-2xl px-6 pb-24 pt-32">
@@ -76,7 +78,7 @@ export default async function RecrutementPage({ params }: PageProps) {
 
       {/* Formulaire */}
       <div className="card-xbz p-6 sm:p-8">
-        <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} />
+        <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} offers={offers} />
       </div>
     </div>
   );

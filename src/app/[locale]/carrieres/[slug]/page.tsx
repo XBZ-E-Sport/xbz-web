@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
-import { getOfferBySlug, getOfferSlugs, jobPostingJsonLd, type Offer } from "@/lib/offres";
+import { formatOfferLocation, getOfferBySlug, getOfferSlugs, jobPostingJsonLd, type Offer } from "@/lib/offres";
 import { formatDate } from "@/lib/format";
+import { routing } from "@/i18n/routing";
 import { jsonLdString } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/site";
 
@@ -63,16 +64,17 @@ export default async function OfferPage({ params }: PageProps) {
   if (!offer) notFound();
 
   // Données structurées JobPosting : ce que lisent Indeed et Google for Jobs.
-  const jsonLd = jobPostingJsonLd(offer);
+  // Sur la page de la langue par défaut SEULEMENT : la même offre publiée aussi
+  // sur /en en ferait deux annonces (Indeed : une URL unique par offre).
+  const jsonLd = locale === routing.defaultLocale ? jobPostingJsonLd(offer, locale) : null;
 
-  const location = offer.remote
-    ? t("remoteLocation")
-    : [offer.city, offer.region, offer.postalCode].filter(Boolean).join(", ") || offer.country;
+  const location = formatOfferLocation(offer, locale, t("remoteLocation"));
   const salary = formatSalary(offer, locale, tPeriod(offer.salaryPeriod));
 
   // Où postuler : un lien externe fourni (ATS web ou mailto:), sinon le
-  // formulaire de recrutement du site. Le `mailto:` ouvre le client mail — pas
-  // de nouvel onglet ; le lien web s'ouvre dans un onglet neuf.
+  // formulaire de recrutement du site, CE poste présélectionné (`?offre=`).
+  // Le `mailto:` ouvre le client mail — pas de nouvel onglet ; le lien web
+  // s'ouvre dans un onglet neuf.
   const apply = offer.applyUrl?.match(/^https?:\/\//)
     ? { kind: "web" as const, href: offer.applyUrl }
     : offer.applyUrl?.match(/^mailto:/)
@@ -93,10 +95,12 @@ export default async function OfferPage({ params }: PageProps) {
 
   return (
     <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
-      />
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
+        />
+      )}
 
       <Link
         href="/carrieres"
@@ -144,7 +148,7 @@ export default async function OfferPage({ params }: PageProps) {
             {t("apply")}
           </a>
         ) : (
-          <Link href="/recrutement" locale={locale} className={applyCls}>
+          <Link href={`/recrutement?offre=${encodeURIComponent(offer.slug)}`} locale={locale} className={applyCls}>
             {t("apply")}
           </Link>
         )}

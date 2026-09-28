@@ -12,6 +12,7 @@ import type { Player } from "@/lib/roster";
 import { localizePlayer, type PlayerRow } from "@/lib/roster";
 import { localizedText } from "@/lib/localized";
 import type { RecrutementCategory } from "@/content/recrutement";
+import { getOfferRoles } from "@/lib/offres";
 
 export type GroupVariant = "founder" | "staff" | "member" | "creative";
 
@@ -191,10 +192,31 @@ export async function getOpenRolesByCategory(): Promise<
     acc[cat].set(g.recrute, (acc[cat].get(g.recrute) ?? 0) + free);
   }
 
-  return {
-    "XBZ Staff": [...acc["XBZ Staff"]].map(([name, free]) => ({ name, free })),
-    "XBZ Esport": [...acc["XBZ Esport"]].map(([name, free]) => ({ name, free })),
-  };
+  return withOfferRoles(
+    {
+      "XBZ Staff": [...acc["XBZ Staff"]].map(([name, free]) => ({ name, free })),
+      "XBZ Esport": [...acc["XBZ Esport"]].map(([name, free]) => ({ name, free })),
+    },
+    await getOfferRoles(),
+  );
+}
+
+/**
+ * Ajoute les offres d'emploi ouvertes (page Carrières) aux rôles staff : ce
+ * sont des postes à pourvoir, et le bouton « Postuler » d'une offre mène à ce
+ * formulaire. Sans elles, l'offre « Développeur web » renvoyait vers un
+ * formulaire où ce poste n'existait pas. Un rôle déjà ouvert au même nom n'est
+ * pas dupliqué.
+ */
+export function withOfferRoles(
+  roles: Record<RecrutementCategory, { name: string; free: number }[]>,
+  offers: { name: string }[],
+): Record<RecrutementCategory, { name: string; free: number }[]> {
+  const staff = [...roles["XBZ Staff"]];
+  for (const { name } of offers) {
+    if (!staff.some((r) => r.name === name)) staff.push({ name, free: 1 });
+  }
+  return { ...roles, "XBZ Staff": staff };
 }
 
 /** Vrai si le rôle est ouvert dans la catégorie (validation serveur). */

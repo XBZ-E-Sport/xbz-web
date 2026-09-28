@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
@@ -33,9 +33,12 @@ const toneColor: Record<Tone, string> = {
 export default function RecrutementForm({
   rolesByCategory,
   rosters,
+  offers = [],
 }: {
   rolesByCategory: RolesByCategory;
   rosters: RosterOption[];
+  /** Offres d'emploi ouvertes (slug → intitulé), pour `?offre=<slug>`. */
+  offers?: { slug: string; name: string }[];
 }) {
   const t = useTranslations("recrutementForm");
   const tErr = useTranslations("formErrors");
@@ -52,6 +55,19 @@ export default function RecrutementForm({
   const [submitting, setSubmitting] = useState(false);
   // Anti-spam : temps de remplissage depuis le montage (rejet serveur si trop rapide).
   const elapsed = useElapsed();
+
+  // Arrivée depuis une offre d'emploi (bouton « Postuler », `?offre=<slug>`) :
+  // le poste est présélectionné. Lu au montage, côté navigateur : la page est
+  // statique, le serveur ne voit pas la query string.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("offre");
+    const offer = slug ? offers.find((o) => o.slug === slug) : undefined;
+    if (offer && rolesByCategory["XBZ Staff"].some((r) => r.name === offer.name)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronisation unique avec l'URL, au montage
+      setCategorie("XBZ Staff");
+      setRole(offer.name);
+    }
+  }, [offers, rolesByCategory]);
 
   const isEsport = categorie === "XBZ Esport";
   const showRL = isEsport && jeu === "Rocket League";

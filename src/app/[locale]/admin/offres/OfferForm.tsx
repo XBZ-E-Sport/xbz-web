@@ -189,6 +189,10 @@ export default function OfferForm({
           Lien pour postuler (URL ou mailto: — vide = formulaire de recrutement)
         </label>
         <input id={`${uid}-apply`} name="apply_url" defaultValue={offer?.apply_url ?? ""} placeholder="mailto:recrutement@xbz.gg" className={inputCls} />
+        <p className="mt-1 text-xs text-neutral-400">
+          Vide : « Postuler » ouvre le formulaire de recrutement du site avec ce poste déjà
+          sélectionné (catégorie Staff, 18 ans minimum) — la candidature arrive dans l’admin et sur Discord.
+        </p>
       </div>
 
       <div className="block sm:col-span-2">
@@ -203,6 +207,11 @@ export default function OfferForm({
           Description (un paragraphe par bloc, séparés par une ligne vide)
         </label>
         <textarea id={`${uid}-description`} name="description" defaultValue={(offer?.description ?? []).join("\n\n")} rows={10} placeholder={"Missions…\n\nProfil recherché…"} className={inputCls} />
+        <p className="mt-1 text-xs text-neutral-400">
+          Indeed exige une description complète et relit chaque offre avant de la publier : missions,
+          profil, temps demandé, cadre (bénévole ou rémunéré — et le type de contrat qui va avec),
+          ce que la personne y gagne. Quelques phrases ne suffisent pas.
+        </p>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-neutral-300">

@@ -112,4 +112,37 @@ describe("RecrutementForm", () => {
     const age = container.querySelector<HTMLInputElement>("#rec-age")!;
     expect(age.placeholder).toBe("16 and over");
   });
+
+  it("présélectionne le poste quand on arrive depuis une offre (?offre=<slug>)", () => {
+    window.history.replaceState(null, "", "/fr/recrutement?offre=developpeur-web");
+    try {
+      const withOffer = {
+        "XBZ Staff": [...rolesByCategory["XBZ Staff"], { name: "Développeur web (H/F)", free: 1 }],
+        "XBZ Esport": rolesByCategory["XBZ Esport"],
+      };
+      const { container } = renderIntl(
+        <RecrutementForm
+          rolesByCategory={withOffer}
+          rosters={rosters}
+          offers={[{ slug: "developpeur-web", name: "Développeur web (H/F)" }]}
+        />,
+      );
+      expect(container.querySelector<HTMLSelectElement>("#rec-categorie")!.value).toBe("XBZ Staff");
+      expect(container.querySelector<HTMLSelectElement>("#rec-role")!.value).toBe("Développeur web (H/F)");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("ignore une offre inconnue ou fermée dans l'URL", () => {
+    window.history.replaceState(null, "", "/fr/recrutement?offre=inconnue");
+    try {
+      const { container } = renderIntl(
+        <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} offers={[]} />,
+      );
+      expect(container.querySelector<HTMLSelectElement>("#rec-categorie")!.value).toBe("");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
 });

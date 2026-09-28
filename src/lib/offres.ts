@@ -9,8 +9,8 @@ import { unstable_cache } from "next/cache";
 
 import { createPublicClient } from "@/lib/supabase/public";
 import { CACHE_TAGS, CACHE_TTL_SECONDS } from "@/lib/cache";
-import { localizedText, localizedList } from "@/lib/localized";
-import { siteConfig, absoluteUrl } from "@/lib/site";
+import { localizedText, localizedList, countryName } from "@/lib/localized";
+import { siteConfig, absoluteUrl, localizedPath } from "@/lib/site";
 
 // Types de contrat au format schema.org (JobPosting.employmentType). L'ordre est
 // celui du sélecteur du back-office ; le libellé affiché est traduit côté page.
@@ -138,14 +138,58 @@ const fetchOffers = unstable_cache(
   { tags: [CACHE_TAGS.offres], revalidate: CACHE_TTL_SECONDS },
 );
 
-/** Slugs des offres actives — prégénération des pages de détail au build. */
-export async function getOfferSlugs(): Promise<string[]> {
-  return (await fetchOffers()).map((row) => row.slug);
+/**
+ * Lieu lisible d'une offre, pays TOUJOURS compris (Indeed : « un lieu par
+ * offre ») : « Télétravail (France) », « Lyon, Auvergne-Rhône-Alpes, France ».
+ * `remoteLabel` est le libellé traduit du télétravail.
+ */
+export function formatOfferLocation(offer: Offer, locale: string, remoteLabel: string): string {
+  const country = countryName(offer.country, offer.country, locale) ?? offer.country;
+  return offer.remote
+    ? `${remoteLabel} (${[offer.region, country].filter(Boolean).join(", ")})`
+    : [offer.city, offer.region, country].filter(Boolean).join(", ");
 }
 
-/** Offres actives, ordonnées, dans `locale`. */
+/** Date du jour à Paris (AAAA-MM-JJ) : la référence des dates d'une offre. */
+export function todayInParis(now = new Date()): string {
+  // en-CA formate en AAAA-MM-JJ.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(now);
+}
+
+/** Vrai si l'offre est encore valable ce jour-là (`validThrough` inclus). */
+export function isOfferOpen(validThrough: string | null, today: string): boolean {
+  return !validThrough || validThrough >= today;
+}
+
+/**
+ * Offres ouvertes vues comme des RÔLES du formulaire de recrutement (staff) :
+ * postuler à une offre, c'est candidater à ce rôle — même formulaire, même
+ * consentement RGPD, même notification du staff, même purge. `name` est
+ * l'intitulé FRANÇAIS : c'est la valeur que le serveur revalide (`isRoleOpen`),
+ * comme pour les rôles des pôles.
+ */
+export async function getOfferRoles(): Promise<{ slug: string; name: string }[]> {
+  return (await fetchOpenOffers()).map((row) => ({ slug: row.slug, name: row.title }));
+}
+
+// Une offre dont la date de fin est passée est FERMÉE partout à la fois :
+// liste, fiche (404), sitemap et rôles du formulaire. Sinon « Postuler »
+// menait à un formulaire où le poste n'existait plus, et Indeed continuait de
+// voir une offre expirée en ligne. Les pages sont régénérées au plus tard
+// toutes les heures (ISR) : l'offre disparaît dans l'heure qui suit minuit.
+async function fetchOpenOffers(): Promise<OfferRow[]> {
+  const today = todayInParis();
+  return (await fetchOffers()).filter((row) => isOfferOpen(row.valid_through, today));
+}
+
+/** Slugs des offres ouvertes — prégénération des pages de détail au build. */
+export async function getOfferSlugs(): Promise<string[]> {
+  return (await fetchOpenOffers()).map((row) => row.slug);
+}
+
+/** Offres ouvertes, ordonnées, dans `locale`. */
 export async function getOffers(locale: string): Promise<Offer[]> {
-  return (await fetchOffers()).map((row) => toOffer(row, locale));
+  return (await fetchOpenOffers()).map((row) => toOffer(row, locale));
 }
 
 const fetchOfferBySlug = cache(
@@ -170,10 +214,10 @@ const fetchOfferBySlug = cache(
   ),
 );
 
-/** Une offre active par son slug dans `locale`, ou null. */
+/** Une offre OUVERTE par son slug dans `locale`, ou null (→ 404). */
 export async function getOfferBySlug(slug: string, locale: string): Promise<Offer | null> {
   const row = await fetchOfferBySlug(slug);
-  return row ? toOffer(row, locale) : null;
+  return row && isOfferOpen(row.valid_through, todayInParis()) ? toOffer(row, locale) : null;
 }
 
 // =============================================================================
@@ -193,8 +237,10 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;");
 }
 
-export function jobPostingJsonLd(offer: Offer): Record<string, unknown> {
-  const url = absoluteUrl(`/carrieres/${offer.slug}`);
+export function jobPostingJsonLd(offer: Offer, locale: string): Record<string, unknown> {
+  // L'adresse RÉELLE de la page, langue comprise : `/carrieres/…` sans langue
+  // redirige, et Indeed exige une URL unique et valide par offre.
+  const url = absoluteUrl(localizedPath(`/carrieres/${offer.slug}`, locale));
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -222,19 +268,19 @@ export function jobPostingJsonLd(offer: Offer): Record<string, unknown> {
   if (offer.validThrough) jsonLd.validThrough = offer.validThrough;
   if (offer.department) jsonLd.occupationalCategory = offer.department;
 
-  // Localisation : une adresse dès qu'une ville est connue…
-  if (offer.city) {
-    jsonLd.jobLocation = {
-      "@type": "Place",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: offer.city,
-        ...(offer.region ? { addressRegion: offer.region } : {}),
-        ...(offer.postalCode ? { postalCode: offer.postalCode } : {}),
-        addressCountry: offer.country,
-      },
-    };
-  }
+  // Localisation : TOUJOURS un lieu (Indeed : « un lieu par offre »), même en
+  // télétravail — l'adresse complète dès qu'une ville est connue, sinon au
+  // moins la région et le pays.
+  jsonLd.jobLocation = {
+    "@type": "Place",
+    address: {
+      "@type": "PostalAddress",
+      ...(offer.city ? { addressLocality: offer.city } : {}),
+      ...(offer.region ? { addressRegion: offer.region } : {}),
+      ...(offer.city && offer.postalCode ? { postalCode: offer.postalCode } : {}),
+      addressCountry: offer.country,
+    },
+  };
   // …et le marqueur télétravail quand l'offre est à distance. Google exige
   // alors `applicantLocationRequirements` (pays d'où l'on peut postuler).
   if (offer.remote) {

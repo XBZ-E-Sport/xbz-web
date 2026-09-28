@@ -107,6 +107,8 @@ function revalidateOffer(slug?: string) {
   revalidateLocalizedPath("/admin/offres");
   revalidateLocalizedPath("/carrieres");
   if (slug) revalidateLocalizedPath(`/carrieres/${slug}`);
+  // Les offres ouvertes sont aussi des rôles du formulaire de recrutement.
+  revalidateLocalizedPath("/recrutement");
 }
 
 export async function createOffer(formData: FormData) {
