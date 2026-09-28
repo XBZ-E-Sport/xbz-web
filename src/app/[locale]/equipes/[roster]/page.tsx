@@ -63,6 +63,9 @@ export default async function EquipeDetailPage({ params }: PageProps) {
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "equipeDetail" });
+  // Rôles traduits ICI, passés aux cartes : voir PlayerCard (force-static).
+  const tRole = await getTranslations({ locale, namespace: "playerRoles" });
+  const roleLabel = (role: string) => (tRole.has(role) ? tRole(role) : role);
 
   const roster = await getRosterBySlug(slug, locale);
   if (roster) {
@@ -78,7 +81,13 @@ export default async function EquipeDetailPage({ params }: PageProps) {
         after={await RosterMatchs({ rosterId: roster.id, locale })}
       >
         {roster.players.map((player) => (
-          <PlayerCard key={player.id} player={player} parentSlug={roster.slug} />
+          <PlayerCard
+            key={player.id}
+            player={player}
+            parentSlug={roster.slug}
+            locale={locale}
+            roleLabel={roleLabel(player.role)}
+          />
         ))}
       </DetailLayout>
     );
@@ -97,7 +106,13 @@ export default async function EquipeDetailPage({ params }: PageProps) {
         count={pole.members.length}
       >
         {pole.members.map((member) => (
-          <PlayerCard key={member.id} player={member} parentSlug={pole.slug} />
+          <PlayerCard
+            key={member.id}
+            player={member}
+            parentSlug={pole.slug}
+            locale={locale}
+            roleLabel={roleLabel(member.role)}
+          />
         ))}
       </DetailLayout>
     );

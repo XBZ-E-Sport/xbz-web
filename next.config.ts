@@ -106,7 +106,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/a-propos", destination: "/presentation", permanent: true },
+      // Ancienne adresse de la page Présentation : en UN saut vers la bonne
+      // langue (vers /presentation, le proxy ajoutait un 2e saut vers /fr/…),
+      // et aussi depuis les adresses préfixées, qui tombaient en 404.
+      { source: "/a-propos", destination: "/fr/presentation", permanent: true },
+      { source: "/:locale(fr|en)/a-propos", destination: "/:locale/presentation", permanent: true },
     ];
   },
   async headers() {

@@ -118,4 +118,50 @@ describe("conventions de fichiers dans src/app", () => {
     const oubliees = routes.filter((r) => !DETAIL_ROUTES.includes(r as never));
     expect(oubliees).toEqual([]);
   });
+
+  it("n'a aucun loading.tsx sur le site public (sinon les 404 répondent 200)", () => {
+    // Un `loading.tsx` fait envoyer la page en flux : le statut HTTP part en 200
+    // avant que la page sache si elle existe, et `notFound()` ne peut plus le
+    // changer (doc Next : file-conventions/loading.md, « Status Codes »). Le
+    // `loading.tsx` racine transformait ainsi chaque adresse inconnue — article,
+    // membre, offre expirée — en « 200 OK ». Seul le back-office en garde un.
+    const offenders = files
+      .filter((f) => f.stem === "loading")
+      .filter((f) => !f.label.startsWith("[locale]/admin/"))
+      .map((f) => f.label);
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("composants partagés : la langue vient des props", () => {
+  // Une page `force-static` rend ses composants SANS contexte de langue : un
+  // hook (`useTranslations`, `useLocale`…) ou un `<Link>` sans `locale` y
+  // retombe sur le français. C'est ce qui affichait « Capitaine » et des liens
+  // /fr/… sur les pages /en des équipes. Les composants CLIENT, eux, sont sous
+  // le NextIntlClientProvider de la bonne langue : ils ne sont pas concernés.
+  const COMPONENTS = join(process.cwd(), "src", "components");
+  const serverComponents = readdirSync(COMPONENTS)
+    .filter((f) => f.endsWith(".tsx") && !/\.test\.tsx$/.test(f))
+    .map((f) => ({ label: `components/${f}`, source: readFileSync(join(COMPONENTS, f), "utf8") }))
+    .filter((f) => !/^\s*["']use client["']/.test(f.source))
+    .map((f) => ({ ...f, code: stripComments(f.source) }));
+
+  it("aucun composant serveur ne lit la langue par un hook", () => {
+    const offenders = serverComponents
+      .filter((f) => /\b(useTranslations|useLocale|useFormatter|useNow|useTimeZone|useMessages)\s*\(/.test(f.code))
+      .map((f) => f.label);
+    expect(offenders).toEqual([]);
+  });
+
+  it("chaque <Link> d'un composant serveur reçoit explicitement sa langue", () => {
+    const offenders = serverComponents
+      .filter((f) => /from\s+["']@\/i18n\/navigation["']/.test(f.code))
+      .flatMap((f) =>
+        [...f.code.matchAll(/<Link\b([\s\S]*?)>/g)]
+          .filter((m) => !/\blocale=/.test(m[1]))
+          .map(() => f.label),
+      );
+    expect(offenders).toEqual([]);
+  });
 });

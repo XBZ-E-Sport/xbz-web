@@ -569,6 +569,15 @@ body:has([data-admin]) .xbz-arena {
   outline: 2px solid var(--color-xbz-cyan);
   outline-offset: 3px;
 }
+/* Éléments à coin coupé : leur clip-path rogne tout ce qui dépasse de leur
+   boîte, contour de focus compris — un contour à 3 px À L'EXTÉRIEUR était donc
+   invisible, et on ne voyait pas où était le clavier sur les cartes et le
+   bouton Discord. On le dessine à l'intérieur. */
+.card-xbz:focus-visible,
+.cut:focus-visible,
+.cut-tl:focus-visible {
+  outline-offset: -4px;
+}
 
 main:focus {
   outline: none;

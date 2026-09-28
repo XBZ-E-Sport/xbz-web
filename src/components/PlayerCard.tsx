@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import type { Player } from "@/lib/roster";
@@ -18,16 +17,23 @@ const roleBadge: Record<string, string> = {
 export default function PlayerCard({
   player,
   parentSlug,
+  locale,
+  roleLabel,
 }: {
   player: Player;
   /** Slug du roster ou du pôle parent → carte cliquable vers la fiche. Omis → carte simple. */
   parentSlug?: string;
+  /**
+   * Langue de la page, et libellé du rôle déjà traduit par elle. Passés en
+   * props, jamais lus par un hook : sous `force-static`, un composant n'a pas
+   * de contexte de langue et retombait sur le français — les pages /en
+   * affichaient « Capitaine » et liaient vers /fr/….
+   */
+  locale: string;
+  roleLabel: string;
 }) {
-  // Le rôle est une liste fermée en base : traduit à l'affichage, tandis que
-  // la couleur du badge reste indexée sur la valeur française d'origine.
-  const tRole = useTranslations("playerRoles");
+  // La couleur du badge reste indexée sur la valeur française d'origine du rôle.
   const badge = roleBadge[player.role];
-  const roleLabel = tRole.has(player.role) ? tRole(player.role) : player.role;
 
   const inner = (
     <>
@@ -73,6 +79,7 @@ export default function PlayerCard({
       {parentSlug ? (
         <Link
           href={`/equipes/${parentSlug}/${player.slug}`}
+          locale={locale}
           className="card-xbz group block overflow-hidden"
         >
           {inner}
