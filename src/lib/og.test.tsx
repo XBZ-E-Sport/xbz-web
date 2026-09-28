@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 
 import { clamp, ogHomeImage, ogImage } from "@/lib/og";
 
@@ -64,7 +65,7 @@ describe("og — rendu", () => {
       eyebrow: "Compétition",
       title: "Une victoire historique : œuvre collective, « à l’arrache » !",
       subtitle: "Menés deux manches à zéro, les joueurs d’XBZ ont renversé la finale — 12 € de goodies à gagner.",
-      accent: "#f4a79b",
+      tone: "red",
     });
     expect(res.headers.get("content-type")).toBe("image/png");
     expect(pngSize(Buffer.from(await res.arrayBuffer()))).toEqual({ width: 1200, height: 630 });
@@ -78,4 +79,43 @@ describe("og — rendu", () => {
     });
     expect(pngSize(Buffer.from(await res.arrayBuffer()))).toEqual({ width: 1200, height: 630 });
   }, 30_000);
+});
+
+describe("og — sur-titres aux couleurs de la charte", () => {
+  /** Pixels rouges / jaunes de la charte dans la zone du sur-titre (à gauche, sous le logo). */
+  async function eyebrowInk(tone?: "yellow" | "red") {
+    const res = await ogImage({ eyebrow: "Compétition", title: "Titre", tone });
+    const { data, info } = await sharp(Buffer.from(await res.arrayBuffer()))
+      .extract({ left: 72, top: 170, width: 320, height: 50 })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    let red = 0;
+    let yellow = 0;
+    for (let i = 0; i < data.length; i += info.channels) {
+      const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+      if (r > 180 && g > 160 && b < 90) yellow++;
+      else if (r > 170 && g < 80 && b < 70) red++;
+    }
+    return { red, yellow };
+  }
+
+  it("jaune par défaut, rouge sur demande — jamais l'autre", async () => {
+    const byDefault = await eyebrowInk();
+    expect(byDefault.yellow).toBeGreaterThan(200);
+    expect(byDefault.red).toBe(0);
+    const red = await eyebrowInk("red");
+    expect(red.red).toBeGreaterThan(200);
+    expect(red.yellow).toBe(0);
+  }, 30_000);
+
+  it("aucune bannière ne passe de couleur libre (violet, doré, gris…)", () => {
+    const routes = readdirSync(join(process.cwd(), "src", "app"), { recursive: true, encoding: "utf8" }).filter((f) =>
+      /opengraph-image\.tsx$/.test(f),
+    );
+    expect(routes.length).toBeGreaterThanOrEqual(17);
+    for (const f of routes) {
+      const code = readFileSync(join(process.cwd(), "src", "app", f), "utf8");
+      expect(code, f).not.toMatch(/#[0-9a-f]{3,8}\b|\baccent/i);
+    }
+  });
 });

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
-import { getArticleBySlug } from "@/lib/actualite";
-import { ogImage, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
+import { getArticleBySlug, type ArticleCategory } from "@/lib/actualite";
+import { ogImage, OG_SIZE, OG_CONTENT_TYPE, type OgTone } from "@/lib/og";
 
 // Bannière générée à la volée (article lu en base à chaque partage).
 export const dynamic = "force-dynamic";
@@ -9,14 +9,10 @@ export const alt = "Actualité XBZ Esport";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-// Accent de la bannière selon la catégorie (aligné sur articleCategoryStyles).
-// Les clés sont les valeurs en base, qui restent en français.
-const CATEGORY_ACCENT: Record<string, [string, string]> = {
-  Compétition: ["#f4a79b", "#dc2515"],
-  Recrutement: ["#ffd964", "#fccd05"],
-  Annonce: ["#d3cec9", "#b3aca7"],
-  Communauté: ["#b6bdff", "#5865f2"],
-  Création: ["#c9a7ff", "#8a5cff"],
+// Sur-titre aux couleurs de la charte : rouge pour la compétition (comme son
+// badge sur le site), jaune pour tout le reste. Clés = valeurs en base (FR).
+const CATEGORY_TONE: Partial<Record<ArticleCategory, OgTone>> = {
+  Compétition: "red",
 };
 
 export default async function Image({
@@ -33,12 +29,10 @@ export default async function Image({
   }
 
   const tCat = await getTranslations({ locale, namespace: "articleCategories" });
-  const [accent, accentTo] = CATEGORY_ACCENT[article.category] ?? ["#fccd05", "#dc2515"];
   return ogImage({
     eyebrow: tCat(article.category),
     title: article.title,
     subtitle: article.excerpt,
-    accent,
-    accentTo,
+    tone: CATEGORY_TONE[article.category],
   });
 }

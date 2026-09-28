@@ -212,19 +212,22 @@ function FooterBand({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Couleurs de sur-titre : celles de la charte, et rien d'autre (plus de hex
+// libre par page, qui faisait réapparaître violet, doré, gris...).
+const EYEBROW_TONES = { yellow: YELLOW, red: RED } as const;
+export type OgTone = keyof typeof EYEBROW_TONES;
+
 export type OgFrameOptions = {
   /** Sur-titre (rôle, catégorie, type de pôle...). */
   eyebrow?: string | null;
   title: string;
   subtitle?: string | null;
-  /** Couleur d'accent du sur-titre (catégorie d'article, type de page…). */
-  accent?: string;
-  /** Ignorée depuis la charte rouge : le liseré reste toujours rouge + jaune. */
-  accentTo?: string;
+  /** Couleur du sur-titre : jaune par défaut (comme les sur-titres du site), rouge pour la compétition. */
+  tone?: OgTone;
 };
 
 /** Construit une bannière OG XBZ (pages, article, équipe, joueur). */
-export async function ogImage({ eyebrow, title, subtitle, accent = YELLOW }: OgFrameOptions): Promise<ImageResponse> {
+export async function ogImage({ eyebrow, title, subtitle, tone = "yellow" }: OgFrameOptions): Promise<ImageResponse> {
   const { fonts, logo, raven } = await ogAssets();
   const safeTitle = clamp(title, 80);
   // Plus le titre prend de lignes, moins le sous-titre en a : le tout doit
@@ -265,7 +268,7 @@ export async function ogImage({ eyebrow, title, subtitle, accent = YELLOW }: OgF
                   fontSize: 24,
                   letterSpacing: "0.2em",
                   textTransform: "uppercase",
-                  color: accent,
+                  color: EYEBROW_TONES[tone],
                 }}
               >
                 {safeEyebrow}

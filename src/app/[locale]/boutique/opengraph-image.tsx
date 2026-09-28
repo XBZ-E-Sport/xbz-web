@@ -25,7 +25,5 @@ export default async function Image({ params }: { params: Promise<{ locale: stri
     eyebrow: t("boutique.eyebrow"),
     title: t("boutique.title"),
     subtitle: t("boutique.subtitle"),
-    accent: "#c9a7ff",
-    accentTo: "#8a5cff",
   });
 }
