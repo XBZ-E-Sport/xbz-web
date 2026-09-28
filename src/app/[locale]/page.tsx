@@ -117,7 +117,7 @@ export default async function Home({ params }: PageProps) {
         </h1>
 
         {/* Slogan de marque (dégradé rouge → jaune → rouge) */}
-        <p className="bg-gradient-to-r from-xbz-blue via-xbz-cyan to-xbz-blue bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
+        <p className="bg-linear-to-r from-xbz-blue via-xbz-cyan to-xbz-blue bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
           {t("slogan")}
         </p>
 
