@@ -34,9 +34,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export const dynamic = "force-static";
 export const revalidate = 3600;
 
+// Couleurs de la charte uniquement (libellés à garder alignés dans
+// admin/poles/PoleForm.tsx) : le staff se distingue des joueurs par son liseré.
 const roleStyles: Record<GroupVariant, string> = {
   founder: "bg-white/10 text-white shadow-[0_0_12px_rgba(255,255,255,0.25)]",
-  staff: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff] shadow-[0_0_12px_rgba(160,90,255,0.25)]",
+  staff: "ring-1 ring-inset ring-xbz-blue/70 text-[#f4a79b] shadow-[0_0_12px_rgba(220,37,21,0.2)]",
   member: "bg-xbz-blue/10 text-[#f4a79b] shadow-[0_0_12px_rgba(220,37,21,0.2)]",
   creative: "bg-[rgba(252,205,5,0.12)] text-[#ffd964] shadow-[0_0_12px_rgba(252,205,5,0.2)]",
 };

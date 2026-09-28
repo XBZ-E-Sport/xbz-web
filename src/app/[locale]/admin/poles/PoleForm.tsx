@@ -9,12 +9,12 @@ const CATEGORIES = [
   { value: "staff", label: "Staff" },
   { value: "esport", label: "Esport (staff de section)" },
 ];
-// Les couleurs doivent correspondre à `roleStyles` dans src/app/equipes/page.tsx.
+// Les couleurs doivent correspondre à `roleStyles` dans src/app/[locale]/equipes/page.tsx.
 const VARIANTS = [
   { value: "founder", label: "Fondateur (blanc)" },
-  { value: "staff", label: "Staff (violet)" },
-  { value: "member", label: "Joueur (bleu)" },
-  { value: "creative", label: "Créatif (cyan)" },
+  { value: "staff", label: "Staff (liseré rouge)" },
+  { value: "member", label: "Joueur (rouge)" },
+  { value: "creative", label: "Créatif (jaune)" },
 ];
 
 export type PoleRow = {

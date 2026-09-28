@@ -5,10 +5,13 @@ import { Link } from "@/i18n/navigation";
 import type { Player } from "@/lib/roster";
 import Flag from "@/components/Flag";
 
+// Badges posés sur la photo : fonds pleins et opaques (un liseré ou un fond
+// translucide dépendrait de l'image), aux couleurs de la charte. Blanc sur le
+// rouge #dc2515 : 4,9:1, quelle que soit la photo.
 const roleBadge: Record<string, string> = {
   Capitaine: "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#231a17]",
-  Coach: "bg-[rgba(160,90,255,0.9)] text-white",
-  Manager: "bg-[rgba(160,90,255,0.9)] text-white",
+  Coach: "bg-xbz-blue text-white",
+  Manager: "bg-xbz-blue text-white",
   Sub: "bg-white/15 text-white",
 };
 

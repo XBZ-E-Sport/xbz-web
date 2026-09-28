@@ -18,9 +18,11 @@ const PAGE_SIZE = 6;
 type Filter = ProductCategory | "Tous";
 type SortKey = "defaut" | "prix-asc" | "prix-desc";
 
+// Couleurs de la charte uniquement, comme les badges d'article : rouge ou jaune,
+// en plein (fond teinté) ou en liseré (anneau intérieur, même taille de badge).
 const categoryStyles: Record<ProductCategory, string> = {
   Textile: "bg-xbz-blue/15 text-[#f4a79b]",
-  Accessoire: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
+  Accessoire: "ring-1 ring-inset ring-xbz-cyan/50 text-[#ffd964]",
   Gaming: "bg-[rgba(252,205,5,0.15)] text-[#ffd964]",
 };
 
