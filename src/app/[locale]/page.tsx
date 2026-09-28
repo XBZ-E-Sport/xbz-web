@@ -243,7 +243,7 @@ export default async function Home({ params }: PageProps) {
         )}
 
         {/* Stats */}
-        <section aria-labelledby="stats-heading" className="mb-20">
+        <section aria-labelledby="stats-heading" className="xbz-band mb-20">
           <h2 id="stats-heading" className="sr-only">
             {t("statsHeading")}
           </h2>
@@ -308,7 +308,7 @@ export default async function Home({ params }: PageProps) {
 
         {/* Partenaires & sponsors — bandeau de logos (teaser vers /partenaires) */}
         {partners.length > 0 && (
-          <section aria-labelledby="partners-heading" className="mb-20">
+          <section aria-labelledby="partners-heading" className="xbz-band mb-20">
             <div className="mb-6 flex items-end justify-between gap-4">
               <h2
                 id="partners-heading"

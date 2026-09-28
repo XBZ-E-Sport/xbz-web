@@ -96,7 +96,7 @@ export default async function LeClubPage({ params }: PageProps) {
         </ul>
       </section>
 
-      <section aria-labelledby="explorer-heading" className="mb-16">
+      <section aria-labelledby="explorer-heading" className="xbz-band mb-16">
         <h2
           id="explorer-heading"
           className="mb-6 text-center font-display text-xl font-bold tracking-[2px] text-neutral-300"

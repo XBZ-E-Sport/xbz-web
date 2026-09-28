@@ -141,6 +141,66 @@ h1, h2, h3 {
   background-color: rgba(46, 44, 45, 0.62);
 }
 
+/* ===== BANDES EN BIAIS (séparateurs de sections) ==============================
+   Une section posée sur une bande pleine largeur dont les bords haut et bas
+   sont parallèles et montent vers la droite (le « / » de la trame du fond).
+   Fond et liseré sont des pseudo-éléments découpés en clip-path : le contenu
+   reste dans son conteneur et n'est jamais rogné.
+   - Pleine largeur sans toucher à la mise en page : les pseudo-éléments
+     débordent du conteneur jusqu'aux bords de l'écran (50% - 50vw) ; le body
+     coupe déjà tout débordement horizontal.
+   - Aucun filter/backdrop-filter (GPU mobile) : dégradés + clip-path seulement.
+   Réglage : --xbz-band-slope = dénivelé de chaque bord. */
+.xbz-band {
+  --xbz-band-slope: clamp(1.25rem, 4vw, 3.5rem);
+  position: relative;
+  isolation: isolate;
+  padding-block: calc(var(--xbz-band-slope) + 3rem);
+}
+.xbz-band::before,
+.xbz-band::after {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  pointer-events: none;
+}
+/* Fond : charbon translucide, un peu plus dense au centre, avec une lueur rouge
+   qui descend du liseré. */
+.xbz-band::before {
+  background:
+    linear-gradient(to bottom, rgba(220, 37, 21, 0.07), transparent 45%),
+    linear-gradient(100deg, rgba(46, 44, 45, 0.18), rgba(46, 44, 45, 0.42) 50%, rgba(46, 44, 45, 0.18));
+  clip-path: polygon(
+    0 var(--xbz-band-slope),
+    100% 0,
+    100% calc(100% - var(--xbz-band-slope)),
+    0 100%
+  );
+}
+/* Liseré : fine arête rouge le long du bord haut, éteinte aux deux bouts, avec
+   un court éclat jaune (l'accent « laser » de la charte). */
+.xbz-band::after {
+  bottom: auto;
+  height: calc(var(--xbz-band-slope) + 2px);
+  background: linear-gradient(
+    90deg,
+    transparent 3%,
+    rgba(220, 37, 21, 0.7) 28%,
+    rgba(220, 37, 21, 0.7) 74%,
+    rgba(252, 205, 5, 0.9) 74%,
+    rgba(252, 205, 5, 0.9) 77%,
+    rgba(220, 37, 21, 0.55) 77%,
+    transparent 97%
+  );
+  clip-path: polygon(
+    0 var(--xbz-band-slope),
+    100% 0,
+    100% 1.5px,
+    0 calc(var(--xbz-band-slope) + 1.5px)
+  );
+}
+
 /* Entrée en fondu ascendant (cartes, sections) */
 @keyframes xbz-fade-up {
   from {

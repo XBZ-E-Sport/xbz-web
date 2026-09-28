@@ -93,7 +93,7 @@ export default async function PresentationPage({ params }: PageProps) {
         </div>
       </section>
 
-      <section aria-labelledby="chiffres-heading" className="mb-16">
+      <section aria-labelledby="chiffres-heading" className="xbz-band mb-16">
         <h2
           id="chiffres-heading"
           className="mb-6 text-center font-display text-xl font-bold tracking-[2px] text-neutral-300"
