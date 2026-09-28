@@ -222,7 +222,7 @@ export type OgFrameOptions = {
   eyebrow?: string | null;
   title: string;
   subtitle?: string | null;
-  /** Couleur du sur-titre : jaune par défaut (comme les sur-titres du site), rouge pour la compétition. */
+  /** Couleur du sur-titre : jaune par défaut (comme les sur-titres du site), rouge pour les catégories d'article rouges (articleCategoryTone). */
   tone?: OgTone;
 };
 

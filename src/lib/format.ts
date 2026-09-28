@@ -16,11 +16,28 @@ export function formatDate(iso: string, locale = "fr"): string {
   });
 }
 
-/** Couleur du badge selon la catégorie d'article (source unique). */
+/**
+ * Teinte de chaque catégorie d'article, dans la charte : rouge, jaune ou neutre.
+ * Source unique des badges du site ET du sur-titre des bannières de partage.
+ */
+export const articleCategoryTone = {
+  Compétition: "red",
+  Recrutement: "yellow",
+  Annonce: "neutral",
+  Communauté: "yellow",
+  Création: "red",
+} as const satisfies Record<ArticleCategory, "red" | "yellow" | "neutral">;
+
+/**
+ * Badge de catégorie (source unique). Deux couleurs seulement : chaque teinte
+ * existe en plein (fond teinté) et en liseré (anneau intérieur, sans décalage
+ * de taille), ce qui garde les cinq catégories distinctes.
+ * L'ordre des clés est celui des filtres de la page Actualité.
+ */
 export const articleCategoryStyles: Record<ArticleCategory, string> = {
   Compétition: "bg-xbz-blue/15 text-[#f4a79b]",
   Recrutement: "bg-[rgba(252,205,5,0.15)] text-[#ffd964]",
   Annonce: "bg-white/10 text-white",
-  Communauté: "bg-[rgba(88,101,242,0.18)] text-[#b6bdff]",
-  Création: "bg-[rgba(160,90,255,0.15)] text-[#c9a7ff]",
+  Communauté: "ring-1 ring-inset ring-xbz-cyan/50 text-[#ffd964]",
+  Création: "ring-1 ring-inset ring-xbz-blue/70 text-[#f4a79b]",
 };
