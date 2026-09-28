@@ -44,16 +44,29 @@ export async function requireStaff(): Promise<{ user: StaffUser; admin: AdminCli
     return { user: { id: user.id, email: user.email }, admin };
   }
 
-  // 2) Repli : allowlist email, indépendante de la RLS (clé service_role).
+  // Verdict Discord positif mais périmé (TTL d'un jour) : ce n'est pas un refus,
+  // juste une reconnexion à faire — le message doit le dire.
+  const expired = user.app_metadata?.xbz_staff === true;
+  const denied = `${loginPath}?error=${encodeURIComponent(
+    expired ? "Session staff expirée : reconnecte-toi avec Discord." : "Accès réservé au staff XBZ.",
+  )}`;
+
+  // 2) Repli : allowlist email, indépendante de la RLS (clé service_role) —
+  // pour une adresse CONFIRMÉE uniquement. Sans ça, ouvrir un compte à
+  // l'adresse d'un membre listé qui n'en a pas encore (inscription par mot de
+  // passe, ou connexion Discord avec un email non vérifié) suffisait à hériter
+  // de son accès.
+  if (!user.email || !user.email_confirmed_at) redirect(denied);
+
   const { data: staff } = await admin
     .from("allow_staff_list")
     .select("email")
-    .eq("email", user.email ?? "")
+    .eq("email", user.email)
     .maybeSingle();
 
   if (staff) return { user: { id: user.id, email: user.email }, admin };
 
-  redirect(`${loginPath}?error=${encodeURIComponent("Accès réservé au staff XBZ.")}`);
+  redirect(denied);
 }
 
 /** Raccourci historique : renvoie le client admin une fois l'accès validé. */

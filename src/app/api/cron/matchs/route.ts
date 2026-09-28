@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import {
   buildReminderPayload,
   buildDigestPayload,
@@ -24,12 +25,6 @@ export const dynamic = "force-dynamic";
 // Fenêtre du rappel : un match qui commence dans les N prochaines minutes est
 // notifié. Avec un cron horaire, 90 min garantit un rappel 30–90 min avant.
 const REMINDER_MINUTES = Number(process.env.MATCH_REMINDER_MINUTES) || 90;
-
-function isAuthorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false; // fail-safe : pas de secret → endpoint fermé
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 type MatchRow = {
   id: string;
@@ -103,7 +98,7 @@ async function runDigest() {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ ok: false, error: "Non autorisé." }, { status: 401 });
   }
   const job = new URL(request.url).searchParams.get("job");

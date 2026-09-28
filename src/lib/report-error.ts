@@ -55,23 +55,50 @@ export function isIgnorableServerError(report: ErrorReport): boolean {
   return report.source === "server" && IGNORABLE_SERVER_ERROR.test(report.message);
 }
 
+// --- Texte venu de l'extérieur → affichage inerte dans Discord --------------
+// Un rapport CLIENT est écrit par n'importe qui (route publique). Sans ces
+// précautions, `[Connexion staff](https://…)` devenait un lien cliquable dans
+// le salon du staff, sous le nom « XBZ · Erreurs », et un « ``` » dans la stack
+// sortait du bloc de code. On les applique aussi aux erreurs serveur, dont le
+// message peut reprendre une donnée d'entrée.
+
+/** Backtick → accent grave modificatif (ˋ) : plus aucun moyen de fermer un code. */
+const noBacktick = (value: string) => value.replace(/`/g, "ˋ");
+
+/** Code en ligne : rien n'y est interprété (ni lien, ni mise en forme). */
+export function inlineCode(value: string): string {
+  return `\`${noBacktick(value)}\``;
+}
+
+/** Échappe la mise en forme Markdown de Discord (liens masqués compris). */
+export function escapeMarkdown(value: string): string {
+  return value.replace(/[\\`*_~|>[\]()]/g, (c) => `\\${c}`);
+}
+
 /** Construit le payload webhook Discord (embed) à partir d'un rapport. */
 export function buildDiscordPayload(report: ErrorReport, iso: string) {
   const fields: { name: string; value: string; inline?: boolean }[] = [
-    { name: "Source", value: report.source, inline: true },
+    {
+      name: "Source",
+      // Rien ne garantit qu'un rapport client vient vraiment d'un visiteur.
+      value: report.source === "client" ? "client (non vérifié)" : report.source,
+      inline: true,
+    },
   ];
-  if (report.path) fields.push({ name: "Chemin", value: clamp(report.path, 200), inline: true });
+  if (report.path) fields.push({ name: "Chemin", value: inlineCode(clamp(report.path, 200)), inline: true });
   for (const [k, v] of Object.entries(report.extra ?? {})) {
     if (v == null || v === "") continue;
-    fields.push({ name: clamp(k, 40), value: clamp(String(v), 200), inline: true });
+    fields.push({ name: escapeMarkdown(clamp(k, 40)), value: inlineCode(clamp(String(v), 200)), inline: true });
   }
 
   return {
     username: "XBZ · Erreurs",
+    // Aucune mention ne notifie qui que ce soit (@everyone, rôles, membres).
+    allowed_mentions: { parse: [] as string[] },
     embeds: [
       {
-        title: clamp(`🚨 ${report.message}`, 240),
-        description: report.stack ? "```\n" + clamp(report.stack, 1500) + "\n```" : undefined,
+        title: clamp(`🚨 ${escapeMarkdown(report.message)}`, 240),
+        description: report.stack ? "```\n" + noBacktick(clamp(report.stack, 1500)) + "\n```" : undefined,
         color: 0xff4444,
         fields,
         timestamp: iso,
@@ -99,11 +126,30 @@ async function deliver(report: ErrorReport): Promise<void> {
   }
 }
 
+// Plafond des rapports CLIENT réellement relayés, toutes IP confondues, par
+// instance : le plafond par IP de la route ne suffit pas (en changeant d'IP,
+// on saturait la limite du webhook Discord — 30 envois/min — et les vraies
+// erreurs se perdaient). Compté APRÈS la déduplication : une même erreur
+// répétée n'use pas le quota des autres. En mémoire plutôt qu'en base : pas
+// d'aller-retour, et pas de risque qu'une rafale simultanée bloque tout.
+// Les erreurs SERVEUR n'y sont pas soumises : un flood client ne les masque pas.
+export const CLIENT_REPORTS_PER_MINUTE = 20;
+const clientSent: number[] = [];
+
+function clientBudgetAvailable(now: number): boolean {
+  while (clientSent.length && now - clientSent[0] >= 60_000) clientSent.shift();
+  if (clientSent.length >= CLIENT_REPORTS_PER_MINUTE) return false;
+  clientSent.push(now);
+  return true;
+}
+
 /** Point d'entrée unique : rapporte une erreur (dédupliquée) au sink. */
 export async function reportError(report: ErrorReport): Promise<void> {
   // Bruit connu (skew de déploiement / robots) : jamais un bug du code en ligne.
   if (isIgnorableServerError(report)) return;
+  const now = Date.now();
   const signature = `${report.source}:${report.path ?? ""}:${report.message}`;
-  if (!shouldSend(signature, Date.now())) return;
+  if (!shouldSend(signature, now)) return;
+  if (report.source === "client" && !clientBudgetAvailable(now)) return;
   await deliver(report);
 }

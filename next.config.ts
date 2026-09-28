@@ -76,6 +76,16 @@ const nextConfig: NextConfig = {
       "./node_modules/@img/sharp-linux-x64/**",
     ],
   },
+  experimental: {
+    serverActions: {
+      // Les formulaires du back-office envoient leurs images dans le corps de
+      // la server action. Par défaut Next le plafonne à 1 Mo : toute photo de
+      // téléphone échouait sans explication. 4,5 Mo = le plafond de Vercel ;
+      // chaque image est bornée à 4 Mo avant l'envoi (UPLOAD_MAX_BYTES,
+      // src/lib/limits.ts), ce qui laisse la marge du reste du formulaire.
+      bodySizeLimit: "4.5mb",
+    },
+  },
   images: {
     // Durée de conservation des images optimisées.
     //

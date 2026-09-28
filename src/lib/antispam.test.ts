@@ -25,10 +25,15 @@ describe("checkSpam", () => {
     expect(checkSpam({ elapsed: "5000" }).tooFast).toBe(false);
   });
 
-  it("ne déclenche pas tooFast quand elapsed est absent, nul ou invalide", () => {
-    expect(checkSpam({}).tooFast).toBe(false);
-    expect(checkSpam({ elapsed: "0" }).tooFast).toBe(false);
-    expect(checkSpam({ elapsed: "" }).tooFast).toBe(false);
-    expect(checkSpam({ elapsed: "abc" }).tooFast).toBe(false);
+  it("refuse un envoi SANS délai valide (absent, nul, invalide) : on n'est pas passé par le formulaire", () => {
+    // Le formulaire envoie toujours `elapsed` une fois interactif. Avant, un
+    // script n'avait qu'à omettre le champ pour sauter le délai minimum.
+    expect(checkSpam({}).tooFast).toBe(true);
+    expect(checkSpam({ elapsed: "0" }).tooFast).toBe(true);
+    expect(checkSpam({ elapsed: "" }).tooFast).toBe(true);
+    expect(checkSpam({ elapsed: "abc" }).tooFast).toBe(true);
+    expect(checkSpam({ elapsed: ["5000", "1"] }).tooFast).toBe(true);
+    expect(checkSpam({ elapsed: ["5000"] }).tooFast).toBe(true); // Number(["5000"]) vaudrait 5000
+    expect(checkSpam({ elapsed: 5000 }).tooFast).toBe(false); // nombre accepté
   });
 });

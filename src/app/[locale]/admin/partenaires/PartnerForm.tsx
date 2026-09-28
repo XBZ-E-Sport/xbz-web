@@ -2,6 +2,7 @@ import AdminForm from "@/components/AdminForm";
 import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 import { partnerTypes } from "@/lib/partenaires";
+import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -107,7 +108,7 @@ export default function PartnerForm({
           className={`${inputCls} mt-2`}
         />
         <p className="mt-1 text-xs text-neutral-400">
-          Upload un logo (JPG / PNG / WebP, 5&nbsp;Mo max) ou colle une URL. L&apos;upload est
+          Upload un logo (JPG / PNG / WebP, {formatMegabytes(UPLOAD_MAX_BYTES)} max) ou colle une URL. L&apos;upload est
           prioritaire, recommandé (optimisé et servi depuis le site).
         </p>
       </div>

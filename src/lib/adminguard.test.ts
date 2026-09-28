@@ -57,9 +57,14 @@ const staleVerdict = {
   xbz_staff_at: new Date(Date.now() - (STAFF_TTL_DAYS * DAY + 60_000)).toISOString(),
 };
 
-const user = (app_metadata: unknown, email = "test@xbz.gg") => ({
+const user = (
+  app_metadata: unknown,
+  email = "test@xbz.gg",
+  email_confirmed_at: string | null = "2026-01-01T00:00:00Z",
+) => ({
   id: "u1",
   email,
+  email_confirmed_at,
   app_metadata,
 });
 
@@ -104,6 +109,16 @@ describe("requireStaff", () => {
     expect(maybeSingleMock).toHaveBeenCalledTimes(1); // le repli a bien été tenté
   });
 
+  it("verdict Discord périmé : le message invite à se reconnecter, ce n'est pas un refus", async () => {
+    userResult.value = user(staleVerdict);
+    const err = await requireStaff().catch((e: RedirectError) => e);
+    expect(decodeURIComponent((err as RedirectError).url)).toContain("Session staff expirée");
+
+    userResult.value = user(undefined);
+    const other = await requireStaff().catch((e: RedirectError) => e);
+    expect(decodeURIComponent((other as RedirectError).url)).toContain("Accès réservé au staff XBZ.");
+  });
+
   it("accepte un verdict périmé si l'email est dans la liste", async () => {
     userResult.value = user(staleVerdict);
     allowlistRow.value = { email: "test@xbz.gg" };
@@ -115,6 +130,27 @@ describe("requireStaff", () => {
     userResult.value = user({ xbz_staff: false, xbz_staff_at: new Date().toISOString() });
 
     await expectRedirect(() => requireStaff());
+  });
+
+  it("REFUSE un email listé mais NON CONFIRMÉ (compte ouvert à l'adresse d'un autre)", async () => {
+    userResult.value = user(undefined, "test@xbz.gg", null);
+    allowlistRow.value = { email: "test@xbz.gg" };
+
+    await expectRedirect(() => requireStaff());
+    expect(maybeSingleMock).not.toHaveBeenCalled();
+  });
+
+  it("REFUSE un compte sans email sur le repli liste", async () => {
+    userResult.value = { id: "u1", email: undefined, email_confirmed_at: null, app_metadata: undefined };
+    allowlistRow.value = { email: "" };
+
+    await expectRedirect(() => requireStaff());
+  });
+
+  it("le rôle Discord suffit même si l'email n'est pas confirmé (l'accès ne dépend pas de l'email)", async () => {
+    userResult.value = user(freshVerdict, "test@xbz.gg", null);
+
+    await expect(requireStaff()).resolves.toMatchObject({ user: { id: "u1" } });
   });
 
   it("REFUSE un visiteur non connecté", async () => {

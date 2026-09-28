@@ -4,7 +4,8 @@ import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
 import { findTooLong, tooLongMessage, FIELD_MAX } from "@/lib/limits";
 import { apiError } from "@/lib/apierror";
-import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
+import { defuseMentions } from "@/lib/mentions";
+import { checkFormRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
   nom?: string;
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   // --- Limite de débit (anti-flood par IP) ---
-  const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "support");
+  const { allowed, retryAfter } = await checkFormRateLimit(getClientIp(request), "support");
   if (!allowed) {
     return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans une minute.", {
       headers: { "Retry-After": String(retryAfter) },
@@ -116,7 +117,14 @@ export async function POST(request: Request) {
               : {}),
           },
           // `id` : même contrat que la route recrutement (le bot l'affiche).
-          body: JSON.stringify({ id: data.id, nom, email, sujet, message }),
+          // Mentions Discord neutralisées (sauf dans l'email : voir mentions.ts).
+          body: JSON.stringify({
+            id: data.id,
+            nom: defuseMentions(nom),
+            email,
+            sujet,
+            message: defuseMentions(message),
+          }),
           signal: AbortSignal.timeout(60000),
         });
         if (!res.ok) {

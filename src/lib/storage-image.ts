@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
 
 // sharp tire une lib native (libvips). On la charge PARESSEUSEMENT — au premier
 // traitement d'image réel, jamais à l'évaluation du module.
@@ -20,7 +21,8 @@ function loadSharp() {
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-const MAX_INPUT_BYTES = 5 * 1024 * 1024; // 5 Mo à l'entrée
+// Même plafond que celui vérifié par le navigateur (voir src/lib/limits.ts).
+const MAX_INPUT_BYTES = UPLOAD_MAX_BYTES;
 
 type Options = {
   /** Bucket public de destination ("products", "joueurs"…). */
@@ -56,7 +58,9 @@ export async function processAndUploadImage(
   { bucket, slug, fallbackName, maxDimension, label }: Options,
 ): Promise<string> {
   if (!file.type.startsWith("image/")) throw new Error(`Le fichier doit être une ${label}.`);
-  if (file.size > MAX_INPUT_BYTES) throw new Error(`${cap(label)} trop lourde (5 Mo max).`);
+  if (file.size > MAX_INPUT_BYTES) {
+    throw new Error(`${cap(label)} trop lourde (${formatMegabytes(MAX_INPUT_BYTES)} max).`);
+  }
 
   const sharp = await loadSharp();
   const input = Buffer.from(await file.arrayBuffer());

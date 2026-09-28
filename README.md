@@ -203,12 +203,17 @@ Deux chemins mènent à `/admin`, **le premier suffit** :
    OAuth de la personne (scope `guilds.members.read`) : elle doit être **membre du serveur
    XBZ** et porter l'un des rôles de `DISCORD_STAFF_ROLE_IDS` (Administrateur, Fondateur).
    Sinon la session est **révoquée immédiatement**. Le verdict est mémorisé dans
-   `app_metadata` (champ que seule la clé service_role peut écrire) et vaut **7 jours**
-   (`STAFF_TTL_DAYS`), après quoi une reconnexion revérifie le rôle.
-2. **Allowlist email** — `allow_staff_list`, pour les comptes mot de passe.
+   `app_metadata` (champ que seule la clé service_role peut écrire) et vaut **1 jour**
+   (`STAFF_TTL_DAYS`), après quoi une reconnexion revérifie le rôle (« Session staff
+   expirée : reconnecte-toi avec Discord »).
+2. **Allowlist email** — `allow_staff_list`, pour les comptes mot de passe, et
+   seulement si l'email du compte est **confirmé** (`email_confirmed_at`). Garder
+   « Confirm email » activé dans Supabase (Authentication → Providers → Email) :
+   sinon Supabase confirme d'office toute inscription, et ouvrir un compte à
+   l'adresse d'un membre listé suffirait à hériter de son accès.
 
 Retirer un accès : enlever le rôle Discord (effectif à la prochaine connexion, au plus
-tard sous 7 jours) et/ou supprimer la ligne dans `allow_staff_list`.
+tard sous 1 jour) et/ou supprimer la ligne dans `allow_staff_list`.
 
 La garde vit dans `src/lib/adminguard.ts` (`requireStaff`) et sert **à la fois** au layout
 `/admin` et à **chaque server action** — une server action est un endpoint POST joignable

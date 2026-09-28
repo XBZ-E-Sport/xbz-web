@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mocks des dépendances BDD/infra ; la logique PURE (antispam, consent, âge)
 // reste réelle — c'est justement son intégration dans la route qu'on teste.
-const { insertMock, singleResult, rateLimitMock, isRoleOpenMock } = vi.hoisted(() => ({
+const { insertMock, singleResult, rateLimitMock, isRoleOpenMock, afterTasks } = vi.hoisted(() => ({
+  afterTasks: [] as (() => Promise<void>)[],
   insertMock: vi.fn(),
   singleResult: { value: { data: { id: "rec-id" }, error: null } as { data: unknown; error: unknown } },
   rateLimitMock: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/ratelimit", () => ({
-  checkRateLimit: (...a: unknown[]) => rateLimitMock(...a),
+  checkFormRateLimit: (...a: unknown[]) => rateLimitMock(...a),
   getClientIp: () => "127.0.0.1",
 }));
 
@@ -30,7 +31,8 @@ vi.mock("@/lib/equipes", () => ({
   isRoleOpen: (...a: unknown[]) => isRoleOpenMock(...a),
 }));
 
-// next/server minimal : NextResponse.json + after no-op (pas de contexte Next en test).
+// next/server minimal : NextResponse.json + `after` qui MÉMORISE la tâche
+// (notification du bot) pour que le test puisse l'exécuter et l'inspecter.
 vi.mock("next/server", () => ({
   NextResponse: {
     json: (body: unknown, init?: { status?: number; headers?: Record<string, string> }) =>
@@ -39,7 +41,9 @@ vi.mock("next/server", () => ({
         headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
       }),
   },
-  after: () => {},
+  after: (task: () => Promise<void>) => {
+    afterTasks.push(task);
+  },
 }));
 
 import { FIELD_MAX } from "@/lib/limits";
@@ -70,6 +74,7 @@ function post(body: Record<string, unknown>) {
 }
 
 beforeEach(() => {
+  afterTasks.length = 0;
   insertMock.mockClear();
   singleResult.value = { data: { id: "rec-id" }, error: null };
   rateLimitMock.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
@@ -151,6 +156,49 @@ describe("POST /api/recrutement", () => {
     });
     expect(res.status).toBe(200);
     expect(insertMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["un tableau", { motiv: ["M".repeat(200_000)] }],
+    ["un objet", { pays1: { x: "y" } }],
+    ["un nombre", { roster: 42 }],
+    ["un tableau sur un champ obligatoire", { nom: ["Jean"] }],
+  ])("champ texte envoyé comme %s → 400, AUCUNE insertion", async (_label, patch) => {
+    const res = await post({ ...VALID, ...patch });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: "invalidRequest" });
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it.each([[16.5], [0], [-3], [1e9], [[20]], [{ n: 20 }]])("âge invalide (%j) → 400", async (age) => {
+    const res = await post({ ...VALID, age });
+    expect(res.status).toBe(400);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("âge saisi en texte (« 20 ») → accepté, enregistré en nombre", async () => {
+    const res = await post({ ...VALID, age: "20" });
+    expect(res.status).toBe(200);
+    expect(insertMock).toHaveBeenCalledWith(expect.objectContaining({ age: 20 }));
+  });
+
+  it("le bot ne reçoit que des valeurs validées (chaînes nettoyées, facultatifs vides absents)", async () => {
+    vi.stubEnv("BOT_RECRUTEMENT_URL", "https://bot.example/recrutement");
+    const fetchMock = vi.fn(async () => new Response("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const res = await post({ ...VALID, pseudo: "  jean  ", motiv: "  Motivé @everyone <@&42>  ", roster: "" });
+      expect(res.status).toBe(200);
+      expect(afterTasks).toHaveLength(1);
+      await afterTasks[0]();
+      const sent = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+      expect(sent).toMatchObject({ pseudo: "jean", motiv: "Motivé @\u200beveryone <@\u200b&42>", age: "20" });
+      expect(sent).not.toHaveProperty("roster");
+      expect(sent).not.toHaveProperty("rltracker");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("erreur BDD à l'insertion → 500", async () => {

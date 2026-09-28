@@ -25,8 +25,13 @@ const DISCORD_API = "https://discord.com/api/v10";
  * Passé ce délai, le back-office redemande une connexion → le rôle est
  * revérifié auprès de Discord. C'est ce qui rend une révocation effective
  * sans avoir à interroger Discord à chaque page.
+ *
+ * 1 jour, et pas 7 : cette durée est exactement le sursis dont dispose une
+ * personne à qui on vient de retirer son rôle. Une semaine, c'est long quand
+ * un départ se passe mal. Le coût du raccourcissement est une reconnexion
+ * quotidienne pour le staff — un clic sur « Se connecter avec Discord ».
  */
-export const STAFF_TTL_DAYS = 7;
+export const STAFF_TTL_DAYS = 1;
 
 /** Scopes OAuth demandés à Discord. `guilds.members.read` autorise la lecture
  *  des rôles de l'utilisateur DANS CE SERVEUR uniquement (rien d'autre). */

@@ -27,11 +27,11 @@ vi.mock("next/server", () => ({
 
 import { POST } from "@/app/api/report-error/route";
 
-const post = (body: unknown, raw = false) =>
+const post = (body: unknown, raw = false, headers: Record<string, string> = {}) =>
   POST(
     new Request("https://x.test/api/report-error", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...headers },
       body: raw ? (body as string) : JSON.stringify(body),
     }),
   );
@@ -81,5 +81,20 @@ describe("POST /api/report-error", () => {
     expect(arg.message).toBe("Erreur client inconnue");
     expect(arg.stack).toHaveLength(4000);
     expect(arg.path).toHaveLength(300);
+  });
+
+  it("refuse un envoi qu'un AUTRE site fait faire au navigateur (Sec-Fetch-Site)", async () => {
+    for (const site of ["cross-site", "same-site", "none"]) {
+      const res = await post({ message: "x" }, false, { "sec-fetch-site": site });
+      expect(res.status, site).toBe(403);
+    }
+    expect(reportMock).not.toHaveBeenCalled();
+    expect(rateLimitMock).not.toHaveBeenCalled();
+  });
+
+  it("accepte nos propres pages (same-origin) et les clients sans l'en-tête", async () => {
+    expect((await post({ message: "a" }, false, { "sec-fetch-site": "same-origin" })).status).toBe(200);
+    expect((await post({ message: "b" })).status).toBe(200);
+    expect(reportMock).toHaveBeenCalledTimes(2);
   });
 });

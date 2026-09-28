@@ -14,10 +14,15 @@ export type SpamCheck = {
 
 export function checkSpam(body: { website?: unknown; elapsed?: unknown }): SpamCheck {
   const honeypot = String(body.website ?? "").trim();
-  const elapsed = Number(body.elapsed);
+  // Chaîne ou nombre seulement : Number(["5000"]) vaut 5000.
+  const elapsed =
+    typeof body.elapsed === "string" || typeof body.elapsed === "number" ? Number(body.elapsed) : NaN;
   return {
     spam: honeypot.length > 0,
-    // `elapsed > 0` évite un faux positif quand la valeur est absente/vide (0 ou NaN).
-    tooFast: Number.isFinite(elapsed) && elapsed > 0 && elapsed < MIN_FILL_MS,
+    // `elapsed` est OBLIGATOIRE : le formulaire l'envoie toujours une fois
+    // interactif (useElapsed). Absent, vide ou invalide, c'est qu'on n'est pas
+    // passé par le formulaire — avant, il suffisait de l'omettre pour sauter
+    // le délai minimum.
+    tooFast: !(Number.isFinite(elapsed) && elapsed >= MIN_FILL_MS),
   };
 }

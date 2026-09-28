@@ -19,7 +19,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 
 vi.mock("@/lib/ratelimit", () => ({
-  checkRateLimit: (...a: unknown[]) => rateLimitMock(...a),
+  checkFormRateLimit: (...a: unknown[]) => rateLimitMock(...a),
   getClientIp: () => "127.0.0.1",
 }));
 

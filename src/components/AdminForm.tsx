@@ -3,6 +3,8 @@
 import { useRef, useTransition } from "react";
 import { toast } from "sonner";
 
+import { oversizedUpload } from "@/lib/limits";
+
 /**
  * Formulaire du back-office : même `<form action={serverAction}>` qu'avant, plus
  * deux comportements qui manquaient.
@@ -34,6 +36,21 @@ export default function AdminForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [, startTransition] = useTransition();
 
+  // Image trop lourde : annoncée AVANT l'envoi (le serveur rejetterait la
+  // requête entière sans pouvoir expliquer pourquoi). Dans `onSubmit`, pas dans
+  // l'action : `preventDefault` y bloque l'envoi SANS que React réinitialise le
+  // formulaire, donc rien de ce qui a été saisi n'est perdu.
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const files = [...event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]')].flatMap(
+      (input) => [...(input.files ?? [])],
+    );
+    const tooBig = oversizedUpload(files);
+    if (tooBig) {
+      event.preventDefault();
+      toast.error(tooBig);
+    }
+  }
+
   function handleAction(formData: FormData) {
     startTransition(async () => {
       const run = Promise.resolve(action(formData));
@@ -59,7 +76,7 @@ export default function AdminForm({
   }
 
   return (
-    <form ref={formRef} action={handleAction} className={className}>
+    <form ref={formRef} action={handleAction} onSubmit={handleSubmit} className={className}>
       {children}
     </form>
   );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isCronAuthorized } from "@/lib/cron-auth";
 
 // Purge RGPD (minimisation / limitation de conservation).
 // Supprime les candidatures et messages support plus vieux que RETENTION_MONTHS.
@@ -17,14 +18,6 @@ export const dynamic = "force-dynamic";
 const RETENTION_MONTHS = 24;
 // Les IP anti-flood n'ont d'utilité qu'une minute : une heure suffit largement.
 const RATE_LIMIT_RETENTION_HOURS = 1;
-
-function isAuthorized(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  // Pas de secret configuré → on ne purge JAMAIS (fail-safe : mieux vaut ne rien
-  // supprimer qu'exposer un endpoint de suppression non authentifié).
-  if (!secret) return false;
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
 
 async function purge() {
   const admin = createAdminClient();
@@ -71,7 +64,7 @@ async function purge() {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ ok: false, error: "Non autorisé." }, { status: 401 });
   }
   try {

@@ -49,6 +49,18 @@ describe("next.config — images distantes", () => {
   });
 });
 
+describe("next.config — uploads du back-office", () => {
+  it("le corps d'une server action accepte une image au plafond (+ marge), sans dépasser Vercel", async () => {
+    const { UPLOAD_MAX_BYTES } = await import("@/lib/limits");
+    const config = await loadConfig("https://abcd1234.supabase.co");
+    const limit = config.experimental?.serverActions?.bodySizeLimit;
+    // Même unité que Next (bytes : 1 mb = 1024 × 1024 octets).
+    const bytes = typeof limit === "number" ? limit : Number.parseFloat(String(limit)) * 1024 * 1024;
+    expect(bytes).toBeGreaterThanOrEqual(UPLOAD_MAX_BYTES + 100 * 1024);
+    expect(bytes).toBeLessThanOrEqual(4.5 * 1024 * 1024);
+  });
+});
+
 describe("dépendances — versions corrigées", () => {
   const version = (pkg: string) =>
     (JSON.parse(readFileSync(join(process.cwd(), "node_modules", pkg, "package.json"), "utf8")) as { version: string })

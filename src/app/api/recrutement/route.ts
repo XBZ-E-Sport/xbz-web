@@ -4,9 +4,10 @@ import { isRoleOpen } from "@/lib/equipes";
 import { minAgeForCategory } from "@/content/recrutement";
 import { checkSpam } from "@/lib/antispam";
 import { hasConsent } from "@/lib/consent";
-import { findTooLong, tooLongMessage, FIELD_MAX } from "@/lib/limits";
+import { findTooLong, tooLongMessage, textField, FIELD_MAX } from "@/lib/limits";
 import { apiError } from "@/lib/apierror";
-import { checkRateLimit, getClientIp } from "@/lib/ratelimit";
+import { defuseMentions } from "@/lib/mentions";
+import { checkFormRateLimit, getClientIp } from "@/lib/ratelimit";
 
 type Payload = {
   categorie?: string;
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   // --- Limite de débit (anti-flood par IP) ---
-  const { allowed, retryAfter } = await checkRateLimit(getClientIp(request), "recrutement");
+  const { allowed, retryAfter } = await checkFormRateLimit(getClientIp(request), "recrutement");
   if (!allowed) {
     return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans une minute.", {
       headers: { "Retry-After": String(retryAfter) },
@@ -64,31 +65,39 @@ export async function POST(request: Request) {
     );
   }
 
-  const categorie = String(body.categorie ?? "").trim();
-  const role = String(body.role ?? "").trim();
-  const nom = String(body.nom ?? "").trim();
-  const age = Number(body.age);
-  const discord = String(body.discord ?? "").trim();
-  const pseudo = String(body.pseudo ?? "").trim();
-  const jeu = String(body.jeu ?? "").trim();
-
   // --- Validation serveur (on ne fait JAMAIS confiance au navigateur) ---
+  // Chaque champ texte DOIT être une chaîne : un tableau ou un objet est
+  // refusé ici, avant le contrôle des longueurs (cf. `textField`).
+  const fields = {
+    categorie: textField(body.categorie),
+    role: textField(body.role),
+    nom: textField(body.nom),
+    discord: textField(body.discord),
+    pseudo: textField(body.pseudo),
+    jeu: textField(body.jeu),
+    pays: textField(body.pays1),
+    roster: textField(body.roster),
+    rltracker: textField(body.rltracker),
+    exp: textField(body.exp),
+    motiv: textField(body.motiv),
+  };
+  if (Object.values(fields).some((v) => v === null)) {
+    return apiError(400, "invalidRequest", "Requête invalide.");
+  }
+  const { categorie, role, nom, discord, pseudo, jeu, pays, roster, rltracker, exp, motiv } =
+    fields as Record<keyof typeof fields, string>;
+
+  // Âge : un entier plausible, saisi en nombre ou en texte (« 17 »).
+  const age = typeof body.age === "number" || typeof body.age === "string" ? Number(body.age) : NaN;
   if (!categorie || !role || !nom || !discord || !pseudo || Number.isNaN(age)) {
     return apiError(400, "missingFields", "Champs obligatoires manquants.");
   }
+  if (!Number.isInteger(age) || age < 1 || age > 120) {
+    return apiError(400, "invalidRequest", "Requête invalide.");
+  }
 
   // Longueurs : le `maxLength` du navigateur se contourne en deux clics.
-  const tooLong = findTooLong({
-    nom,
-    pseudo,
-    discord,
-    jeu,
-    pays: body.pays1,
-    roster: body.roster,
-    rltracker: body.rltracker,
-    exp: body.exp,
-    motiv: body.motiv,
-  });
+  const tooLong = findTooLong({ nom, pseudo, discord, jeu, pays, roster, rltracker, exp, motiv });
   if (tooLong) {
     return apiError(422, "tooLong", tooLongMessage(tooLong), {
       params: { field: tooLong, max: FIELD_MAX[tooLong] },
@@ -118,14 +127,14 @@ export async function POST(request: Request) {
       role,
       nom,
       age,
-      pays_residence: String(body.pays1 ?? "").trim() || null,
+      pays_residence: pays || null,
       discord,
       pseudo,
       jeu: jeu || null,
-      rltracker: String(body.rltracker ?? "").trim() || null,
-      roster: String(body.roster ?? "").trim() || null,
-      experience: String(body.exp ?? "").trim() || null,
-      motivation: String(body.motiv ?? "").trim() || null,
+      rltracker: rltracker || null,
+      roster: roster || null,
+      experience: exp || null,
+      motivation: motiv || null,
       consent_at: new Date().toISOString(), // preuve de consentement RGPD
     })
     .select("id")
@@ -139,23 +148,27 @@ export async function POST(request: Request) {
   // --- 2) Notifier le staff sur Discord EN ARRIÈRE-PLAN (ne bloque pas la réponse) ---
   const botUrl = process.env.BOT_RECRUTEMENT_URL;
   if (botUrl) {
+    // Valeurs VALIDÉES uniquement (jamais le corps brut) : chaînes bornées,
+    // mentions Discord neutralisées. Un champ facultatif vide est omis (le bot
+    // affiche alors « N/A », comme pour une chaîne vide).
+    const text = (v: string) => (v ? defuseMentions(v) : undefined);
     const notif = {
       id: data.id,
       categorie,
       role,
-      nom,
+      nom: defuseMentions(nom),
       age: String(age),
-      pays1: body.pays1,
-      discord,
-      pseudo,
-      jeu,
+      pays1: text(pays),
+      discord: defuseMentions(discord),
+      pseudo: defuseMentions(pseudo),
+      jeu: defuseMentions(jeu),
       // Le bot lit `roster` en priorité et retombe sur `rang` : on envoie les
       // deux le temps de la transition, `rang` pourra disparaître ensuite.
-      roster: body.roster,
-      rang: body.roster,
-      exp: body.exp,
-      motiv: body.motiv,
-      rltracker: body.rltracker,
+      roster: text(roster),
+      rang: text(roster),
+      exp: text(exp),
+      motiv: text(motiv),
+      rltracker: text(rltracker),
     };
     after(async () => {
       try {

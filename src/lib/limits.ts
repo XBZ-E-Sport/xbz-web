@@ -53,6 +53,48 @@ export function findTooLong(values: Partial<Record<FieldName, unknown>>): FieldN
   return null;
 }
 
+/**
+ * Champ texte d'un corps JSON : la chaîne nettoyée, `""` si le champ est
+ * absent, `null` si la valeur n'est PAS une chaîne (tableau, objet, nombre…).
+ *
+ * À appliquer AVANT `findTooLong` : `findTooLong` ignore les non-chaînes, et
+ * `String(["A".repeat(200_000)])` redonne la chaîne entière — un tableau
+ * contournait donc le plafond de longueur, jusqu'en base et au bot Discord.
+ */
+export function textField(value: unknown): string | null {
+  if (value === undefined || value === null) return "";
+  return typeof value === "string" ? value.trim() : null;
+}
+
+// --- Uploads d'images du back-office -----------------------------------------
+// Une server action reçoit tout le formulaire dans UN corps de requête, et
+// Vercel refuse tout corps au-delà de 4,5 Mo avant même d'appeler le site.
+// 4 Mo par image laisse la marge des autres champs et de l'enveloppe
+// multipart ; `serverActions.bodySizeLimit` (next.config.ts) est réglé en
+// conséquence — sans lui, Next plafonnait à 1 Mo et une photo de téléphone
+// échouait sur un « Échec de l'enregistrement » sans explication.
+export const UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
+
+/** « 4 Mo », « 6,3 Mo » (espace insécable) : taille lisible pour un message. */
+export function formatMegabytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return `${(Math.round(mb * 10) / 10).toLocaleString("fr-FR")}\u00a0Mo`;
+}
+
+/**
+ * Premier fichier trop lourd d'un formulaire, en message prêt à afficher ;
+ * `null` si tout passe. Vérifié côté navigateur AVANT l'envoi : au-delà, la
+ * requête serait rejetée sans que le serveur puisse expliquer pourquoi.
+ */
+export function oversizedUpload(values: Iterable<FormDataEntryValue>): string | null {
+  for (const value of values) {
+    if (typeof value !== "string" && value.size > UPLOAD_MAX_BYTES) {
+      return `« ${value.name} » est trop lourde (${formatMegabytes(value.size)}, ${formatMegabytes(UPLOAD_MAX_BYTES)} maximum). Réduis-la ou exporte-la en JPEG ou WebP.`;
+    }
+  }
+  return null;
+}
+
 /** Message d'erreur prêt à renvoyer (422) pour un champ trop long. */
 export function tooLongMessage(field: FieldName): string {
   return `Le champ « ${FIELD_LABEL[field]} » est trop long (${FIELD_MAX[field]} caractères maximum).`;

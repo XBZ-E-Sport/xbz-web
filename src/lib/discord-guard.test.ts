@@ -113,8 +113,18 @@ describe("hasFreshDiscordStaff", () => {
   const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
   const DAY = 24 * 3600 * 1000;
 
-  it("accepte un verdict récent", () => {
-    expect(hasFreshDiscordStaff({ xbz_staff: true, xbz_staff_at: iso(DAY) })).toBe(true);
+  it("la TTL est d'un jour (sursis maximal d'un rôle Discord retiré)", () => {
+    // Le raccourcissement à 1 jour avait été commité dans une copie morte du
+    // module (discordguard.ts) : la prod est restée à 7 jours sans que rien
+    // ne le signale. Cette valeur est une décision de sécurité, pas un détail.
+    expect(STAFF_TTL_DAYS).toBe(1);
+  });
+
+  it("accepte un verdict encore dans la fenêtre", () => {
+    // Exprimé PAR RAPPORT à la TTL : une valeur en dur (« un jour ») changeait
+    // de sens le jour où la TTL a été raccourcie de 7 jours à 1.
+    const fresh = STAFF_TTL_DAYS * DAY - 60_000;
+    expect(hasFreshDiscordStaff({ xbz_staff: true, xbz_staff_at: iso(fresh) })).toBe(true);
   });
 
   it("refuse un verdict périmé (au-delà de la TTL)", () => {
