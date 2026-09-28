@@ -6,6 +6,17 @@ const withNextIntl = createNextIntlPlugin();
 
 const isDev = process.env.NODE_ENV === "development";
 
+// Hôte du projet Supabase du site (ex. abcd1234.supabase.co), lu au build.
+// `null` si la variable manque ou est invalide : aucune image distante n'est
+// alors optimisée (échec fermé plutôt qu'un joker ouvert à tous les projets).
+const supabaseHost = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname || null;
+  } catch {
+    return null;
+  }
+})();
+
 // --- Content Security Policy ---------------------------------------------
 // Tout en `self` par défaut. Le site n'embarque AUCUN script tiers ; les seules
 // sources externes sont Supabase (REST / Auth / Storage / Realtime) et les
@@ -74,15 +85,14 @@ const nextConfig: NextConfig = {
     // changent jamais sans un nouveau déploiement (leur URL contient la taille
     // et la qualité), un an est le bon ordre de grandeur.
     minimumCacheTTL: 31536000, // 1 an
-    // Photos des membres hébergées sur Supabase Storage (bucket public "joueurs").
-    // `*.supabase.co` couvre le sous-domaine du projet (ex: abcd1234.supabase.co).
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-        pathname: "/storage/v1/object/public/**",
-      },
-    ],
+    // Photos des membres, logos, médias : Supabase Storage (buckets publics),
+    // du SEUL projet du site. Un joker `*.supabase.co` laissait n'importe qui
+    // faire traiter par /_next/image une image hébergée sur SON propre projet
+    // Supabase — or l'optimiseur est une surface d'attaque (GHSA-2xp9-vwfh-vxw4 :
+    // exécution de code à distance via des fichiers AVIF, corrigée en 16.3.3).
+    remotePatterns: supabaseHost
+      ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }]
+      : [],
   },
   async redirects() {
     return [
