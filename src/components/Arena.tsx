@@ -5,9 +5,10 @@
  * 100 % CSS : rendu et animations vivent dans globals.css (section « COUCHE
  * ARÈNE »). Ce composant ne pose que le markup — composant serveur, sans état
  * ni hook, donc aucun JS envoyé au navigateur. Purement décoratif → masqué aux
- * lecteurs d'écran. Le CSS la coupe en mouvement réduit, à l'impression, en
- * contraste forcé ou renforcé et dans le back-office, et la fige quand une
- * surcouche (menu mobile, lightbox) est ouverte.
+ * lecteurs d'écran. En mouvement réduit, le CSS retire la bande et fige les
+ * éclats ; il masque la couche à l'impression, en contraste forcé ou renforcé
+ * et dans le back-office, et la fige quand une surcouche (menu mobile,
+ * lightbox) est ouverte.
  */
 export default function Arena() {
   return (

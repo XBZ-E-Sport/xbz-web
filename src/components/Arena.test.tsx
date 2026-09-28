@@ -17,8 +17,8 @@ import Arena from "@/components/Arena";
  * - On n'anime que transform/opacity (compositeur : ni layout ni paint).
  * - Aucun translate:/rotate:/scale: dans le même bloc qu'un transform :
  *   Lightning CSS (build de prod) les fusionne ou les supprime, sans bruit.
- * - Coupée en mouvement réduit, à l'impression, en contraste forcé/renforcé et
- *   dans le back-office.
+ * - Mouvement réduit : bande retirée, éclats IMMOBILES mais visibles. Masquée à
+ *   l'impression, en contraste forcé/renforcé et dans le back-office.
  * - Et surtout : vérifié sur le CSS COMPILÉ comme en prod (Tailwind + Lightning
  *   CSS), pas seulement sur la source — le piège « classe présente dans le
  *   HTML, absente du CSS » ne se voit qu'à cet endroit.
@@ -181,8 +181,28 @@ function checkSheet(label: string, css: () => string) {
       expect(has(base(".xbz-arena__sweep")!, "display", /^none$/)).toBe(false);
     });
 
+    it("mouvement réduit : bande retirée, éclats figés mais toujours visibles", () => {
+      const reduced = (b: Block) => b.at.some((m) => /prefers-reduced-motion:\s*reduce/.test(m));
+      const sweep = a.rules.find((b) => reduced(b) && b.prelude === ".xbz-arena__sweep" && has(b, "display", /^none$/));
+      expect(sweep).toBeDefined();
+      const still = a.rules.findIndex((b) => reduced(b) && b.prelude === ".xbz-arena__shard" && has(b, "animation", /^none$/));
+      expect(still).toBeGreaterThanOrEqual(0);
+      // Le décor reste : rien ne masque la couche ni les éclats dans ce mode.
+      const hidden = a.rules.filter(
+        (b) =>
+          reduced(b) &&
+          /\.xbz-arena(?:__shard)?(?![\w-])/.test(b.prelude) &&
+          (has(b, "display", /^none$/) || has(b, "visibility", /^hidden$/)),
+      );
+      expect(hidden.map((b) => b.prelude)).toEqual([]);
+      // Et aucune règle placée APRÈS ne relance une animation d'éclat.
+      const relaunch = a.rules
+        .slice(still + 1)
+        .filter((b) => /\.xbz-arena__shard/.test(b.prelude) && (has(b, "animation") || has(b, "animation-name")));
+      expect(relaunch.map((b) => b.prelude)).toEqual([]);
+    });
+
     it.each([
-      ["mouvement réduit", /prefers-reduced-motion:\s*reduce/],
       ["impression", /\bprint\b/],
       ["contraste forcé", /forced-colors:\s*active/],
       ["contraste renforcé", /prefers-contrast:\s*more/],

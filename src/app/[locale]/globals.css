@@ -193,7 +193,8 @@ h1, h2, h3 {
      scale: posé dans le MÊME bloc qu'un transform. La bande n'a donc que
      `transform` ; les éclats n'ont que rotate:/scale: (leur transform vient des
      keyframes). Garder cette séparation.
-   Masquée : mouvement réduit, impression, contraste forcé ou renforcé, back-office. */
+   Mouvement réduit : bande retirée, éclats immobiles (le décor reste, sans bouger).
+   Masquée : impression, contraste forcé ou renforcé, back-office. */
 .xbz-arena {
   /* Formes des éclats (SVG data-URI, autorisé par la CSP img-src data:) : trait
      fin non-scaling, arête vive, facette interne sur certaines. */
@@ -473,10 +474,22 @@ h1, h2, h3 {
   }
 }
 
-/* C'est de l'ambiance : rien à figer, la couche disparaît. En contraste forcé,
-   les SVG resteraient visibles sur un fond uni ; qui demande plus de contraste
-   n'a pas besoin d'une lumière qui passe derrière le texte. */
-@media (prefers-reduced-motion: reduce), print, (forced-colors: active), (prefers-contrast: more) {
+/* Mouvement réduit : le décor reste, mais rien ne bouge. La bande (qui n'est
+   qu'un mouvement) disparaît ; les éclats restent à leur place, à leur opacité
+   de repos, sans dérive ni reflet. `animation: none` (et pas le 0.001ms global
+   plus bas) : aucune animation n'est créée, donc aucun état final à figer. */
+@media (prefers-reduced-motion: reduce) {
+  .xbz-arena__sweep {
+    display: none;
+  }
+  .xbz-arena__shard {
+    animation: none;
+  }
+}
+/* Impression, contraste forcé ou renforcé : la couche disparaît. En contraste
+   forcé, les SVG resteraient visibles sur un fond uni ; qui demande plus de
+   contraste n'a pas besoin d'un décor derrière le texte. */
+@media print, (forced-colors: active), (prefers-contrast: more) {
   .xbz-arena {
     display: none;
   }
