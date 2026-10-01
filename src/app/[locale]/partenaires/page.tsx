@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getPartners, type Partner } from "@/lib/partenaires";
+import { isEmptyListPage } from "@/lib/empty-pages";
 import { pageMetadata } from "@/lib/site";
 
 // Rendu statique régénéré en arrière-plan (ISR). Les partenaires viennent de la
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: t("metaDescription"),
     path: "/partenaires",
     locale,
+    noindex: await isEmptyListPage("/partenaires"),
   });
 }
 

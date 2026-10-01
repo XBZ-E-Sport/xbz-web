@@ -9,14 +9,22 @@ import { getStructureStats } from "@/lib/equipes";
 import { getPartners } from "@/lib/partenaires";
 import { getNextMatch, formatMatchDateTime } from "@/lib/matchs";
 import { jsonLdString } from "@/lib/jsonld";
-import { siteConfig, absoluteUrl } from "@/lib/site";
+import { siteConfig, absoluteUrl, pageMetadata } from "@/lib/site";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "home" });
-  return { description: t("metaDescription") };
+  const tSite = await getTranslations({ locale, namespace: "site" });
+  // Métadonnées complètes, comme les autres pages : la description seule
+  // laissait l'og:description et la carte X sur le texte générique du layout.
+  return pageMetadata({
+    title: `${siteConfig.name} — ${tSite("tagline")}`,
+    description: t("metaDescription"),
+    path: "/",
+    locale,
+  });
 }
 
 // Rendu statique régénéré en arrière-plan (ISR), au lieu d'un rendu serveur
@@ -49,6 +57,17 @@ const orgJsonLd = (description: string) => ({
   ...(siteConfig.discord ? { sameAs: [siteConfig.discord] } : {}),
 });
 
+// JSON-LD WebSite : c'est ce que Google lit pour afficher « XBZ Esport » comme
+// nom du site dans ses résultats, plutôt que le nom de domaine.
+const websiteJsonLd = (locale: string) => ({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteConfig.name,
+  alternateName: siteConfig.shortName,
+  url: `${siteConfig.url}/`,
+  inLanguage: locale,
+});
+
 export default async function Home({ params }: PageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -76,6 +95,10 @@ export default async function Home({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(orgJsonLd(tSite("description"))) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd(locale)) }}
       />
 
       {/* ===== HERO ===== */}

@@ -8,12 +8,11 @@ export const siteConfig = {
   shortName: "XBZ",
   description:
     "XBZ Esport — structure esport compétitive sur Rocket League. Rejoins une équipe motivée, sérieuse et ambitieuse.",
-  // Repli sur le domaine RÉEL. L'ancien repli, `xbz-esport.fr`, n'est pas
-  // enregistré (vérifié : injoignable) : si la variable venait à manquer sur un
-  // environnement Vercel, tous les canonicals, le sitemap, le JSON-LD et les
-  // images Open Graph auraient pointé vers un domaine mort, sans rien casser
-  // visiblement. À remplacer le jour où le nom de domaine sera acheté.
-  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://xbz-web.vercel.app").replace(/\/$/, ""),
+  // Repli sur le domaine de PRODUCTION : si la variable venait à manquer sur
+  // un environnement Vercel, canonicals, sitemap, JSON-LD et images Open Graph
+  // pointeraient sinon vers une autre adresse — l'ancien repli était
+  // `xbz-web.vercel.app`, un doublon du site aux yeux de Google.
+  url: (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.xbz-esport.org").replace(/\/$/, ""),
   locale: "fr_FR",
   discord: process.env.NEXT_PUBLIC_DISCORD_URL ?? "",
 } as const;
@@ -32,6 +31,19 @@ export function absoluteUrl(path = "/"): string {
  */
 export function localizedPath(path: string, locale: string): string {
   return path === "/" ? `/${locale}` : `/${locale}${path}`;
+}
+
+/**
+ * hreflang d'une page : ses deux langues, plus `x-default` — la version servie
+ * à un visiteur dont la langue n'est ni le français ni l'anglais (le français,
+ * langue principale du club). Sans `x-default`, Google choisit seul.
+ */
+export function languageAlternates(path: string): Record<string, string> {
+  return {
+    fr: localizedPath(path, "fr"),
+    en: localizedPath(path, "en"),
+    "x-default": localizedPath(path, "fr"),
+  };
 }
 
 /** Codes Open Graph par langue (`og:locale` attend une variante régionale). */
@@ -57,8 +69,16 @@ export function pageMetadata(opts: {
   path: string; // chemin relatif SANS préfixe de langue, ex "/actualite/mon-slug"
   locale?: string;
   ogType?: "website" | "article";
+  /** Date de publication (AAAA-MM-JJ) d'un article : `article:published_time`. */
+  publishedTime?: string;
+  /**
+   * Page vide (aucun partenaire, aucun match…) : hors de l'index, mais ses
+   * liens restent suivis. Une page « bientôt disponible » indexée est une page
+   * pauvre aux yeux de Google ; elle revient d'elle-même quand elle se remplit.
+   */
+  noindex?: boolean;
 }): Metadata {
-  const { title, description, path, locale = "fr", ogType = "website" } = opts;
+  const { title, description, path, locale = "fr", ogType = "website", publishedTime, noindex = false } = opts;
   const canonical = localizedPath(path, locale);
   const shared = {
     url: canonical,
@@ -70,15 +90,12 @@ export function pageMetadata(opts: {
   return {
     title,
     description,
-    alternates: {
-      canonical,
-      // hreflang : dit à Google que ces deux URL sont la même page, en deux langues.
-      languages: { fr: localizedPath(path, "fr"), en: localizedPath(path, "en") },
-    },
+    alternates: { canonical, languages: languageAlternates(path) },
     openGraph:
       ogType === "article"
-        ? { type: "article", ...shared }
+        ? { type: "article", ...shared, ...(publishedTime && { publishedTime }) }
         : { type: "website", ...shared },
     twitter: { card: "summary_large_image", title, description },
+    ...(noindex && { robots: { index: false, follow: true } }),
   };
 }

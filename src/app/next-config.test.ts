@@ -61,6 +61,28 @@ describe("next.config — uploads du back-office", () => {
   });
 });
 
+describe("next.config — version des bannières Open Graph", () => {
+  it("est figée au build à partir du commit déployé (7 caractères)", async () => {
+    vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "0123456789abcdef");
+    try {
+      const config = await loadConfig(original);
+      expect(config.env?.OG_BUILD_VERSION).toBe("0123456");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("vaut « local » hors Vercel", async () => {
+    vi.stubEnv("VERCEL_GIT_COMMIT_SHA", undefined as unknown as string);
+    try {
+      const config = await loadConfig(original);
+      expect(config.env?.OG_BUILD_VERSION).toBe("local");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
+
 describe("dépendances — versions corrigées", () => {
   const version = (pkg: string) =>
     (JSON.parse(readFileSync(join(process.cwd(), "node_modules", pkg, "package.json"), "utf8")) as { version: string })

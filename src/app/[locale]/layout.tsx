@@ -8,7 +8,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Arena from "@/components/Arena";
-import { siteConfig, localizedPath } from "@/lib/site";
+import { siteConfig, localizedPath, languageAlternates } from "@/lib/site";
 import { routing } from "@/i18n/routing";
 
 // Polices de la charte, auto-hébergées par Next (RGPD-friendly), exposées en
@@ -79,7 +79,7 @@ export async function generateMetadata({ params }: Omit<LayoutProps, "children">
     alternates: {
       canonical: localizedPath("/", locale),
       // hreflang : indique à Google que ces deux pages sont la même, en deux langues.
-      languages: { fr: localizedPath("/", "fr"), en: localizedPath("/", "en") },
+      languages: languageAlternates("/"),
     },
     openGraph: {
       type: "website",

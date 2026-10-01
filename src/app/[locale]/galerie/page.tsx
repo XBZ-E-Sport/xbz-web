@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getMedias } from "@/lib/medias";
 import MediaGallery from "@/components/MediaGallery";
+import { isEmptyListPage } from "@/lib/empty-pages";
 import { pageMetadata } from "@/lib/site";
 
 // Rendu statique régénéré en arrière-plan (ISR). Les médias viennent de la base ;
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: t("metaDescription"),
     path: "/galerie",
     locale,
+    noindex: await isEmptyListPage("/galerie"),
   });
 }
 

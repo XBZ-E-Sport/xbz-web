@@ -22,6 +22,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 import { siteConfig } from "@/lib/site";
+import { clamp } from "@/lib/text";
 
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
@@ -104,18 +105,8 @@ function siteHost(): string {
   }
 }
 
-/**
- * Coupe proprement un texte trop long (les titres/descriptions viennent de la
- * BDD) : sur une fin de mot si possible, sans ponctuation orpheline avant « … ».
- */
-export function clamp(value: string, max: number): string {
-  const t = value.trim();
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max - 1);
-  const space = cut.lastIndexOf(" ");
-  const head = space > max * 0.6 ? cut.slice(0, space) : cut;
-  return `${head.replace(/[\s,;:.!?·–—-]+$/u, "")}…`;
-}
+// Coupe propre des textes trop longs : partagée avec les métadonnées (src/lib/text.ts).
+export { clamp };
 
 /** Taille du titre (Bruno Ace SC est large) adaptée à sa longueur. */
 function titleSize(length: number): number {

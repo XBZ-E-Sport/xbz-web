@@ -180,8 +180,8 @@
     "empty": "L’effectif arrive bientôt."
   },
   "equipeDetail": {
-    "metaRoster": "L'effectif du {name} de XBZ Esport.",
-    "metaPole": "Les membres du pôle {name} de XBZ Esport.",
+    "metaRoster": "Découvre l'effectif {name} de XBZ Esport : ses joueurs, leurs rôles, leurs rangs et les prochains matchs de l'équipe.",
+    "metaPole": "Découvre les membres du pôle {name} de XBZ Esport : les personnes qui font vivre le club, leurs rôles et leurs parcours.",
     "backToTeams": "Toutes les équipes",
     "poleEsport": "Pôle esport",
     "poleStaff": "Pôle staff",
@@ -192,7 +192,7 @@
   },
   "joueur": {
     "metaNotFound": "Membre introuvable — XBZ Esport",
-    "metaFallback": "{pseudo}{name}, membre de XBZ Esport.",
+    "metaFallback": "{pseudo}{name}, membre de XBZ Esport ({team}) : découvre son profil, son rang, son palmarès et ses réseaux.",
     "rank": "Rang",
     "country": "Pays",
     "honours": "PALMARÈS"
@@ -215,6 +215,7 @@
   },
   "article": {
     "metaNotFound": "Article introuvable — XBZ Esport",
+    "metaFallback": "{title} : à lire dans l'actualité de XBZ Esport — résultats, recrutement et coulisses du club esport.",
     "backToNews": "Retour aux actualités",
     "by": "Par {author}",
     "ctaText": "Envie de rejoindre l’aventure ?",
@@ -576,6 +577,11 @@
       "title": "Conditions générales de vente",
       "subtitle": "Les CGV de la boutique XBZ Esport."
     },
+    "carrieres": {
+      "eyebrow": "Carrières",
+      "title": "Nos offres d'emploi",
+      "subtitle": "XBZ Esport recrute : découvre les postes ouverts et rejoins l'aventure."
+    },
     "articleNotFound": "Article introuvable"
   },
   "playerRoles": {
@@ -664,6 +670,7 @@
   },
   "offerDetail": {
     "metaNotFound": "Offre introuvable — XBZ Esport",
+    "metaFallback": "XBZ Esport recrute : {title}. Découvre les missions, le profil recherché et les modalités, puis postule en ligne.",
     "back": "Toutes les offres",
     "postedOn": "Publiée le {date}",
     "contractType": "Type de contrat",

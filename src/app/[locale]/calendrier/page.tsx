@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getMatchBoards, type Match } from "@/lib/matchs";
 import MatchCard, { type MatchLabels } from "@/components/MatchCard";
+import { isEmptyListPage } from "@/lib/empty-pages";
 import { pageMetadata } from "@/lib/site";
 
 // Rendu statique régénéré en arrière-plan (ISR). Les matchs viennent de la base ;
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description: t("metaDescription"),
     path: "/calendrier",
     locale,
+    noindex: await isEmptyListPage("/calendrier"),
   });
 }
 

@@ -6,6 +6,7 @@ import { formatOfferLocation, getOfferBySlug, getOfferSlugs, jobPostingJsonLd, t
 import { formatDate } from "@/lib/format";
 import { routing } from "@/i18n/routing";
 import { jsonLdString } from "@/lib/jsonld";
+import { breadcrumbJsonLd, pageDescription } from "@/lib/seo";
 import { pageMetadata } from "@/lib/site";
 
 // ISR : la fiche d'offre est prégénérée au build (slugs connus) et régénérée en
@@ -23,14 +24,16 @@ type PageProps = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale, slug } = await params;
+  const t = await getTranslations({ locale, namespace: "offerDetail" });
   const offer = await getOfferBySlug(slug, locale);
-  if (!offer) {
-    const t = await getTranslations({ locale, namespace: "offerDetail" });
-    return { title: t("metaNotFound") };
-  }
+  if (!offer) return { title: t("metaNotFound") };
   return pageMetadata({
     title: `${offer.title} — XBZ Esport`,
-    description: offer.excerpt,
+    // Le résumé, sinon le premier paragraphe de la description assez riche.
+    description: pageDescription(
+      [offer.excerpt, ...offer.description],
+      t("metaFallback", { title: offer.title }),
+    ),
     path: `/carrieres/${offer.slug}`,
     locale,
   });
@@ -67,6 +70,16 @@ export default async function OfferPage({ params }: PageProps) {
   // Sur la page de la langue par défaut SEULEMENT : la même offre publiée aussi
   // sur /en en ferait deux annonces (Indeed : une URL unique par offre).
   const jsonLd = locale === routing.defaultLocale ? jobPostingJsonLd(offer, locale) : null;
+  // Le fil d'Ariane, lui, vaut pour les deux langues.
+  const tNav = await getTranslations({ locale, namespace: "nav" });
+  const breadcrumb = breadcrumbJsonLd(
+    [
+      { name: tNav("home"), path: "/" },
+      { name: tNav("carrieres"), path: "/carrieres" },
+      { name: offer.title, path: `/carrieres/${offer.slug}` },
+    ],
+    locale,
+  );
 
   const location = formatOfferLocation(offer, locale, t("remoteLocation"));
   const salary = formatSalary(offer, locale, tPeriod(offer.salaryPeriod));
@@ -101,6 +114,10 @@ export default async function OfferPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }}
         />
       )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
+      />
 
       <Link
         href="/carrieres"

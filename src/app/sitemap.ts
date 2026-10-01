@@ -1,18 +1,22 @@
 import type { MetadataRoute } from "next";
 
 import { getArticles } from "@/lib/actualite";
+import { emptyListPages } from "@/lib/empty-pages";
 import { getEquipesUrls } from "@/lib/equipes";
 import { getOffers } from "@/lib/offres";
 import { absoluteUrl, localizedPath } from "@/lib/site";
 import { routing } from "@/i18n/routing";
 
-// Généré à la demande : le sitemap lit la base (rosters/pôles/joueurs) → pas de
-// dépendance BDD au build (cohérent avec les pages /equipes en force-dynamic).
+// Généré à la demande : le sitemap lit la base (rosters/pôles/joueurs, pages
+// vides) → pas de dépendance BDD au build. Les lectures sont mises en cache.
 export const dynamic = "force-dynamic";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
+// Pas de `lastModified` sur les pages fixes ni sur les équipes : il valait
+// « maintenant » à chaque lecture. Une date qui change sans que la page change
+// apprend à Google à ignorer TOUTES les dates du sitemap, y compris celles,
+// vraies, des articles et des offres. Mieux vaut aucune date qu'une fausse.
 
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Pages publiques principales (hors back-office).
   const routes: { path: string; priority: number; changeFrequency: "weekly" | "monthly" }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
@@ -41,22 +45,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * page en deux langues, au lieu de deux pages concurrentes.
    */
   const localized = (path: string) => ({
-    languages: Object.fromEntries(routing.locales.map((l) => [l, url(path, l)])),
+    languages: {
+      ...Object.fromEntries(routing.locales.map((l) => [l, url(path, l)])),
+      // Comme le hreflang des pages (`languageAlternates`) : les deux doivent concorder.
+      "x-default": url(path, routing.defaultLocale),
+    },
   });
 
   /** Le français reste la langue principale : les autres passent juste après. */
   const rank = (priority: number, locale: string) =>
     locale === routing.defaultLocale ? priority : priority * 0.9;
 
-  const staticEntries: MetadataRoute.Sitemap = routes.flatMap(({ path, priority, changeFrequency }) =>
-    routing.locales.map((locale) => ({
-      url: url(path, locale),
-      lastModified: now,
-      changeFrequency,
-      priority: rank(priority, locale),
-      alternates: localized(path),
-    })),
-  );
+  // Une page de liste vide (aucun partenaire, aucun match…) est en `noindex` :
+  // la proposer à l'exploration enverrait un signal contradictoire.
+  const empty = await emptyListPages();
+  const staticEntries: MetadataRoute.Sitemap = routes
+    .filter(({ path }) => !empty.has(path))
+    .flatMap(({ path, priority, changeFrequency }) =>
+      routing.locales.map((locale) => ({
+        url: url(path, locale),
+        changeFrequency,
+        priority: rank(priority, locale),
+        alternates: localized(path),
+      })),
+    );
 
   // Pages d'articles (dérivées de la même source que la page Actualité).
   // La langue n'a pas d'importance ici : seuls les slugs sont utilisés, et ils
@@ -73,16 +85,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   });
 
-  // Pages /equipes/* (rosters, pôles, joueurs/membres) lues en base.
-  const equipesEntries: MetadataRoute.Sitemap = (await getEquipesUrls()).flatMap((path) =>
-    routing.locales.map((locale) => ({
-      url: url(path, locale),
-      lastModified: now,
-      changeFrequency: "weekly" as const,
-      priority: rank(0.4, locale),
-      alternates: localized(path),
-    })),
+  // Pages /equipes/* (rosters, pôles, joueurs/membres) lues en base. Une
+  // équipe sans aucun membre est en `noindex` (voir sa page) : on la retire.
+  // Aucun membre nulle part, en revanche, c'est une lecture des membres qui a
+  // échoué, pas un club vide : on garde alors toutes les équipes.
+  const equipesUrls = await getEquipesUrls();
+  const withMembers = new Set(
+    equipesUrls.map((u) => u.split("/")).filter((p) => p.length === 4).map((p) => p[2]),
   );
+  const equipesEntries: MetadataRoute.Sitemap = equipesUrls
+    .filter((path) => {
+      const parts = path.split("/"); // ["", "equipes", équipe] ou [..., membre]
+      return parts.length !== 3 || withMembers.size === 0 || withMembers.has(parts[2]);
+    })
+    .flatMap((path) =>
+      routing.locales.map((locale) => ({
+        url: url(path, locale),
+        changeFrequency: "weekly" as const,
+        priority: rank(0.4, locale),
+        alternates: localized(path),
+      })),
+    );
 
   // Offres d'emploi : c'est par le sitemap qu'Indeed découvre les URL à crawler.
   const offers = await getOffers(routing.defaultLocale);

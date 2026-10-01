@@ -5,6 +5,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getPlayer, type Player } from "@/lib/roster";
 import { getJoueurRoutes, getPoleBySlug } from "@/lib/equipes";
+import { jsonLdString } from "@/lib/jsonld";
+import { breadcrumbJsonLd, pageDescription } from "@/lib/seo";
 import { pageMetadata } from "@/lib/site";
 import Flag from "@/components/Flag";
 
@@ -60,14 +62,21 @@ export async function generateMetadata({ params }: PageProps) {
   const res = await resolveMember(roster, joueur, locale);
   if (!res) return { title: t("metaNotFound") };
   const { player, parent } = res;
+  const tRole = await getTranslations({ locale, namespace: "playerRoles" });
+  const role = tRole.has(player.role) ? tRole(player.role) : player.role;
   return pageMetadata({
     title: `${player.pseudo} — XBZ Esport`,
-    description:
-      player.bio ??
+    // La bio si elle dit vraiment quelque chose (« el discordos » ne décrivait
+    // pas la fiche), sinon une phrase-type qui situe le membre dans le club.
+    description: pageDescription(
+      [player.bio],
       t("metaFallback", {
         pseudo: player.pseudo,
         name: player.nom ? ` (${player.nom})` : "",
+        // Pour un pôle, le pôle EST le rôle (même règle que l'en-tête de la fiche).
+        team: parent.kind === "pole" ? parent.name : `${role} · ${parent.name}`,
       }),
+    ),
     path: `/equipes/${parent.slug}/${player.slug}`,
     locale,
   });
@@ -100,8 +109,23 @@ export default async function PlayerPage({ params }: PageProps) {
     player.pays && { label: t("country"), value: player.pays },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  // Fil d'Ariane schema.org : Accueil › Équipes › {roster ou pôle} › {membre}.
+  const breadcrumb = breadcrumbJsonLd(
+    [
+      { name: tNav("home"), path: "/" },
+      { name: tNav("equipes"), path: "/equipes" },
+      { name: parent.name, path: `/equipes/${parent.slug}` },
+      { name: player.pseudo, path: `/equipes/${parent.slug}/${player.slug}` },
+    ],
+    locale,
+  );
+
   return (
     <div className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
+      />
       <Link
         href={`/equipes/${parent.slug}`}
         locale={locale}

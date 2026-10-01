@@ -8,7 +8,17 @@ import { join } from "node:path";
 // variable manquante que personne n'a vue passer.
 
 // Fournies par la plateforme (Node, Vercel, GitHub Actions) : rien à documenter.
-const PROVIDED_BY_PLATFORM = new Set(["NODE_ENV", "CI", "VERCEL", "VERCEL_ENV", "VERCEL_URL"]);
+const PROVIDED_BY_PLATFORM = new Set([
+  "NODE_ENV",
+  "CI",
+  "VERCEL",
+  "VERCEL_ENV",
+  "VERCEL_URL",
+  // Commit déployé : versionne les adresses des bannières Open Graph.
+  "VERCEL_GIT_COMMIT_SHA",
+  // Pas une variable d'environnement : posée au build par next.config.ts (`env`).
+  "OG_BUILD_VERSION",
+]);
 
 const SCANNED_DIRS = ["src", "e2e"];
 const SCANNED_FILES = ["next.config.ts", "playwright.config.ts", "vitest.config.mts"];

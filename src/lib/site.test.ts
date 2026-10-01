@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import { siteConfig, absoluteUrl, localizedPath, pageMetadata } from "@/lib/site";
 
@@ -53,13 +53,37 @@ describe("pageMetadata", () => {
     expect((m.openGraph as { locale?: string }).locale).toBe("en_US");
   });
 
-  it("déclare les deux langues en hreflang, quelle que soit la page rendue", () => {
+  it("déclare les deux langues en hreflang, plus x-default, quelle que soit la page rendue", () => {
     // Sans ces alternates, Google verrait deux pages concurrentes au lieu d'une
-    // même page en deux langues.
+    // même page en deux langues. `x-default` : la version des autres langues.
     for (const locale of ["fr", "en"]) {
       const m = pageMetadata({ title: "T", description: "D", path: "/boutique", locale });
-      expect(m.alternates?.languages).toEqual({ fr: "/fr/boutique", en: "/en/boutique" });
+      expect(m.alternates?.languages).toEqual({
+        fr: "/fr/boutique",
+        en: "/en/boutique",
+        "x-default": "/fr/boutique",
+      });
     }
+  });
+
+  it("reste indexable par défaut, et sort de l'index sur demande (liens suivis)", () => {
+    expect(pageMetadata({ title: "T", description: "D", path: "/galerie" }).robots).toBeUndefined();
+    const m = pageMetadata({ title: "T", description: "D", path: "/galerie", noindex: true });
+    expect(m.robots).toEqual({ index: false, follow: true });
+  });
+
+  it("date un article (article:published_time), et seulement un article", () => {
+    const article = pageMetadata({
+      title: "A",
+      description: "D",
+      path: "/actualite/a",
+      ogType: "article",
+      publishedTime: "2026-09-01",
+    });
+    expect((article.openGraph as { publishedTime?: string }).publishedTime).toBe("2026-09-01");
+
+    const page = pageMetadata({ title: "A", description: "D", path: "/boutique", publishedTime: "2026-09-01" });
+    expect((page.openGraph as { publishedTime?: string }).publishedTime).toBeUndefined();
   });
 
   it("supporte le type Open Graph « article »", () => {
@@ -72,5 +96,33 @@ describe("pageMetadata", () => {
     });
     expect((m.openGraph as { type?: string }).type).toBe("article");
     expect(m.alternates?.canonical).toBe("/en/actualite/mon-article");
+  });
+});
+
+describe("siteConfig.url", () => {
+  it("retombe sur le domaine de production si la variable manque", async () => {
+    // L'ancien repli (`xbz-web.vercel.app`) faisait du site un doublon de
+    // lui-même aux yeux de Google le jour où la variable manquait.
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", undefined as unknown as string);
+    vi.resetModules();
+    try {
+      const { siteConfig: fresh } = await import("@/lib/site");
+      expect(fresh.url).toBe("https://www.xbz-esport.org");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it("retire le slash final de la variable", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://exemple.test/");
+    vi.resetModules();
+    try {
+      const { siteConfig: fresh } = await import("@/lib/site");
+      expect(fresh.url).toBe("https://exemple.test");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 });

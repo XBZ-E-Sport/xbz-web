@@ -1,30 +1,29 @@
 import { getTranslations } from "next-intl/server";
 
-import { ogHomeImage, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
-import { routing } from "@/i18n/routing";
+import { ogHomeImage } from "@/lib/og";
+import { OG_DEPLOY_VERSION, ogImageMetadata, withLocale } from "@/lib/og-routes";
+import { siteConfig } from "@/lib/site";
 
 // Bannière affichée lors du partage d'un lien XBZ (Discord, Twitter/X, etc.) :
 // la composition du hero (corbeau, XBZ ESPORT, slogan, CTA), aux polices de la
-// charte — voir src/lib/og.tsx.
-// `alt` doit rester une constante statique (contrainte Next).
-// Bannière fixe : rien ne dépend de la requête. Le segment `[locale]` empêche
-// Next d'inférer le prérendu, on le déclare donc explicitement (une image par
-// langue, générée au build) — comme avant l'i18n.
+// charte — voir src/lib/og.tsx. Identifiant versionné et texte alternatif
+// traduit : voir src/lib/og-routes.ts.
+// Bannière fixe : rien ne dépend de la requête. Rendue à la première demande
+// dans chaque langue, puis servie depuis le cache jusqu'au déploiement suivant
+// (`force-static` : le segment `[locale]` empêche Next de l'inférer).
 export const dynamic = "force-static";
 
-export const alt = "XBZ Esport — structure esport compétitive Rocket League";
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
+type Props = { params: Promise<{ locale: string }> | { locale: string } };
 
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
+export async function generateImageMetadata({ params }: Props) {
+  // Appel du build, sans langue : rien à prégénérer (voir withLocale).
+  const resolved = await withLocale(params);
+  if (!resolved) return [];
+  const t = await getTranslations({ locale: resolved.locale, namespace: "og" });
+  return ogImageMetadata(OG_DEPLOY_VERSION, `${siteConfig.name} — ${t("home.subtitle")}`);
 }
 
-export default async function OpengraphImage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function OpengraphImage({ params }: Props) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "og" });
   const tHome = await getTranslations({ locale, namespace: "home" });

@@ -4,7 +4,9 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getRosterBySlug } from "@/lib/roster";
 import { getEquipeSlugs, getPoleBySlug } from "@/lib/equipes";
+import { jsonLdString } from "@/lib/jsonld";
 import { getRosterMatchBoards } from "@/lib/matchs";
+import { breadcrumbJsonLd, pageDescription } from "@/lib/seo";
 import { pageMetadata } from "@/lib/site";
 import PlayerCard from "@/components/PlayerCard";
 import MatchCard, { type MatchLabels } from "@/components/MatchCard";
@@ -36,22 +38,27 @@ export async function generateMetadata({ params }: PageProps) {
   const { locale, roster: slug } = await params;
   const t = await getTranslations({ locale, namespace: "equipeDetail" });
 
+  // Description saisie au back-office si elle décrit vraiment l'équipe, sinon
+  // une phrase-type (« Competitive team. » ne disait rien à personne). Une
+  // équipe sans membre n'affiche qu'un message d'attente : hors de l'index.
   const roster = await getRosterBySlug(slug, locale);
   if (roster) {
     return pageMetadata({
       title: `${roster.name} — XBZ Esport`,
-      description: roster.description ?? t("metaRoster", { name: roster.name }),
+      description: pageDescription([roster.description], t("metaRoster", { name: roster.name })),
       path: `/equipes/${roster.slug}`,
       locale,
+      noindex: roster.players.length === 0,
     });
   }
   const pole = await getPoleBySlug(slug, locale);
   if (pole) {
     return pageMetadata({
       title: `${pole.name} — XBZ Esport`,
-      description: pole.description ?? t("metaPole", { name: pole.name }),
+      description: pageDescription([pole.description], t("metaPole", { name: pole.name })),
       path: `/equipes/${pole.slug}`,
       locale,
+      noindex: pole.members.length === 0,
     });
   }
   const tNotFound = await getTranslations({ locale, namespace: "notFound" });
@@ -73,6 +80,7 @@ export default async function EquipeDetailPage({ params }: PageProps) {
       <DetailLayout
         backLabel={t("backToTeams")}
         locale={locale}
+        breadcrumb={await equipeBreadcrumb(locale, roster.name, roster.slug)}
         eyebrow={roster.rank}
         title={roster.name}
         description={roster.description}
@@ -99,6 +107,7 @@ export default async function EquipeDetailPage({ params }: PageProps) {
       <DetailLayout
         backLabel={t("backToTeams")}
         locale={locale}
+        breadcrumb={await equipeBreadcrumb(locale, pole.name, pole.slug)}
         eyebrow={pole.category === "esport" ? t("poleEsport") : t("poleStaff")}
         title={pole.name}
         description={pole.description}
@@ -121,6 +130,19 @@ export default async function EquipeDetailPage({ params }: PageProps) {
   notFound();
 }
 
+/** Fil d'Ariane schema.org : Accueil › Équipes › {équipe}. */
+async function equipeBreadcrumb(locale: string, name: string, slug: string) {
+  const tNav = await getTranslations({ locale, namespace: "nav" });
+  return breadcrumbJsonLd(
+    [
+      { name: tNav("home"), path: "/" },
+      { name: tNav("equipes"), path: "/equipes" },
+      { name, path: `/equipes/${slug}` },
+    ],
+    locale,
+  );
+}
+
 function DetailLayout({
   eyebrow,
   title,
@@ -130,6 +152,7 @@ function DetailLayout({
   children,
   backLabel,
   locale,
+  breadcrumb,
   after,
 }: {
   eyebrow?: string | null;
@@ -143,11 +166,17 @@ function DetailLayout({
   // sous-composant. Ils viennent du corps de la page, qui a la langue.
   backLabel: string;
   locale: string;
+  /** Données structurées du fil d'Ariane (BreadcrumbList). */
+  breadcrumb: object;
   /** Contenu additionnel sous les membres (ex. les matchs d'un roster). */
   after?: React.ReactNode;
 }) {
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumb) }}
+      />
       <Link
         href="/equipes"
         locale={locale}

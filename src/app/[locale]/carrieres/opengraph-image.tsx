@@ -7,6 +7,6 @@ import { pageOgRoute } from "@/lib/og-routes";
 // depuis le cache jusqu'au déploiement suivant (`force-static`).
 export const dynamic = "force-static";
 
-const route = pageOgRoute("recrutement");
+const route = pageOgRoute("carrieres");
 export const generateImageMetadata = route.generateImageMetadata;
 export default route.Image;

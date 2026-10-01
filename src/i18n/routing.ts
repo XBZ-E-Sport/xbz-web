@@ -49,6 +49,11 @@ export const routing = defineRouting({
   // Google recevrait tantôt le français tantôt l'anglais sur la même adresse.
   // La langue se choisit par l'URL ou par le sélecteur, jamais par devinette.
   localeDetection: false,
+  // Pas d'en-tête HTTP `Link` hreflang : next-intl y déclarait `x-default` vers
+  // l'URL sans préfixe (`/equipes`), qui n'est qu'une redirection 308 — en
+  // contradiction avec le hreflang du HTML (`pageMetadata`), et posé jusque
+  // sur le back-office. Le HTML reste la seule source, page par page.
+  alternateLinks: false,
 });
 
 export type Locale = (typeof routing.locales)[number];

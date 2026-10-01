@@ -25,11 +25,11 @@ function CategoryBadge({ category }: { category: ArticleCategory }) {
   );
 }
 
-function ArticleCard({ article }: { article: Article }) {
+function ArticleCard({ article, hidden }: { article: Article; hidden: boolean }) {
   const t = useTranslations("actualite");
   const locale = useLocale();
   return (
-    <li>
+    <li hidden={hidden}>
       <Link
         href={`/actualite/${article.slug}`}
         className="card-xbz group flex h-full flex-col p-6 transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
@@ -82,7 +82,6 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
     setVisible(PAGE_SIZE);
   }
 
-  const shown = filteredSorted.slice(0, visible);
   const hasMore = visible < filteredSorted.length;
 
   // Lazy loading : charge la page suivante quand la sentinelle approche du viewport.
@@ -157,8 +156,12 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
         <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((article) => (
-            <ArticleCard key={article.slug} article={article} />
+          {/* TOUS les articles sont dans le HTML, ceux au-delà de la page
+              courante masqués (`hidden`) : Google suit les liens qu'il trouve
+              dans la page, mais ne clique pas « Voir plus ». Les articles au-delà
+              des six premiers n'avaient sinon aucun lien vers eux sur le site. */}
+          {filteredSorted.map((article, i) => (
+            <ArticleCard key={article.slug} article={article} hidden={i >= visible} />
           ))}
         </ul>
       )}

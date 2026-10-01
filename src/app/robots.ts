@@ -17,7 +17,9 @@ export default function robots(): MetadataRoute.Robots {
         "/api/",
       ],
     },
+    // Pas de directive `Host` : propre à Yandex, ignorée par Google, et elle
+    // attend un nom de domaine, pas une URL. Le domaine canonique est déjà
+    // porté par chaque page (`<link rel="canonical">`).
     sitemap: `${siteConfig.url}/sitemap.xml`,
-    host: siteConfig.url,
   };
 }

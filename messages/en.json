@@ -180,8 +180,8 @@
     "empty": "The roster is coming soon."
   },
   "equipeDetail": {
-    "metaRoster": "The {name} roster of XBZ Esport.",
-    "metaPole": "The members of the {name} division of XBZ Esport.",
+    "metaRoster": "Meet the {name} roster of XBZ Esport: its players, their roles and ranks, and the team's upcoming matches.",
+    "metaPole": "Meet the members of XBZ Esport's {name} division: the people who keep the club running, their roles and backgrounds.",
     "backToTeams": "All teams",
     "poleEsport": "Esports division",
     "poleStaff": "Staff division",
@@ -192,7 +192,7 @@
   },
   "joueur": {
     "metaNotFound": "Member not found — XBZ Esport",
-    "metaFallback": "{pseudo}{name}, member of XBZ Esport.",
+    "metaFallback": "{pseudo}{name}, member of XBZ Esport ({team}): discover their profile, rank, achievements and socials.",
     "rank": "Rank",
     "country": "Country",
     "honours": "HONOURS"
@@ -215,6 +215,7 @@
   },
   "article": {
     "metaNotFound": "Article not found — XBZ Esport",
+    "metaFallback": "{title}: read it in the XBZ Esport news — results, recruitment and behind the scenes of the esports club.",
     "backToNews": "Back to news",
     "by": "By {author}",
     "ctaText": "Want to join the adventure?",
@@ -576,6 +577,11 @@
       "title": "Terms of sale",
       "subtitle": "The terms of sale of the XBZ Esport shop."
     },
+    "carrieres": {
+      "eyebrow": "Careers",
+      "title": "Our job openings",
+      "subtitle": "XBZ Esport is hiring: discover the open positions and join the journey."
+    },
     "articleNotFound": "Article not found"
   },
   "playerRoles": {
@@ -664,6 +670,7 @@
   },
   "offerDetail": {
     "metaNotFound": "Offer not found — XBZ Esport",
+    "metaFallback": "XBZ Esport is hiring: {title}. Discover the role, the profile we are looking for and the terms, then apply online.",
     "back": "All openings",
     "postedOn": "Posted on {date}",
     "contractType": "Contract type",

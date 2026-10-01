@@ -1,27 +1,12 @@
-import { getTranslations } from "next-intl/server";
+import { pageOgRoute } from "@/lib/og-routes";
 
-import { ogImage, OG_SIZE, OG_CONTENT_TYPE } from "@/lib/og";
-import { routing } from "@/i18n/routing";
-
-// Bannière fixe : rien ne dépend de la requête. Le segment `[locale]` empêche
-// Next d'inférer le prérendu, on le déclare donc explicitement (une image par
-// langue, générée au build). `alt` reste une constante statique (contrainte Next).
+// Bannière de partage de la page. Identifiant versionné (l'adresse change à
+// chaque déploiement : Discord, X… ne gardent plus une ancienne bannière) et
+// texte alternatif traduit : voir src/lib/og-routes.ts.
+// Textes fixes : rendue à la première demande dans chaque langue, puis servie
+// depuis le cache jusqu'au déploiement suivant (`force-static`).
 export const dynamic = "force-static";
 
-export const alt = "Calendrier & résultats — XBZ Esport";
-export const size = OG_SIZE;
-export const contentType = OG_CONTENT_TYPE;
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
-
-export default async function Image({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "og" });
-  return ogImage({
-    eyebrow: t("calendrier.eyebrow"),
-    title: t("calendrier.title"),
-    subtitle: t("calendrier.subtitle"),
-  });
-}
+const route = pageOgRoute("calendrier");
+export const generateImageMetadata = route.generateImageMetadata;
+export default route.Image;

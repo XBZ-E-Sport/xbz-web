@@ -61,6 +61,14 @@ const nextConfig: NextConfig = {
   // Pas de `x-powered-by: Next.js` : annoncer sa pile à chaque réponse ne rend
   // service qu'à celui qui cherche une faille connue pour cette pile.
   poweredByHeader: false,
+  // Version des bannières Open Graph (src/lib/og-version.ts), FIGÉE au build.
+  // Une page prérendue au build et la route d'image appelée plus tard doivent
+  // calculer le même identifiant. Relue à l'exécution, la variable du commit
+  // peut manquer (réglage Vercel « exposer les variables système ») : chaque
+  // bannière prérendue répondrait alors 404.
+  env: {
+    OG_BUILD_VERSION: (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7),
+  },
   // --- sharp / libvips sur Vercel -----------------------------------------
   // Le back-office traite les images uploadées avec sharp. sharp charge sa lib
   // native libvips (`libvips-cpp.so`) via un lien ELF résolu au dlopen — un lien
