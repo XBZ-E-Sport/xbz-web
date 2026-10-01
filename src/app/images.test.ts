@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { sourceFiles } from "../../test/css";
 
@@ -26,6 +28,17 @@ describe("images", () => {
       .filter((f) => /src="\/(?:logo-xbz[\w-]*|corbeau)\.png"/.test(f.code))
       .map((f) => f.label);
     expect(offenders).toEqual([]);
+  });
+
+  it("la CI génère les types Next AVANT tsc (sinon les imports d'images ne compilent pas)", () => {
+    // Les types de `import logo from "…png"` viennent de next-env.d.ts, généré
+    // par Next et non versionné : sur un clone neuf, `tsc` seul échoue.
+    const root = join(__dirname, "..", "..");
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
+    expect(pkg.scripts.typecheck).toMatch(/^next typegen && tsc --noEmit$/);
+    const ci = readFileSync(join(root, ".github/workflows/xbz-web-ci.yml"), "utf8");
+    expect(ci).toMatch(/name: Typecheck\s+run: npm run typecheck/);
+    expect(ci).not.toMatch(/run: npx tsc --noEmit/);
   });
 
   it("le logo est demandé à sa taille d'affichage, pas à celle du fichier (610 px)", () => {

@@ -44,8 +44,11 @@ jobs:
     - run: npm ci
     - name: Lint
       run: npm run lint
+    # `next typegen` d'abord : il génère next-env.d.ts (non versionné), qui
+    # donne leurs types aux imports d'images (`import logo from "…png"`) et
+    # aux routes. Sur un dépôt fraîchement cloné, `tsc` seul échoue.
     - name: Typecheck
-      run: npx tsc --noEmit
+      run: npm run typecheck
     - name: Build
       run: npm run build
     - name: Tests
