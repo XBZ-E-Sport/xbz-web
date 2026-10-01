@@ -111,8 +111,16 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
   const messages = pickMessages(await getMessages({ locale }), LAYOUT_CLIENTS);
 
   return (
+    // `data-scroll-behavior="smooth"` : globals.css pose `scroll-behavior:
+    // smooth` sur <html> (ancres internes). Depuis Next 16, Next ne coupe plus
+    // ce défilement doux pendant une navigation SAUF si cet attribut le lui
+    // demande. Sans lui, revenir sur l'accueil par le logo ou le menu laissait
+    // la page défilée jusqu'aux chiffres : Next fait défiler chaque bloc racine
+    // de la page du dernier au premier, et en défilement doux seul le premier
+    // appel aboutissait — celui du 2ᵉ bloc. Voir src/app/scroll.test.ts.
     <html
       lang={locale}
+      data-scroll-behavior="smooth"
       className={`${fontTitle.variable} ${fontBody.variable}`}
     >
       <body className="font-sans antialiased">

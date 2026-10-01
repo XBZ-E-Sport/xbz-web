@@ -54,6 +54,9 @@
 html {
   color-scheme: dark;
   background: var(--color-xbz-bg);
+  /* Défilement doux pour les ancres. Next le suspend pendant les navigations
+     grâce à `data-scroll-behavior="smooth"` sur <html> (layout.tsx) : sans
+     l'attribut, l'accueil s'ouvrait défilé jusqu'aux chiffres. */
   scroll-behavior: smooth;
   scroll-padding-top: 6rem;
 }
