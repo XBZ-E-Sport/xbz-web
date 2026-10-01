@@ -62,7 +62,7 @@ function ProductCard({ product, eager }: { product: Product; eager: boolean }) {
             // une image en différé arrivait donc visiblement après elles.
             // Au-delà de la première rangée, `lazy` reste le bon choix : ces
             // cartes sont sous la ligne de flottaison.
-            priority={eager}
+            preload={eager}
             onError={() => setImageFailed(true)}
           />
         ) : (

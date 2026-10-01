@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import ClientMessages from "@/components/ClientMessages";
 import RecrutementForm from "@/components/RecrutementForm";
 import { getOpenRolesByCategory, getOpenRosters } from "@/lib/equipes";
 import { getOfferRoles } from "@/lib/offres";
@@ -78,7 +79,9 @@ export default async function RecrutementPage({ params }: PageProps) {
 
       {/* Formulaire */}
       <div className="card-xbz p-6 sm:p-8">
-        <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} offers={offers} />
+        <ClientMessages locale={locale} clients={["RecrutementForm"]}>
+          <RecrutementForm rolesByCategory={rolesByCategory} rosters={rosters} offers={offers} />
+        </ClientMessages>
       </div>
     </div>
   );

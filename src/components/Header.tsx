@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Link, usePathname } from "@/i18n/navigation";
+import { logoWide } from "@/lib/brand-images";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // `key` pointe vers le catalogue `nav` ; `href` reste l'URL française, que
@@ -75,12 +76,16 @@ export default function Header() {
           aria-current={pathname === "/" ? "page" : undefined}
           className="flex shrink-0 flex-col items-start leading-none"
         >
+          {/* Dimensions d'AFFICHAGE (28 px de haut au plus) : avec celles du
+              fichier (610 px), next/image servait une image 6× trop large.
+              `eager` plutôt que préchargé : visible tout de suite, mais ce
+              n'est pas l'élément LCP (le titre de la page l'est). */}
           <Image
-            src="/logo-xbz-wide.png"
+            src={logoWide}
             alt="XBZ Esport"
-            width={610}
-            height={163}
-            priority
+            width={105}
+            height={28}
+            loading="eager"
             className="h-6 w-auto sm:h-7"
           />
         </Link>

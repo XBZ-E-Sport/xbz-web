@@ -2,7 +2,19 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 // Branche next-intl sur le build (résolution de src/i18n/request.ts).
-const withNextIntl = createNextIntlPlugin();
+//
+// `precompile` : les messages ICU (pluriels, variables, balises) sont compilés
+// AU BUILD. Le navigateur ne télécharge plus le parseur ICU (−10 Ko gzip de JS
+// sur chaque page) et ne réanalyse plus chaque message à l'affichage. Option
+// marquée expérimentale par next-intl : vérifié avant adoption que les 59
+// pages rendent exactement le même texte (serveur, hydratation, filtres) avec
+// et sans. Contrainte : chaque message est une chaîne — pas de liste dans les
+// catalogues (src/i18n/messages.test.ts) ; le build échoue sinon.
+const withNextIntl = createNextIntlPlugin({
+  experimental: {
+    messages: { path: "./messages", format: "json", locales: "infer", precompile: true },
+  },
+});
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -95,13 +107,14 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    // Durée de conservation des images optimisées.
+    // Durée de conservation des images optimisées dans le cache de
+    // l'optimiseur (le CDN, sur Vercel) : un an, elles ne changent pas sans
+    // changer d'URL.
     //
-    // Sans ça, Next recopie le `cache-control` de la source ; nos fichiers de
-    // /public sont servis par Vercel en `max-age=0, must-revalidate`, donc
-    // chaque affichage du logo repassait par une revalidation. Ces images ne
-    // changent jamais sans un nouveau déploiement (leur URL contient la taille
-    // et la qualité), un an est le bon ordre de grandeur.
+    // Le NAVIGATEUR, lui, reçoit le `cache-control` de la source : pour un
+    // fichier de /public, `max-age=0` — chaque page revalidait le logo.
+    // D'où les images de la marque en import statique (src/lib/brand-images.ts),
+    // servies `immutable` pour un an.
     minimumCacheTTL: 31536000, // 1 an
     // Photos des membres, logos, médias : Supabase Storage (buckets publics),
     // du SEUL projet du site. Un joker `*.supabase.co` laissait n'importe qui

@@ -14,6 +14,10 @@ import Arena from "@/components/Arena";
  * Ses règles ne se voient qu'à l'œil, sur un vrai téléphone : ce test les fige.
  * - Pas de filter/blur : sur GPU mobile, la région d'un filtre est rognée à la
  *   boîte de l'élément → un « carré » visible (déjà vécu derrière le corbeau).
+ * - La bande n'a PAS d'image de fond (candidate au LCP : sur mobile, Chrome la
+ *   retenait à 8–12 s) : une couleur découpée par deux masques en dégradé.
+ *   Seule exception à « pas de masque » : un masque reste DANS la boîte de
+ *   l'élément (aucun carré possible) et n'est rastérisé qu'une fois.
  * - On n'anime que transform/opacity (compositeur : ni layout ni paint).
  * - Aucun translate:/rotate:/scale: dans le même bloc qu'un transform :
  *   Lightning CSS (build de prod) les fusionne ou les supprime, sans bruit.
@@ -72,6 +76,8 @@ const has = (b: Block, prop: string, value?: RegExp) =>
 const FORBIDDEN_PROPS =
   /^(?:-webkit-)?(?:backdrop-)?filter$|^mix-blend-mode$|^will-change$|^(?:-webkit-)?mask(?:-image)?$/;
 const FORBIDDEN_VALUES = /blur\(|drop-shadow\(/;
+// Propriétés de masque permises sur la bande, et elle seule.
+const MASK_PROPS = /^(?:-webkit-)?mask(?:-image|-composite|-repeat)?$/;
 
 /** Vue « arène » d'une feuille : règles, keyframes animées par elles. */
 function arenaOf(css: string) {
@@ -124,11 +130,40 @@ function checkSheet(label: string, css: () => string) {
       expect(body && has(body, "isolation", /^isolate$/)).toBe(true);
     });
 
-    it("n'utilise ni filter, ni blur, ni blend, ni masque, ni will-change", () => {
+    it("n'utilise ni filter, ni blur, ni blend, ni will-change — ni masque hors de la bande", () => {
       const offenders = [...a.rules, ...a.keyframes].filter((b) =>
-        decls(b.body).some((d) => FORBIDDEN_PROPS.test(d.prop) || FORBIDDEN_VALUES.test(d.value)),
+        decls(b.body).some(
+          (d) =>
+            (FORBIDDEN_PROPS.test(d.prop) && !(b.prelude === ".xbz-arena__sweep" && MASK_PROPS.test(d.prop))) ||
+            FORBIDDEN_VALUES.test(d.value),
+        ),
       );
       expect(offenders.map((b) => b.prelude)).toEqual([]);
+    });
+
+    it("la bande n'est jamais une image (sinon candidate au LCP)", () => {
+      const sweepRules = a.rules.filter((b) => b.prelude.split(",").some((x) => x.trim() === ".xbz-arena__sweep"));
+      const images = sweepRules.filter((b) =>
+        decls(b.body).some((d) => /^background(?:-image)?$/.test(d.prop) && /url\(|image-set\(/.test(d.value)),
+      );
+      expect(images.map((b) => b.prelude)).toEqual([]);
+      const sweep = base(".xbz-arena__sweep")!;
+      expect(has(sweep, "background-color")).toBe(true);
+      // Deux masques en dégradé (horizontal × vertical), MULTIPLIÉS.
+      const mask = decls(sweep.body).find((d) => d.prop === "mask-image");
+      expect(mask?.value.match(/linear-gradient\(/g)?.length).toBe(2);
+      expect(has(sweep, "mask-composite", /^intersect$/)).toBe(true);
+      expect(has(sweep, "mask-repeat", /^no-repeat$/)).toBe(true);
+    });
+
+    it("sans multiplication des masques, la bande est retirée (pas de rectangle plein)", () => {
+      const fallback = a.rules.find(
+        (b) =>
+          b.prelude === ".xbz-arena__sweep" &&
+          b.at.some((m) => /^@supports\s+not\b/.test(m) && /mask-composite:\s*intersect/.test(m)) &&
+          has(b, "display", /^none$/),
+      );
+      expect(fallback).toBeDefined();
     });
 
     it("anime seulement transform/opacity, keyframes présentes et sans var()", () => {
@@ -164,8 +199,8 @@ function checkSheet(label: string, css: () => string) {
         );
         expect(drawn, cls).toBe(true);
       }
-      // La bande et chaque éclat ont bien une image.
-      expect(has(base(".xbz-arena__sweep")!, "background", /data:image\/svg\+xml/)).toBe(true);
+      // La bande a sa couleur (son dessin : voir « jamais une image »), chaque éclat son image.
+      expect(has(base(".xbz-arena__sweep")!, "background-color")).toBe(true);
       for (const cls of classes.filter((c) => /^xbz-arena__shard--\d+$/.test(c))) {
         expect(has(base(`.${cls}`)!, "background-image", /var\(--xbz-arena-shard-|data:image/), cls).toBe(true);
       }

@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { logoWide } from "@/lib/brand-images";
 import { siteConfig } from "@/lib/site";
 import CurrentYear from "@/components/CurrentYear";
 
@@ -61,13 +62,7 @@ export default async function Footer({ locale }: { locale: string }) {
             aria-label={tNav("homeAria")}
             className="inline-flex items-center gap-3"
           >
-            <Image
-              src="/logo-xbz-wide.png"
-              alt={siteConfig.name}
-              width={610}
-              height={163}
-              className="h-8 w-auto"
-            />
+            <Image src={logoWide} alt={siteConfig.name} width={120} height={32} className="h-8 w-auto" />
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-neutral-400">
             {tSite("description").replace(`${siteConfig.name} — `, "")}

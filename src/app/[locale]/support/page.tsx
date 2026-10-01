@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import ClientMessages from "@/components/ClientMessages";
 import SupportForm from "@/components/SupportForm";
 import { jsonLdString } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/site";
@@ -243,7 +244,9 @@ export default async function SupportPage({ params }: PageProps) {
           {t("formHeading")}
         </h2>
         <div className="card-xbz p-6 sm:p-8">
-          <SupportForm />
+          <ClientMessages locale={locale} clients={["SupportForm"]}>
+            <SupportForm />
+          </ClientMessages>
         </div>
       </section>
 

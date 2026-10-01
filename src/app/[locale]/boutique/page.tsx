@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getProducts } from "@/lib/boutique";
+import ClientMessages from "@/components/ClientMessages";
 import BoutiqueList from "@/components/BoutiqueList";
 import { pageMetadata } from "@/lib/site";
 
@@ -76,7 +77,9 @@ export default async function BoutiquePage({ params }: PageProps) {
       {products.length === 0 ? (
         <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
-        <BoutiqueList products={products} />
+        <ClientMessages locale={locale} clients={["BoutiqueList"]}>
+          <BoutiqueList products={products} />
+        </ClientMessages>
       )}
 
       {/* CTA */}

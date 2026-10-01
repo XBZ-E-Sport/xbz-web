@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
-import { Bruno_Ace_SC, Special_Gothic_Expanded_One, Sarabun, Oswald } from "next/font/google";
+import { Bruno_Ace_SC, Sarabun } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import Arena from "@/components/Arena";
 import { siteConfig, localizedPath, languageAlternates } from "@/lib/site";
 import { routing } from "@/i18n/routing";
+import { LAYOUT_CLIENTS, pickMessages } from "@/i18n/client-messages";
 
 // Polices de la charte, auto-hébergées par Next (RGPD-friendly), exposées en
 // variables CSS. Les noms de variables NE doivent PAS entrer en collision avec
@@ -22,33 +23,18 @@ const fontTitle = Bruno_Ace_SC({
   variable: "--font-title",
   display: "swap",
 });
-// Sous-titres — Special Gothic Expanded One (charte). Poids unique 400.
-// `adjustFontFallback: false` : next/font n'a pas les métriques de cette police
-// récente pour générer un fallback anti-CLS et log un warning à chaque requête.
-// On désactive donc ce fallback auto (inopérant de toute façon) → plus de warning.
-const fontSubtitle = Special_Gothic_Expanded_One({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-subtitle-family",
-  display: "swap",
-  adjustFontFallback: false,
-  fallback: ["system-ui", "sans-serif"],
-});
-// Corps — Sarabun (charte).
+// Corps — Sarabun (charte). Graisses réellement utilisées : 400 (texte),
+// 600 (font-semibold), 700 (font-bold ; font-black s'y rabat). Le 500
+// (font-medium) n'apparaît nulle part : 12,6 Ko préchargés pour rien.
 const fontBody = Sarabun({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
-// Mots-chocs — Oswald condensé : vrais gros poids là où Bruno Ace SC / Special
-// Gothic n'ont que le 400 (hero « FROM ZERO TO LEGEND », gros scores, 404).
-const fontImpact = Oswald({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-impact-family",
-  display: "swap",
-});
+// Oswald (mots-chocs) et Special Gothic (slogan) ne servent qu'à l'accueil et
+// à la 404 : déclarées dans ./home-fonts.ts (accueil, préchargées sur cette
+// seule page) et dans ./not-found.tsx (404, sans préchargement).
 
 /** Prégénère les deux langues au build (rendu statique conservé). */
 export function generateStaticParams() {
@@ -118,12 +104,16 @@ export default async function LocaleLayout({ children, params }: LayoutProps) {
   // pendant le prérendu d'une page `force-static` : la coquille (en-tête, pied
   // de page, liens) repartait alors en français sur les pages anglaises, avec
   // des liens vers `/fr/…`, sans la moindre erreur pour le signaler.
-  const messages = await getMessages({ locale });
+  //
+  // Seulement les messages des composants client de la coquille (en-tête,
+  // sélecteur de langue, écran d'erreur) : chaque page fournit ceux de ses
+  // propres composants (<ClientMessages>). Voir src/i18n/client-messages.ts.
+  const messages = pickMessages(await getMessages({ locale }), LAYOUT_CLIENTS);
 
   return (
     <html
       lang={locale}
-      className={`${fontTitle.variable} ${fontSubtitle.variable} ${fontBody.variable} ${fontImpact.variable}`}
+      className={`${fontTitle.variable} ${fontBody.variable}`}
     >
       <body className="font-sans antialiased">
         {/* Décor animé du fond, avant le contenu : fixed + z-index -1 dans le

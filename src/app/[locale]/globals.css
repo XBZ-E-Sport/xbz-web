@@ -26,11 +26,8 @@
   --color-xbz-orange: #ff7c4f;
   --color-xbz-dark-red: #ff0f10;
 
-  /* Typographies de la charte + une display condensée (Oswald) pour les mots-chocs,
-     là où Bruno Ace SC / Special Gothic n'ont qu'un poids 400 (pas de vrai gras). */
+  /* Typographies de la charte (variables posées sur <html> par le layout). */
   --font-display: var(--font-title), system-ui, sans-serif;
-  --font-subtitle: var(--font-subtitle-family), system-ui, sans-serif;
-  --font-impact: var(--font-impact-family), system-ui, sans-serif;
   --font-sans: var(--font-body), system-ui, sans-serif;
 
   /* Rayon quasi nul : esthétique anguleuse (piloté globalement). */
@@ -40,6 +37,18 @@
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
   --default-transition-timing-function: var(--ease-smooth);
   --default-transition-duration: 220ms;
+}
+
+/* Display condensée (Oswald) pour les mots-chocs — là où Bruno Ace SC n'a
+   qu'un poids 400 — et Special Gothic pour le slogan : polices de l'accueil
+   (src/app/[locale]/home-fonts.ts) et de la 404 (not-found.tsx) seulement,
+   dont la variable est posée sur l'élément qui les utilise, pas sur <html>. `inline` : l'utilitaire
+   écrit `font-family: var(--font-impact-family), …` et la variable se résout
+   SUR l'élément. Sans `inline`, `--font-impact` serait calculé sur :root, où
+   la variable de la police n'existe pas, et la police serait perdue. */
+@theme inline {
+  --font-subtitle: var(--font-subtitle-family), system-ui, sans-serif;
+  --font-impact: var(--font-impact-family), system-ui, sans-serif;
 }
 
 html {
@@ -288,16 +297,69 @@ h1, h2, h3 {
    12 s, puis 18 s hors-champ : on la croise, on ne la regarde pas.
    Elle démarre SOUS le header (66 px : h-16 + liseré + bordure, Header.tsx) :
    elle ne passe jamais derrière son flou.
-   Rendu : UN SVG étiré (profil horizontal gaussien + cœur à peine plus chaud
-   sur le bord avant, × fondu vertical interne) → transparent exact sur les
-   4 bords, rastérisé une fois, sans mask-image.
-   INTENSITÉ : un seul bouton, `opacity` (statique). Pic effectif ≈ 0.14 × opacity. */
+   Rendu : une couleur unie découpée par DEUX masques en dégradé, multipliés
+   (`mask-composite: intersect`) : profil horizontal gaussien (cœur un peu plus
+   dense sur le bord avant) × fondu vertical → transparent exact sur les
+   4 bords. Masque et couleur sont rastérisés une fois ; l'animation ne fait
+   que déplacer la couche (ni paint ni layout pendant la traversée).
+   PAS d'image de fond : une image (même un SVG en data-URI) est candidate au
+   LCP. Sur mobile, quand une police arrivait pendant la traversée, Chrome
+   retenait la bande (plus grande que le H1) : LCP mesuré à 8–12 s au lieu de
+   0,5 s. Une couleur et des masques ne sont jamais candidats.
+   Sans `mask-composite` (navigateur ancien), la bande est retirée plutôt que
+   d'apparaître en rectangle plein (voir le @supports plus bas).
+   INTENSITÉ : un seul bouton, `opacity` (statique). Pic effectif ≈ 0.142 × opacity. */
 .xbz-arena__sweep {
   top: 4.5rem;
   left: 0;
   width: clamp(14rem, 34vw, 38rem);
   height: 100vh;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='h'%3E%3Cstop offset='0' stop-color='%23dc2515' stop-opacity='0'/%3E%3Cstop offset='0.06' stop-color='%23dc2515' stop-opacity='0.009'/%3E%3Cstop offset='0.12' stop-color='%23dc2615' stop-opacity='0.013'/%3E%3Cstop offset='0.18' stop-color='%23de2817' stop-opacity='0.018'/%3E%3Cstop offset='0.24' stop-color='%23e12c19' stop-opacity='0.029'/%3E%3Cstop offset='0.29' stop-color='%23e5321c' stop-opacity='0.044'/%3E%3Cstop offset='0.34' stop-color='%23e9371f' stop-opacity='0.066'/%3E%3Cstop offset='0.38' stop-color='%23eb3a21' stop-opacity='0.09'/%3E%3Cstop offset='0.42' stop-color='%23ed3c22' stop-opacity='0.115'/%3E%3Cstop offset='0.45' stop-color='%23ed3d23' stop-opacity='0.129'/%3E%3Cstop offset='0.48' stop-color='%23ee3d23' stop-opacity='0.139'/%3E%3Cstop offset='0.5' stop-color='%23ee3d23' stop-opacity='0.14'/%3E%3Cstop offset='0.52' stop-color='%23ee3d23' stop-opacity='0.139'/%3E%3Cstop offset='0.55' stop-color='%23ed3d23' stop-opacity='0.129'/%3E%3Cstop offset='0.58' stop-color='%23ed3c22' stop-opacity='0.115'/%3E%3Cstop offset='0.62' stop-color='%23eb3a21' stop-opacity='0.09'/%3E%3Cstop offset='0.66' stop-color='%23e9371f' stop-opacity='0.066'/%3E%3Cstop offset='0.71' stop-color='%23e5321c' stop-opacity='0.044'/%3E%3Cstop offset='0.76' stop-color='%23e12c19' stop-opacity='0.029'/%3E%3Cstop offset='0.82' stop-color='%23de2817' stop-opacity='0.018'/%3E%3Cstop offset='0.88' stop-color='%23dc2615' stop-opacity='0.013'/%3E%3Cstop offset='0.94' stop-color='%23dc2515' stop-opacity='0.009'/%3E%3Cstop offset='1' stop-color='%23dc2515' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='c'%3E%3Cstop offset='0.5' stop-color='%23ff4a33' stop-opacity='0'/%3E%3Cstop offset='0.53' stop-color='%23ff4a33' stop-opacity='0.006'/%3E%3Cstop offset='0.56' stop-color='%23ff4a33' stop-opacity='0.018'/%3E%3Cstop offset='0.59' stop-color='%23ff4a33' stop-opacity='0.028'/%3E%3Cstop offset='0.62' stop-color='%23ff4a33' stop-opacity='0.018'/%3E%3Cstop offset='0.65' stop-color='%23ff4a33' stop-opacity='0.006'/%3E%3Cstop offset='0.68' stop-color='%23ff4a33' stop-opacity='0'/%3E%3C/linearGradient%3E%3ClinearGradient id='v' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='0'/%3E%3Cstop offset='0.04' stop-color='%23fff' stop-opacity='0.2'/%3E%3Cstop offset='0.09' stop-color='%23fff' stop-opacity='0.62'/%3E%3Cstop offset='0.14' stop-color='%23fff' stop-opacity='1'/%3E%3Cstop offset='0.5' stop-color='%23fff' stop-opacity='1'/%3E%3Cstop offset='0.62' stop-color='%23fff' stop-opacity='0.82'/%3E%3Cstop offset='0.74' stop-color='%23fff' stop-opacity='0.5'/%3E%3Cstop offset='0.86' stop-color='%23fff' stop-opacity='0.2'/%3E%3Cstop offset='0.94' stop-color='%23fff' stop-opacity='0.06'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E%3Cmask id='m'%3E%3Crect width='100' height='100' fill='url(%23v)'/%3E%3C/mask%3E%3C/defs%3E%3Cg mask='url(%23m)'%3E%3Crect width='100' height='100' fill='url(%23h)'/%3E%3Crect width='100' height='100' fill='url(%23c)'/%3E%3C/g%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+  background-color: rgb(238 61 35 / 0.142);
+  /* Profil horizontal (normalisé au pic) × fondu vertical. */
+  mask-image:
+    linear-gradient(
+      to right,
+      rgb(0 0 0 / 0) 0%,
+      rgb(0 0 0 / 0.063) 6%,
+      rgb(0 0 0 / 0.091) 12%,
+      rgb(0 0 0 / 0.126) 18%,
+      rgb(0 0 0 / 0.204) 24%,
+      rgb(0 0 0 / 0.309) 29%,
+      rgb(0 0 0 / 0.463) 34%,
+      rgb(0 0 0 / 0.632) 38%,
+      rgb(0 0 0 / 0.807) 42%,
+      rgb(0 0 0 / 0.906) 45%,
+      rgb(0 0 0 / 0.976) 48%,
+      rgb(0 0 0 / 0.983) 50%,
+      rgb(0 0 0 / 1) 52%,
+      rgb(0 0 0 / 0.99) 55%,
+      rgb(0 0 0 / 0.961) 58%,
+      rgb(0 0 0 / 0.939) 59%,
+      rgb(0 0 0 / 0.747) 62%,
+      rgb(0 0 0 / 0.545) 65%,
+      rgb(0 0 0 / 0.402) 68%,
+      rgb(0 0 0 / 0.309) 71%,
+      rgb(0 0 0 / 0.204) 76%,
+      rgb(0 0 0 / 0.126) 82%,
+      rgb(0 0 0 / 0.091) 88%,
+      rgb(0 0 0 / 0.063) 94%,
+      rgb(0 0 0 / 0) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0) 0%,
+      rgb(0 0 0 / 0.2) 4%,
+      rgb(0 0 0 / 0.62) 9%,
+      rgb(0 0 0 / 1) 14%,
+      rgb(0 0 0 / 1) 50%,
+      rgb(0 0 0 / 0.82) 62%,
+      rgb(0 0 0 / 0.5) 74%,
+      rgb(0 0 0 / 0.2) 86%,
+      rgb(0 0 0 / 0.06) 94%,
+      rgb(0 0 0 / 0) 100%
+    );
+  mask-composite: intersect;
+  mask-repeat: no-repeat;
   opacity: 0.85;
   /* Départ hors-champ : largeur + débord du skew (tan 25° × 50vh ≈ 23.3vh). */
   transform: translateX(calc(-100% - 26vh)) skewX(-25deg);
@@ -313,6 +375,14 @@ h1, h2, h3 {
   40%,
   100% {
     transform: translateX(calc(100vw + 26vh)) skewX(-25deg);
+  }
+}
+
+/* Sans multiplication des masques, les deux dégradés s'additionneraient : la
+   bande apparaîtrait en rectangle plein. On la retire alors, simplement. */
+@supports not ((mask-composite: intersect) or (-webkit-mask-composite: source-in)) {
+  .xbz-arena__sweep {
+    display: none;
   }
 }
 

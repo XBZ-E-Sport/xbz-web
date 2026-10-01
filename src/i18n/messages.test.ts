@@ -87,6 +87,20 @@ describe("messages fr/en", () => {
     expect({ missingInEn, missingInFr }).toEqual({ missingInEn: [], missingInFr: [] });
   });
 
+  it("ne contient que des chaînes (la précompilation au build refuse listes et nombres)", () => {
+    // next.config.ts : `messages.precompile`. Une liste ou un nombre dans un
+    // catalogue ferait échouer le build — autant le savoir ici.
+    const offenders = (tree: unknown, prefix = ""): string[] =>
+      Object.entries(tree as Record<string, unknown>).flatMap(([key, value]) => {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof value === "string") return [];
+        if (value && typeof value === "object" && !Array.isArray(value)) return offenders(value, path);
+        return [path];
+      });
+    expect(offenders(fr)).toEqual([]);
+    expect(offenders(en)).toEqual([]);
+  });
+
   it("n'a aucune traduction vide", () => {
     const empty = [
       ...frPaths.filter((p) => !leafAt(frTree, p).trim()).map((p) => `fr:${p}`),

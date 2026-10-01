@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
+import { Oswald } from "next/font/google";
 import Image from "next/image";
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { corbeau } from "@/lib/brand-images";
+
+// Oswald pour le « 404 », SANS préchargement : ce fichier fait partie de
+// l'arbre de TOUTES les pages du segment [locale] (c'est la frontière 404 du
+// layout). Une police qu'il préchargerait le serait sur chaque page du site —
+// ce qui arrivait en important ./home-fonts. Sur la 404, elle se charge à
+// l'affichage (~14 Ko, sur cette seule page).
+const fontImpact = Oswald({
+  subsets: ["latin"],
+  weight: "700",
+  variable: "--font-impact-family",
+  display: "swap",
+  preload: false,
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("notFound");
@@ -31,11 +46,11 @@ export default async function NotFound() {
         {/* Lévitation sur le wrapper, pas sur l'image ombrée (cf. globals.css). */}
         <span className="relative block motion-safe:animate-raven-float">
           <Image
-            src="/corbeau.png"
+            src={corbeau}
             alt=""
-            width={573}
-            height={374}
-            priority
+            width={196}
+            height={128}
+            loading="eager"
             className="block h-24 w-auto drop-shadow-[0_0_20px_rgba(220,37,21,0.45)] sm:h-32"
           />
         </span>
@@ -43,7 +58,7 @@ export default async function NotFound() {
 
       <p
         aria-hidden="true"
-        className="font-impact text-7xl font-bold tracking-widest text-xbz-blue glow-brand sm:text-8xl"
+        className={`${fontImpact.variable} font-impact text-7xl font-bold tracking-widest text-xbz-blue glow-brand sm:text-8xl`}
       >
         404
       </p>

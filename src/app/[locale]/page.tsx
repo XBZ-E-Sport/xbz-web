@@ -4,12 +4,15 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { getArticles } from "@/lib/actualite";
+import { corbeau, logoLight } from "@/lib/brand-images";
 import { formatDate, articleCategoryStyles } from "@/lib/format";
 import { getStructureStats } from "@/lib/equipes";
 import { getPartners } from "@/lib/partenaires";
 import { getNextMatch, formatMatchDateTime } from "@/lib/matchs";
 import { jsonLdString } from "@/lib/jsonld";
 import { siteConfig, absoluteUrl, pageMetadata } from "@/lib/site";
+
+import { fontImpact, fontSubtitle } from "./home-fonts";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -122,11 +125,13 @@ export default async function Home({ params }: PageProps) {
               animée elle-même (le « carré » sur GPU mobile). */}
           <span className="relative block motion-safe:animate-raven-float">
             <Image
-              src="/corbeau.png"
+              src={corbeau}
               alt=""
-              width={573}
-              height={374}
-              priority
+              // Dimensions d'affichage (160 px de haut au plus) ; `eager` : au-dessus
+              // de la ligne de flottaison, sans être l'élément LCP (le titre l'est).
+              width={245}
+              height={160}
+              loading="eager"
               className="block h-28 w-auto drop-shadow-[0_0_22px_rgba(220,37,21,0.45)] sm:h-40"
             />
           </span>
@@ -134,14 +139,14 @@ export default async function Home({ params }: PageProps) {
 
         <h1
           id="hero-title"
-          className="font-impact text-5xl font-bold uppercase tracking-wide text-white glow-brand sm:text-7xl sm:tracking-widest md:text-8xl"
+          className={`${fontImpact.variable} font-impact text-5xl font-bold uppercase tracking-wide text-white glow-brand sm:text-7xl sm:tracking-widest md:text-8xl`}
         >
           XBZ Esport
         </h1>
 
         {/* Slogan de marque (dégradé rouge → jaune → rouge). Rouge CLAIR aux
             extrémités : en 16 px gras, le rouge primaire tombait à 3,96:1. */}
-        <p className="bg-linear-to-r from-xbz-red-light via-xbz-cyan to-xbz-red-light bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
+        <p className={`${fontSubtitle.variable} bg-linear-to-r from-xbz-red-light via-xbz-cyan to-xbz-red-light bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base`}>
           {t("slogan")}
         </p>
 
@@ -234,7 +239,7 @@ export default async function Home({ params }: PageProps) {
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                 <div className="text-center">
                   <div className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/90">
-                    <Image src="/logo-xbz-light.png" alt="" fill sizes="56px" className="object-contain p-2" />
+                    <Image src={logoLight} alt="" fill sizes="56px" className="object-contain p-2" />
                   </div>
                   <p className="mt-2 font-display text-sm text-white">
                     {nextMatch.roster?.name ?? "XBZ Esport"}
@@ -277,7 +282,7 @@ export default async function Home({ params }: PageProps) {
             {stats.map((s) => (
               <div key={s.label} className="card-xbz flex flex-col-reverse gap-2 p-6 text-center">
                 <dt className="text-sm text-neutral-400">{s.label}</dt>
-                <dd className="font-impact text-5xl font-bold text-xbz-cyan">{s.value}</dd>
+                <dd className={`${fontImpact.variable} font-impact text-5xl font-bold text-xbz-cyan`}>{s.value}</dd>
               </div>
             ))}
           </dl>

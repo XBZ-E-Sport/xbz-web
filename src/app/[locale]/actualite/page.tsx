@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import ClientMessages from "@/components/ClientMessages";
 import ActualiteList from "@/components/ActualiteList";
 import { getArticles } from "@/lib/actualite";
 import { pageMetadata } from "@/lib/site";
@@ -56,7 +57,9 @@ export default async function ActualitePage({ params }: PageProps) {
         </p>
       </header>
 
-      <ActualiteList articles={articles} />
+      <ClientMessages locale={locale} clients={["ActualiteList"]}>
+        <ActualiteList articles={articles} />
+      </ClientMessages>
     </div>
   );
 }

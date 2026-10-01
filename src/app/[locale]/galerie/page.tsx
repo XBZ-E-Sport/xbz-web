@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getMedias } from "@/lib/medias";
+import ClientMessages from "@/components/ClientMessages";
 import MediaGallery from "@/components/MediaGallery";
 import { isEmptyListPage } from "@/lib/empty-pages";
 import { pageMetadata } from "@/lib/site";
@@ -50,7 +51,9 @@ export default async function GaleriePage({ params }: PageProps) {
       {medias.length === 0 ? (
         <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
-        <MediaGallery medias={medias} />
+        <ClientMessages locale={locale} clients={["MediaGallery"]}>
+          <MediaGallery medias={medias} />
+        </ClientMessages>
       )}
     </div>
   );

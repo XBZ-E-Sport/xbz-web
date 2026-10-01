@@ -1,5 +1,6 @@
-import Image from "next/image";
+import Image, { type StaticImageData } from "next/image";
 
+import { logoLight } from "@/lib/brand-images";
 import { formatMatchDateTime, type Match } from "@/lib/matchs";
 
 // Libellés résolus (le composant est serveur mais sans contexte de langue à
@@ -19,7 +20,7 @@ const resultBadge: Record<"win" | "loss" | "draw", string> = {
 };
 
 /** Logo d'équipe sur pastille claire (les logos sont souvent sombres). */
-function TeamLogo({ src, name }: { src: string | null; name: string }) {
+function TeamLogo({ src, name }: { src: string | StaticImageData | null; name: string }) {
   return (
     <div className="relative mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-white/90">
       {src ? (
@@ -74,7 +75,7 @@ export default function MatchCard({
       {/* Confrontation : XBZ vs adversaire */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <div className="text-center">
-          <TeamLogo src="/logo-xbz-light.png" name="XBZ" />
+          <TeamLogo src={logoLight} name="XBZ" />
           <p className="mt-2 font-display text-sm text-white">{xbzName}</p>
         </div>
 
