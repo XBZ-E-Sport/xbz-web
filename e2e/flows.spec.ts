@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Parcours de bout en bout qui LISENT/ÉCRIVENT en base (recrutement, support,
  * boutique, back-office). Ils nécessitent un vrai projet Supabase DE TEST + des
- * données seedées (un poste ouvert « XBZ Staff » nommé « Manager », un produit
- * `available` avec `url`, un utilisateur staff dans `allow_staff_list`, et les
+ * données seedées (un poste ouvert « XBZ Staff » nommé « Manager », au moins
+ * un produit actif, un utilisateur staff dans `allow_staff_list`, et les
  * tables `candidatures` / `support_messages`).
  *
  * Ils ne s'exécutent QUE si TOUT est réuni : identifiants staff, clé service,
@@ -109,12 +109,17 @@ test.describe("Parcours BDD", () => {
     await expect(page.getByText(/Message envoyé/i)).toBeVisible();
   });
 
-  test("Boutique : un produit achetable avec lien affiche « Acheter »", async ({ page }) => {
+  test("Boutique : le catalogue s'affiche ; sans Stripe, rien ne peut être mis au panier", async ({ page }) => {
     await page.goto("/fr/boutique");
 
-    const acheter = page.getByRole("link", { name: /^Acheter/ }).first();
-    await expect(acheter).toBeVisible();
-    await expect(acheter).toHaveAttribute("href", /^https?:\/\//);
+    await expect(page.locator("li.card-xbz").first()).toBeVisible();
+    // La CI n'a pas de clés Stripe : la boutique est un aperçu. Le parcours
+    // d'achat complet (panier, paiement, webhook) se teste avec un faux Stripe,
+    // hors de cette suite.
+    if (!process.env.STRIPE_SECRET_KEY) {
+      await expect(page.getByText(/La boutique ouvre bientôt/)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Ajouter au panier" })).toHaveCount(0);
+    }
   });
 
   test("Back-office : connexion staff puis accès aux candidatures", async ({ page }) => {
