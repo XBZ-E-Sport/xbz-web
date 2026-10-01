@@ -17,6 +17,12 @@
      renommage sémantique prévu plus tard via des alias). */
   --color-xbz-blue: #dc2515; /* ROUGE primaire (ex-bleu) */
   --color-xbz-cyan: #fccd05; /* JAUNE accent (ex-cyan) — usage laser uniquement */
+  /* Rouge des TEXTES sur fond sombre (et extrémité claire des dégradés posés
+     derrière un texte sombre). Le rouge primaire #dc2515 n'atteint que 3,2 à
+     3,6:1 sur les cartes, sous le seuil WCAG AA du texte courant (4,5:1) ;
+     celui-ci tient au moins 4,8:1 sur la carte la plus claire. Le rouge
+     primaire reste celui des fonds, bordures, boutons et très grands textes. */
+  --color-xbz-red-light: #ff5a4a;
   --color-xbz-orange: #ff7c4f;
   --color-xbz-dark-red: #ff0f10;
 

@@ -86,7 +86,7 @@ export default function MatchCard({
               {match.scoreXbz} – {match.scoreOpponent}
             </span>
           ) : (
-            <span className="font-display text-lg font-bold text-neutral-500">{labels.vs}</span>
+            <span className="font-display text-lg font-bold text-neutral-400">{labels.vs}</span>
           )}
           {isFinished && match.result && (
             <p className="mt-1 text-[11px] font-bold uppercase tracking-wide text-neutral-400">

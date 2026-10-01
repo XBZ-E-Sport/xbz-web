@@ -18,7 +18,7 @@ export async function generateMetadata({
 }
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
+  "w-full rounded-lg border border-neutral-500 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
 
 export default async function LoginPage({ params, searchParams }: PageProps) {
   const { locale } = await params;

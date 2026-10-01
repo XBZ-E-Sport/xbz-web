@@ -8,7 +8,7 @@ import Flag from "@/components/Flag";
 // translucide dépendrait de l'image), aux couleurs de la charte. Blanc sur le
 // rouge #dc2515 : 4,9:1, quelle que soit la photo.
 const roleBadge: Record<string, string> = {
-  Capitaine: "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#231a17]",
+  Capitaine: "bg-linear-to-r from-xbz-cyan to-xbz-red-light text-[#231a17]",
   Coach: "bg-xbz-blue text-white",
   Manager: "bg-xbz-blue text-white",
   Sub: "bg-white/15 text-white",

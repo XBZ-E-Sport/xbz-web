@@ -10,7 +10,7 @@ import { FIELD_MAX } from "@/lib/limits";
 import { translateApiError } from "@/lib/formerror";
 
 const inputCls =
-  "w-full rounded-lg border-0 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
+  "w-full rounded-lg border border-neutral-500 bg-[#111] px-4 py-3.5 text-white placeholder:text-neutral-400 outline-none";
 const labelCls = "mb-1.5 block text-sm font-semibold text-neutral-300";
 
 type Tone = "idle" | "loading" | "ok" | "error";

@@ -70,7 +70,7 @@ function DemandeCard({
         {demande.icon}
       </span>
       <div>
-        <h3 className="font-display text-base text-xbz-blue">{title}</h3>
+        <h3 className="font-display text-base text-xbz-red-light">{title}</h3>
         <p className="mt-0.5 text-sm leading-relaxed text-neutral-400">{text}</p>
       </div>
     </>

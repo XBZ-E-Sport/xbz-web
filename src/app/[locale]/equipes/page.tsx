@@ -42,8 +42,11 @@ const roleStyles: Record<GroupVariant, string> = {
   member: "bg-xbz-blue/10 text-[#f4a79b] shadow-[0_0_12px_rgba(220,37,21,0.2)]",
   creative: "bg-[rgba(252,205,5,0.12)] text-[#ffd964] shadow-[0_0_12px_rgba(252,205,5,0.2)]",
 };
+// « Recrutement ouvert » : fixe (une pulsation sans fin, impossible à arrêter,
+// faisait tomber le contraste à ~2,3:1 au creux — WCAG 2.2.2 et 1.4.3), et
+// rouge CLAIR en fin de dégradé (#111 sur #dc2515 : 4,3:1 seulement).
 const availabilityStyles = {
-  open: "animate-pulse bg-linear-to-r from-[#f4a79b] to-xbz-blue text-[#111] shadow-[0_0_25px_rgba(220,37,21,0.6)]",
+  open: "bg-linear-to-r from-[#f4a79b] to-xbz-red-light text-[#111] shadow-[0_0_25px_rgba(220,37,21,0.6)]",
   closed: "bg-linear-to-r from-xbz-orange to-xbz-dark-red text-[#111] shadow-[0_0_25px_rgba(255,15,16,0.6)]",
 } as const;
 
@@ -108,7 +111,7 @@ function GroupCard({
           <Link
             href={`/equipes/${group.slug}`}
             locale={locale}
-            className="text-xbz-blue transition after:absolute after:inset-0 after:content-[''] group-hover:text-xbz-cyan"
+            className="text-xbz-red-light transition after:absolute after:inset-0 after:content-[''] group-hover:text-xbz-cyan"
           >
             {group.name}
           </Link>

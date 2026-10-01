@@ -84,7 +84,7 @@ function ProductCard({ product, eager }: { product: Product; eager: boolean }) {
           </span>
         </div>
 
-        <h2 className="mt-3 font-display text-lg text-xbz-blue">{product.name}</h2>
+        <h2 className="mt-3 font-display text-lg text-xbz-red-light">{product.name}</h2>
         <p className="mt-1 flex-1 text-sm leading-relaxed text-neutral-400">
           {product.description}
         </p>
@@ -162,7 +162,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
 
   const chipBase =
     "rounded-[2px] px-4 py-1.5 text-sm font-semibold transition focus-visible:outline-none";
-  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#231a17]";
+  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-red-light text-[#231a17]";
   const chipIdle = "border border-white/15 text-neutral-300 hover:border-white/40 hover:text-white";
 
   return (
@@ -194,7 +194,7 @@ export default function BoutiqueList({ products }: { products: Product[] }) {
             id="boutique-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-lg border-0 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
+            className="rounded-lg border border-neutral-500 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
           >
             <option value="defaut">{t("sortDefault")}</option>
             <option value="prix-asc">{t("sortPriceAsc")}</option>

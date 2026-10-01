@@ -116,8 +116,9 @@ export default async function Home({ params }: PageProps) {
           XBZ Esport
         </h1>
 
-        {/* Slogan de marque (dégradé rouge → jaune → rouge) */}
-        <p className="bg-linear-to-r from-xbz-blue via-xbz-cyan to-xbz-blue bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
+        {/* Slogan de marque (dégradé rouge → jaune → rouge). Rouge CLAIR aux
+            extrémités : en 16 px gras, le rouge primaire tombait à 3,96:1. */}
+        <p className="bg-linear-to-r from-xbz-red-light via-xbz-cyan to-xbz-red-light bg-clip-text font-subtitle text-sm font-bold uppercase tracking-[0.3em] text-transparent sm:text-base">
           {t("slogan")}
         </p>
 
@@ -216,7 +217,7 @@ export default async function Home({ params }: PageProps) {
                     {nextMatch.roster?.name ?? "XBZ Esport"}
                   </p>
                 </div>
-                <span className="font-display text-lg font-bold text-neutral-500">
+                <span className="font-display text-lg font-bold text-neutral-400">
                   {t("nextMatchVs")}
                 </span>
                 <div className="text-center">
@@ -295,7 +296,7 @@ export default async function Home({ params }: PageProps) {
                         {formatDate(article.date, locale)}
                       </time>
                     </div>
-                    <h3 className="mt-3 font-display text-lg text-xbz-blue">{article.title}</h3>
+                    <h3 className="mt-3 font-display text-lg text-xbz-red-light">{article.title}</h3>
                     <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">
                       {article.excerpt}
                     </p>
@@ -377,7 +378,7 @@ export default async function Home({ params }: PageProps) {
                   <span aria-hidden="true" className="text-3xl leading-none">
                     {item.icon}
                   </span>
-                  <span className="font-display text-sm text-xbz-blue">{item.label}</span>
+                  <span className="font-display text-sm text-xbz-red-light">{item.label}</span>
                 </Link>
               </li>
             ))}

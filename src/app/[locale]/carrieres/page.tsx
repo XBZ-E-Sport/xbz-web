@@ -61,7 +61,7 @@ export default async function CarrieresPage({ params }: PageProps) {
                   className="card-xbz block p-6 transition duration-300 hover:border-xbz-blue/40 motion-safe:hover:-translate-y-1"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <h2 className="font-display text-xl text-xbz-blue">{offer.title}</h2>
+                    <h2 className="font-display text-xl text-xbz-red-light">{offer.title}</h2>
                     <span className="rounded-md bg-xbz-blue/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#f4a79b]">
                       {tType(offer.employmentType)}
                     </span>

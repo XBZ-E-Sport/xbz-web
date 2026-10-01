@@ -85,7 +85,7 @@ export default async function LeClubPage({ params }: PageProps) {
               <span aria-hidden="true" className="text-3xl leading-none">
                 {poleIcons[key]}
               </span>
-              <h3 className="mt-3 font-display text-lg text-xbz-blue">
+              <h3 className="mt-3 font-display text-lg text-xbz-red-light">
                 {t(`poles.${key}.title`)}
               </h3>
               <p className="mt-1 text-sm leading-relaxed text-neutral-400">
@@ -115,7 +115,7 @@ export default async function LeClubPage({ params }: PageProps) {
                   {s.icon}
                 </span>
                 <div className="flex-1">
-                  <h3 className="flex items-center gap-1 font-display text-lg text-xbz-blue">
+                  <h3 className="flex items-center gap-1 font-display text-lg text-xbz-red-light">
                     {tNav(s.key)}
                     <span
                       aria-hidden="true"

@@ -126,7 +126,7 @@ export default async function PresentationPage({ params }: PageProps) {
                 {v.icon}
               </span>
               <div>
-                <h3 className="font-display text-lg text-xbz-blue">
+                <h3 className="font-display text-lg text-xbz-red-light">
                   {t(`values.${v.key}.title`)}
                 </h3>
                 <p className="mt-1 text-sm leading-relaxed text-neutral-400">

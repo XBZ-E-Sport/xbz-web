@@ -40,7 +40,7 @@ function ArticleCard({ article }: { article: Article }) {
             {formatDate(article.date, locale)}
           </time>
         </div>
-        <h2 className="mt-3 font-display text-lg text-xbz-blue">{article.title}</h2>
+        <h2 className="mt-3 font-display text-lg text-xbz-red-light">{article.title}</h2>
         <p className="mt-2 flex-1 text-sm leading-relaxed text-neutral-400">{article.excerpt}</p>
         <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-xbz-cyan">
           {t("readArticle")}
@@ -103,7 +103,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
 
   const chipBase =
     "rounded-[2px] px-4 py-1.5 text-sm font-semibold transition focus-visible:outline-none";
-  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-blue text-[#231a17]";
+  const chipActive = "bg-linear-to-r from-xbz-cyan to-xbz-red-light text-[#231a17]";
   const chipIdle = "border border-white/15 text-neutral-300 hover:border-white/40 hover:text-white";
 
   return (
@@ -135,7 +135,7 @@ export default function ActualiteList({ articles }: { articles: Article[] }) {
             id="actu-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded-lg border-0 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
+            className="rounded-lg border border-neutral-500 bg-[#111] px-3 py-2 text-sm font-semibold text-white outline-none"
           >
             <option value="recent">{t("sortRecent")}</option>
             <option value="ancien">{t("sortOldest")}</option>
