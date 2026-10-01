@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { getProducts } from "@/lib/boutique";
+import { getProducts, isPurchasable } from "@/lib/boutique";
+import { isStripeConfigured } from "@/lib/stripe";
 import ClientMessages from "@/components/ClientMessages";
 import BoutiqueList from "@/components/BoutiqueList";
 import { pageMetadata } from "@/lib/site";
@@ -45,8 +46,10 @@ export default async function BoutiquePage({ params }: PageProps) {
   const tNav = await getTranslations({ locale, namespace: "nav" });
 
   const products = await getProducts(locale);
+  // La boutique encaisse-t-elle ? (clés Stripe en place.) Sinon, aperçu seul.
+  const open = isStripeConfigured();
   // Bandeau « ouvre bientôt » tant qu'aucun produit n'est achetable.
-  const anyAvailable = products.some((p) => p.available);
+  const anyAvailable = open && products.some(isPurchasable);
 
   return (
     <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-32">
@@ -78,14 +81,16 @@ export default async function BoutiquePage({ params }: PageProps) {
         <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
         <ClientMessages locale={locale} clients={["BoutiqueList"]}>
-          <BoutiqueList products={products} />
+          <BoutiqueList products={products} open={open} />
         </ClientMessages>
       )}
 
       {/* CTA */}
       <div className="card-xbz mt-16 p-8 text-center sm:p-10">
-        <h2 className="font-display text-2xl font-bold sm:text-3xl">{t("ctaTitle")}</h2>
-        <p className="mx-auto mt-3 max-w-xl text-neutral-300">{t("ctaText")}</p>
+        <h2 className="font-display text-2xl font-bold sm:text-3xl">
+          {anyAvailable ? t("ctaOpenTitle") : t("ctaTitle")}
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-neutral-300">{anyAvailable ? t("ctaOpenText") : t("ctaText")}</p>
         <div className="mt-7 flex justify-center">
           <a
             href={DISCORD_URL}

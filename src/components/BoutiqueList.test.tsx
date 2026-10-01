@@ -1,11 +1,11 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { screen, fireEvent, cleanup } from "@testing-library/react";
 
 import BoutiqueList from "@/components/BoutiqueList";
 import type { Product } from "@/lib/boutique";
 import { renderIntl, messages } from "../../test/intl";
 
-const base = { description: "", image: null, available: false, url: null };
+const base = { description: "", image: null, available: false, variants: [] };
 const products: Product[] = [
   { ...base, slug: "tshirt", name: "T-shirt XBZ", price: 25, category: "Textile", icon: "👕" },
   { ...base, slug: "mug", name: "Mug XBZ", price: 12, category: "Accessoire", icon: "☕" },
@@ -16,6 +16,7 @@ const fr = messages("fr");
 const en = messages("en");
 
 afterEach(() => cleanup());
+beforeEach(() => localStorage.clear());
 
 describe("BoutiqueList", () => {
   it("affiche tous les produits par défaut", () => {
@@ -97,5 +98,84 @@ describe("BoutiqueList", () => {
     // valeur par défaut du navigateur) ; sans lui, next/image pose `lazy`.
     expect(imgs.slice(0, 3).map((i) => i.getAttribute("loading"))).toEqual([null, null, null]);
     expect(imgs[3].getAttribute("loading")).toBe("lazy");
+  });
+
+  describe("achat : tailles et panier", () => {
+    const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+    const maillot: Product = {
+      ...products[0],
+      available: true,
+      variants: [
+        { id: id(1), size: "S", stock: 5 },
+        { id: id(2), size: "M", stock: 2 },
+        { id: id(3), size: "L", stock: 0 },
+      ],
+    };
+    const mug: Product = { ...products[1], available: true, variants: [{ id: id(4), size: "", stock: 3 }] };
+    const cart = () => JSON.parse(localStorage.getItem("xbz-cart-v1") ?? "[]");
+
+    it("boutique fermée (Stripe absent) : « bientôt disponible », rien à ajouter", () => {
+      renderIntl(<BoutiqueList products={[maillot]} />);
+      expect(screen.getByText(fr.boutique.comingSoon)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: fr.boutique.addToCart })).toBeNull();
+    });
+
+    it("propose les tailles ; une taille épuisée reste visible mais n'est pas choisissable", () => {
+      renderIntl(<BoutiqueList products={[maillot]} open />);
+      const group = screen.getByRole("group", { name: fr.boutique.size });
+      expect(group).toBeTruthy();
+      // Nom accessible : « L — épuisée », pas seulement un « L » barré à l'écran.
+      expect((screen.getByRole("radio", { name: "S" }) as HTMLInputElement).disabled).toBe(false);
+      expect((screen.getByRole("radio", { name: "L — épuisée" }) as HTMLInputElement).disabled).toBe(true);
+    });
+
+    it("demande une taille avant d'ajouter, puis ajoute la taille choisie", () => {
+      renderIntl(<BoutiqueList products={[maillot]} open />);
+      fireEvent.click(screen.getByRole("button", { name: fr.boutique.addToCart }));
+      expect(screen.getByText(fr.boutique.chooseSize)).toBeTruthy();
+      expect(cart()).toEqual([]);
+
+      fireEvent.click(screen.getByRole("radio", { name: "M" }));
+      fireEvent.click(screen.getByRole("button", { name: fr.boutique.addToCart }));
+      expect(cart()).toEqual([{ variantId: id(2), quantity: 1 }]);
+      expect(screen.getByRole("link", { name: fr.boutique.viewCart }).getAttribute("href")).toBe("/fr/boutique/panier");
+    });
+
+    it("n'ajoute jamais plus que le stock affiché", () => {
+      renderIntl(<BoutiqueList products={[maillot]} open />);
+      fireEvent.click(screen.getByRole("radio", { name: "M" })); // stock 2
+      const add = screen.getByRole("button", { name: fr.boutique.addToCart });
+      fireEvent.click(add);
+      fireEvent.click(add);
+      fireEvent.click(add);
+      expect(cart()).toEqual([{ variantId: id(2), quantity: 2 }]);
+      expect(screen.getByText(fr.boutique.maxInCart)).toBeTruthy();
+    });
+
+    it("prévient quand il reste peu de pièces", () => {
+      renderIntl(<BoutiqueList products={[maillot]} open />);
+      fireEvent.click(screen.getByRole("radio", { name: "M" }));
+      expect(screen.getByText("Plus que 2 pièces !")).toBeTruthy();
+    });
+
+    it("taille unique : pas de choix à faire, ajout direct", () => {
+      renderIntl(<BoutiqueList products={[mug]} open />);
+      expect(screen.queryByRole("group", { name: fr.boutique.size })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: fr.boutique.addToCart }));
+      expect(cart()).toEqual([{ variantId: id(4), quantity: 1 }]);
+    });
+
+    it("tout est épuisé : « rupture de stock », pas de bouton", () => {
+      const vide: Product = { ...mug, variants: [{ id: id(4), size: "", stock: 0 }] };
+      renderIntl(<BoutiqueList products={[vide]} open />);
+      expect(screen.getByText(fr.boutique.outOfStock)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: fr.boutique.addToCart })).toBeNull();
+    });
+
+    it("le prix n'est jamais mis dans le panier (seulement taille et quantité)", () => {
+      renderIntl(<BoutiqueList products={[mug]} open />);
+      fireEvent.click(screen.getByRole("button", { name: fr.boutique.addToCart }));
+      expect(Object.keys(cart()[0]).sort()).toEqual(["quantity", "variantId"]);
+    });
   });
 });

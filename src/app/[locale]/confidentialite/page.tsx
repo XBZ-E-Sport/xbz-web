@@ -69,8 +69,8 @@ const contactTags = {
   b: (chunks: ReactNode) => <strong>{chunks}</strong>,
 };
 
-const COLLECTED_KEYS = ["recruitment", "support", "antispam"] as const;
-const PROCESSOR_KEYS = ["supabase", "vercel", "discord"] as const;
+const COLLECTED_KEYS = ["recruitment", "support", "orders", "antispam"] as const;
+const PROCESSOR_KEYS = ["supabase", "vercel", "stripe", "discord"] as const;
 
 export default async function ConfidentialitePage({ params }: PageProps) {
   const { locale } = await params;
@@ -139,6 +139,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           <p>{t.rich("purposeText1", contactTags)}</p>
           <p className="mt-2">{t.rich("purposeText2", contactTags)}</p>
           <p className="mt-2">{t.rich("purposeText3", contactTags)}</p>
+          <p className="mt-2">{t.rich("purposeText4", contactTags)}</p>
         </section>
 
         <section aria-labelledby="duree">
@@ -146,6 +147,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
             {t("retentionHeading")}
           </h2>
           <p>{t.rich("retentionText", { ...contactTags, months: RETENTION_MONTHS })}</p>
+          <p className="mt-2">{t.rich("retentionOrdersText", contactTags)}</p>
         </section>
 
         <section aria-labelledby="destinataires">

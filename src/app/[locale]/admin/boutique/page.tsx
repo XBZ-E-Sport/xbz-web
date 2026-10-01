@@ -18,7 +18,8 @@ export default async function AdminBoutiquePage() {
   const { data, error } = await admin
     .from("products")
     .select(
-      "id, slug, name, name_en, description, description_en, price, category, icon, image, url, available, position, active",
+      "id, slug, name, name_en, description, description_en, price, category, icon, image, available, position, active, " +
+        "variants:product_variants(id, size, stock, position)",
     )
     .order("position", { ascending: true })
     .order("created_at", { ascending: true });
@@ -26,7 +27,16 @@ export default async function AdminBoutiquePage() {
   if (error) {
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
-  const products = (data ?? []) as ProductRow[];
+  type Raw = Omit<ProductRow, "variants"> & {
+    variants: { id: string; size: string; stock: number; position: number }[] | null;
+  };
+  const products: ProductRow[] = ((data ?? []) as unknown as Raw[]).map((p) => ({
+    ...p,
+    variants: (p.variants ?? [])
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map(({ id, size, stock }) => ({ id, size, stock })),
+  }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -68,6 +78,15 @@ export default async function AdminBoutiquePage() {
                     </h3>
                     <p className="text-sm text-neutral-400">
                       /{p.slug} · {p.category} · {priceFormatter.format(Number(p.price ?? 0))}
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-300">
+                      Stock :{" "}
+                      {p.variants.length === 0
+                        ? "aucune taille"
+                        : p.variants.map((v) => `${v.size || "unique"} ${v.stock}`).join(" · ")}
+                      {p.active && p.available && p.variants.every((v) => v.stock <= 0) && (
+                        <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-xs text-red-300">rupture</span>
+                      )}
                     </p>
                   </div>
                 </div>

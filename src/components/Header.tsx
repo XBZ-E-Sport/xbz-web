@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Link, usePathname } from "@/i18n/navigation";
 import { logoWide } from "@/lib/brand-images";
+import CartLink from "@/components/CartLink";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // `key` pointe vers le catalogue `nav` ; `href` reste l'URL française, que
@@ -116,8 +117,9 @@ export default function Header() {
           })}
         </ul>
 
-        {/* Actions — langue + Discord + burger */}
+        {/* Actions — panier (s'il n'est pas vide) + langue + Discord + burger */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <CartLink />
           <LanguageSwitcher />
           <span aria-hidden="true" className="hidden h-6 w-px bg-white/15 min-[920px]:block" />
           {/* Discord — blurple conservé (repère de la commu), comme décidé */}

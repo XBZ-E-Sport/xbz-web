@@ -6,6 +6,7 @@ import { assertStaff } from "@/lib/adminguard";
 import { processAndUploadImage } from "@/lib/storage-image";
 import { productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
+import { parseVariants } from "@/lib/variants-form";
 
 function field(fd: FormData, key: string): string {
   const v = fd.get(key);
@@ -97,11 +98,59 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     category: normalizeCategory(field(formData, "category")),
     icon: field(formData, "icon") || "",
     image,
-    url: field(formData, "url") || null,
+    // `url` (ancien lien d'achat externe) n'est plus saisi : la vente passe
+    // par le panier et Stripe. La colonne reste en base, intacte.
     available: formData.get("available") === "on",
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
   };
+}
+
+// --- Tailles & stock -------------------------------------------------------
+
+/**
+ * Enregistre les tailles d'un produit. Un stock modifié n'est écrit que s'il
+ * vaut encore ce qui était affiché au chargement : si une vente l'a décompté
+ * entre-temps, on refuse plutôt que d'effacer cette vente.
+ */
+async function saveVariants(admin: AdminClient, productId: string, formData: FormData) {
+  const { rows, deleted } = parseVariants(formData);
+  const keptIds = new Set(rows.map((r) => r.id).filter(Boolean));
+
+  const toDelete = deleted.filter((id) => !keptIds.has(id));
+  if (toDelete.length) {
+    const { error } = await admin.from("product_variants").delete().eq("product_id", productId).in("id", toDelete);
+    if (error) throw new Error(error.message);
+  }
+
+  for (const r of rows.filter((x) => x.id)) {
+    const changedStock = r.orig === null || r.stock !== r.orig;
+    let query = admin
+      .from("product_variants")
+      .update(changedStock ? { size: r.size, stock: r.stock, position: r.position } : { size: r.size, position: r.position })
+      .eq("id", r.id!)
+      .eq("product_id", productId);
+    if (changedStock && r.orig !== null) query = query.eq("stock", r.orig);
+    const { data, error } = await query.select("id");
+    if (error) {
+      if (error.code === "23505") throw new Error(`Taille « ${r.size} » en double.`);
+      throw new Error(error.message);
+    }
+    if (!data?.length) {
+      throw new Error(
+        `Le stock de la taille « ${r.size || "unique"} » a changé pendant ta saisie (une vente ?). Recharge la page puis recommence.`,
+      );
+    }
+  }
+
+  const inserts = rows.filter((x) => !x.id).map((r) => ({ product_id: productId, size: r.size, stock: r.stock, position: r.position }));
+  if (inserts.length) {
+    const { error } = await admin.from("product_variants").insert(inserts);
+    if (error) {
+      if (error.code === "23505") throw new Error("Une de ces tailles existe déjà pour ce produit.");
+      throw new Error(error.message);
+    }
+  }
 }
 
 function revalidateBoutique() {
@@ -109,6 +158,7 @@ function revalidateBoutique() {
   revalidateTag(CACHE_TAGS.products, "max");
   revalidateLocalizedPath("/admin/boutique");
   revalidateLocalizedPath("/boutique");
+  revalidateLocalizedPath("/boutique/panier");
 }
 
 export async function createProduct(formData: FormData) {
@@ -116,13 +166,16 @@ export async function createProduct(formData: FormData) {
   const name = field(formData, "name");
   if (!name) throw new Error("Le nom est obligatoire.");
 
+  // Tailles validées AVANT d'écrire quoi que ce soit.
+  parseVariants(formData);
   const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), null);
   const row = await buildRow(admin, formData, slug);
-  const { error } = await admin.from("products").insert({ slug, ...row });
+  const { data, error } = await admin.from("products").insert({ slug, ...row }).select("id").single();
   if (error) {
     if (error.code === "23505") throw new Error("Un produit avec ce slug existe déjà.");
     throw new Error(error.message);
   }
+  await saveVariants(admin, data.id, formData);
 
   revalidateBoutique();
 }
@@ -134,6 +187,7 @@ export async function updateProduct(formData: FormData) {
   const name = field(formData, "name");
   if (!name) throw new Error("Le nom est obligatoire.");
 
+  parseVariants(formData);
   const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), id);
   const row = await buildRow(admin, formData, slug);
   const { error } = await admin.from("products").update({ slug, ...row }).eq("id", id);
@@ -141,6 +195,7 @@ export async function updateProduct(formData: FormData) {
     if (error.code === "23505") throw new Error("Un produit avec ce slug existe déjà.");
     throw new Error(error.message);
   }
+  await saveVariants(admin, id, formData);
 
   revalidateBoutique();
 }

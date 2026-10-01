@@ -3,6 +3,7 @@ import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 import { productCategories } from "@/lib/boutique";
 import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
+import VariantsEditor, { type VariantRow } from "./VariantsEditor";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -19,10 +20,10 @@ export type ProductRow = {
   category: string;
   icon: string | null;
   image: string | null;
-  url: string | null;
   available: boolean;
   position: number;
   active: boolean;
+  variants: VariantRow[];
 };
 
 export default function ProductForm({
@@ -133,23 +134,13 @@ export default function ProductForm({
         </p>
       </div>
 
-      <div className="block sm:col-span-2">
-        <label htmlFor={`${uid}-url`} className={labelCls}>
-          Lien d’achat externe
-        </label>
-        <input
-          id={`${uid}-url`}
-          name="url"
-          type="url"
-          defaultValue={product?.url ?? ""}
-          placeholder="https://boutique-externe.com/produit-xbz"
-          className={inputCls}
-        />
-        <p className="mt-1 text-xs text-neutral-400">
-          Lien vers un shop externe. Laissé vide, un produit « achetable » affiche un bouton
-          « Commander » qui renvoie vers le Discord.
-        </p>
-      </div>
+      {/* Remonté après chaque enregistrement (clé) : les tailles créées
+          reçoivent leur identifiant, le formulaire repart de la base. */}
+      <VariantsEditor
+        key={JSON.stringify(product?.variants ?? [])}
+        uid={uid}
+        variants={product?.variants ?? []}
+      />
 
       <div className="block sm:col-span-2">
         <label htmlFor={`${uid}-description`} className={labelCls}>
@@ -175,7 +166,7 @@ export default function ProductForm({
       <div className="flex flex-col justify-end gap-2 text-sm text-neutral-300">
         <div className="flex items-center gap-2">
           <input id={`${uid}-available`} type="checkbox" name="available" defaultChecked={product?.available ?? false} className="h-4 w-4" />
-          <label htmlFor={`${uid}-available`}>Achetable (affiche un bouton d’achat)</label>
+          <label htmlFor={`${uid}-available`}>En vente (paiement en ligne)</label>
         </div>
         <div className="flex items-center gap-2">
           <input id={`${uid}-active`} type="checkbox" name="active" defaultChecked={product?.active ?? true} className="h-4 w-4" />

@@ -15,11 +15,14 @@ import type { AbstractIntlMessages } from "next-intl";
 
 export const CLIENT_NAMESPACES = {
   Header: ["nav"],
+  // Pastille du panier, dans l'en-tête.
+  CartLink: ["nav"],
   LanguageSwitcher: ["language"],
   // src/app/[locale]/error.tsx (écran d'erreur, rendu dans le layout).
   ErrorPage: ["error", "common", "notFound"],
   ActualiteList: ["actualite", "articleCategories"],
   BoutiqueList: ["boutique", "productCategories"],
+  CartView: ["cart"],
   MediaGallery: ["galerie", "mediaCategories"],
   RecrutementForm: ["recrutementForm", "formErrors", "fieldLabels", "recrutementCategories", "playerRoles"],
   SupportForm: ["supportForm", "formErrors", "fieldLabels", "supportSubjects"],
@@ -28,7 +31,12 @@ export const CLIENT_NAMESPACES = {
 export type ClientComponent = keyof typeof CLIENT_NAMESPACES;
 
 /** Composants client de la coquille, présents sur toutes les pages (layout). */
-export const LAYOUT_CLIENTS = ["Header", "LanguageSwitcher", "ErrorPage"] as const satisfies readonly ClientComponent[];
+export const LAYOUT_CLIENTS = [
+  "Header",
+  "CartLink",
+  "LanguageSwitcher",
+  "ErrorPage",
+] as const satisfies readonly ClientComponent[];
 
 /** Sous-catalogue des namespaces lus par `clients`. */
 export function pickMessages(
