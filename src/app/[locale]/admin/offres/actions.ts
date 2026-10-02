@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { employmentTypes, salaryPeriods } from "@/lib/offres";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
@@ -71,7 +73,7 @@ function buildRow(fd: FormData) {
   const city = field(fd, "city") || null;
   // Indeed refuse une offre sans localisation : soit télétravail, soit une ville.
   if (!remote && !city) {
-    throw new Error(
+    throw new AdminError(
       "Une ville est requise pour une offre qui n'est pas en télétravail (exigence Indeed).",
     );
   }
@@ -111,49 +113,49 @@ function revalidateOffer(slug?: string) {
   revalidateLocalizedPath("/recrutement");
 }
 
-export async function createOffer(formData: FormData) {
-  const admin = await assertStaff();
-  const title = field(formData, "title");
-  if (!title) throw new Error("L'intitulé du poste est obligatoire.");
+export async function createOffer(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const title = field(formData, "title");
+    if (!title) throw new AdminError("L'intitulé du poste est obligatoire.");
 
-  const slug = await uniqueSlug(admin, slugify(field(formData, "slug") || title), null);
-  const { error } = await admin.from("job_offers").insert({ slug, ...buildRow(formData) });
-  if (error) {
-    if (error.code === "23505") throw new Error("Une offre avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
+    const slug = await uniqueSlug(admin, slugify(field(formData, "slug") || title), null);
+    const { error } = await admin.from("job_offers").insert({ slug, ...buildRow(formData) });
+    if (error) throw dbError(error, "Une offre avec ce slug existe déjà.");
 
-  revalidateOffer(slug);
+    revalidateOffer(slug);
+  });
 }
 
-export async function updateOffer(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const title = field(formData, "title");
-  if (!title) throw new Error("L'intitulé du poste est obligatoire.");
+export async function updateOffer(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const title = field(formData, "title");
+    if (!title) throw new AdminError("L'intitulé du poste est obligatoire.");
 
-  const slug = await uniqueSlug(admin, slugify(field(formData, "slug") || title), id);
-  const { error } = await admin
-    .from("job_offers")
-    .update({ slug, ...buildRow(formData) })
-    .eq("id", id);
-  if (error) {
-    if (error.code === "23505") throw new Error("Une offre avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
+    const slug = await uniqueSlug(admin, slugify(field(formData, "slug") || title), id);
+    const { error } = await admin
+      .from("job_offers")
+      .update({ slug, ...buildRow(formData) })
+      .eq("id", id);
+    if (error) throw dbError(error, "Une offre avec ce slug existe déjà.");
 
-  revalidateOffer(slug);
+    revalidateOffer(slug);
+  });
 }
 
-export async function deleteOffer(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const slug = field(formData, "slug");
+export async function deleteOffer(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const slug = field(formData, "slug");
 
-  const { error } = await admin.from("job_offers").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("job_offers").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateOffer(slug || undefined);
+    revalidateOffer(slug || undefined);
+  });
 }

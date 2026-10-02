@@ -4,15 +4,22 @@ import { useRef, useTransition } from "react";
 import { toast } from "sonner";
 
 import { oversizedUpload } from "@/lib/limits";
+import { ADMIN_GENERIC_ERROR, adminFailure, type AdminAction } from "@/lib/admin-result";
+
+/** Échec ATTENDU renvoyé par l'action : son message est montré tel quel. */
+class ActionFailure extends Error {}
 
 /**
- * Formulaire du back-office : même `<form action={serverAction}>` qu'avant, plus
- * deux comportements qui manquaient.
+ * Formulaire du back-office : une action serveur, plus ce qui manquait.
  *
  *  1. **Retour visuel** — un toast « Enregistrement… » qui devient succès ou
- *     erreur. Sans ça, un clic sur Enregistrer ne produisait aucun signal.
- *  2. **Repli de la carte** — le `<details>` parent se referme après un succès.
- *     Il n'existait aucun moyen de refermer une carte ouverte.
+ *     erreur, avec le VRAI message (« Taille « M » en double. »…) : l'action
+ *     le renvoie au lieu de le lever (voir src/lib/admin-result.ts).
+ *  2. **Saisie conservée en cas d'erreur** — l'envoi est piloté ici plutôt que
+ *     par `<form action>` : React réinitialise un formulaire d'action dès
+ *     l'envoi, et une erreur effaçait tout ce qui venait d'être tapé. Le
+ *     formulaire n'est remis à zéro qu'après un succès.
+ *  3. **Repli de la carte** — le `<details>` parent se referme après un succès.
  *
  * Composant client, mais ses enfants restent rendus côté serveur : les
  * formulaires existants n'ont pas eu à changer de nature.
@@ -25,7 +32,7 @@ export default function AdminForm({
   successMessage = "Enregistré",
   closeOnSuccess = true,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AdminAction;
   children: React.ReactNode;
   className?: string;
   loadingMessage?: string;
@@ -33,50 +40,63 @@ export default function AdminForm({
   /** false pour une suppression : la carte disparaît d'elle-même. */
   closeOnSuccess?: boolean;
 }) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
+  // Double clic : un seul envoi (l'état `pending` arrive un rendu trop tard).
+  const busy = useRef(false);
 
-  // Image trop lourde : annoncée AVANT l'envoi (le serveur rejetterait la
-  // requête entière sans pouvoir expliquer pourquoi). Dans `onSubmit`, pas dans
-  // l'action : `preventDefault` y bloque l'envoi SANS que React réinitialise le
-  // formulaire, donc rien de ce qui a été saisi n'est perdu.
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    const files = [...event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="file"]')].flatMap(
-      (input) => [...(input.files ?? [])],
-    );
+    event.preventDefault();
+    if (busy.current) return;
+    const form = event.currentTarget;
+
+    // Image trop lourde : annoncée AVANT l'envoi (le serveur rejetterait la
+    // requête entière sans pouvoir expliquer pourquoi).
+    const files = [...form.querySelectorAll<HTMLInputElement>('input[type="file"]')].flatMap((input) => [
+      ...(input.files ?? []),
+    ]);
     const tooBig = oversizedUpload(files);
     if (tooBig) {
-      event.preventDefault();
       toast.error(tooBig);
+      return;
     }
-  }
 
-  function handleAction(formData: FormData) {
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const formData = new FormData(form, submitter ?? undefined);
+    busy.current = true;
     startTransition(async () => {
-      const run = Promise.resolve(action(formData));
-
+      const run = Promise.resolve()
+        .then(() => action(formData))
+        .then((result) => {
+          const failure = adminFailure(result);
+          if (failure) throw new ActionFailure(failure);
+        });
       toast.promise(run, {
         loading: loadingMessage,
         success: successMessage,
-        // Next masque le message des erreurs serveur en production : on reste
-        // volontairement générique plutôt que d'afficher « An error occurred ».
-        error: "Échec de l’enregistrement. Réessaie ou recharge la page.",
+        // Erreur imprévue (réseau, panne) : message générique, le détail est
+        // dans les journaux du serveur.
+        error: (e: unknown) => (e instanceof ActionFailure ? e.message : ADMIN_GENERIC_ERROR),
       });
 
       try {
         await run;
-        if (closeOnSuccess) {
-          // Referme la carte dépliée qui contient ce formulaire (s'il y en a une).
-          formRef.current?.closest("details")?.removeAttribute("open");
-        }
       } catch {
-        // Déjà signalé par le toast ; on garde la carte ouverte pour corriger.
+        // Déjà signalé par le toast ; saisie et carte conservées pour corriger.
+        return;
+      } finally {
+        busy.current = false;
       }
+      // Succès : le formulaire repart des valeurs enregistrées (un formulaire
+      // d'ajout se vide), puis la carte dépliée qui le contient se referme.
+      form.reset();
+      if (closeOnSuccess) form.closest("details")?.removeAttribute("open");
     });
   }
 
   return (
-    <form ref={formRef} action={handleAction} onSubmit={handleSubmit} className={className}>
+    // `method="post"` : un envoi avant que la page ne soit interactive ne met
+    // pas la saisie dans l'adresse (GET par défaut).
+    <form method="post" onSubmit={handleSubmit} aria-busy={pending || undefined} className={className}>
       {children}
     </form>
   );

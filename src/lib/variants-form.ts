@@ -2,6 +2,8 @@
 // validés AVANT toute écriture. Module à part : testable sans base, et
 // réutilisable par la création comme par la modification d'un produit.
 
+import { AdminError } from "@/lib/admin-result";
+
 export type VariantInput = { id: string | null; size: string; stock: number; orig: number | null; position: number };
 
 const MAX_VARIANTS = 20;
@@ -22,12 +24,12 @@ export function parseVariants(fd: FormData): { rows: VariantInput[]; deleted: st
     .map(String)
     .filter((id) => UUID.test(id));
 
-  if (sizes.length > MAX_VARIANTS) throw new Error(`${MAX_VARIANTS} tailles au plus par produit.`);
+  if (sizes.length > MAX_VARIANTS) throw new AdminError(`${MAX_VARIANTS} tailles au plus par produit.`);
   const rows = sizes.map((size, i): VariantInput => {
-    if (size.length > 20) throw new Error(`Taille « ${size.slice(0, 20)}… » trop longue (20 caractères).`);
+    if (size.length > 20) throw new AdminError(`Taille « ${size.slice(0, 20)}… » trop longue (20 caractères).`);
     const stock = Number(stocks[i]);
     if (!Number.isInteger(stock) || stock < 0 || stock > MAX_STOCK) {
-      throw new Error(`Stock invalide pour la taille « ${size || "unique"} » : un nombre entier positif.`);
+      throw new AdminError(`Stock invalide pour la taille « ${size || "unique"} » : un nombre entier positif.`);
     }
     const id = UUID.test(ids[i] ?? "") ? ids[i] : null;
     const orig = origs[i] === "" || origs[i] === undefined ? null : Number(origs[i]);
@@ -36,12 +38,12 @@ export function parseVariants(fd: FormData): { rows: VariantInput[]; deleted: st
 
   if (rows.length === 0) rows.push({ id: null, size: "", stock: 0, orig: null, position: 1 });
   if (rows.length > 1 && rows.some((r) => r.size === "")) {
-    throw new Error("Plusieurs tailles : chacune doit avoir un nom (une seule ligne vide = taille unique).");
+    throw new AdminError("Plusieurs tailles : chacune doit avoir un nom (une seule ligne vide = taille unique).");
   }
   const seen = new Set<string>();
   for (const r of rows) {
     const k = r.size.toUpperCase();
-    if (seen.has(k)) throw new Error(`Taille « ${r.size} » en double.`);
+    if (seen.has(k)) throw new AdminError(`Taille « ${r.size} » en double.`);
     seen.add(k);
   }
   return { rows, deleted };

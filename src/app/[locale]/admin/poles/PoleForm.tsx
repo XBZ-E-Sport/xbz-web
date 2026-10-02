@@ -1,5 +1,6 @@
 import AdminForm from "@/components/AdminForm";
 import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
+import type { AdminAction } from "@/lib/admin-result";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -40,7 +41,7 @@ export default function PoleForm({
   pole,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AdminAction;
   pole?: PoleRow;
   submitLabel: string;
 }) {

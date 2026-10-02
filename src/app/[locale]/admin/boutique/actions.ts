@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
 import { productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
@@ -56,7 +58,7 @@ const uploadImage = (admin: AdminClient, file: File, slug: string) =>
     slug,
     fallbackName: "produit",
     maxDimension: MAX_DIMENSION,
-    label: "image",
+    label: "l’image",
   });
 
 /** Slug libre pour `products` (suffixe -2, -3… si déjà pris). */
@@ -120,7 +122,7 @@ async function saveVariants(admin: AdminClient, productId: string, formData: For
   const toDelete = deleted.filter((id) => !keptIds.has(id));
   if (toDelete.length) {
     const { error } = await admin.from("product_variants").delete().eq("product_id", productId).in("id", toDelete);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
   }
 
   for (const r of rows.filter((x) => x.id)) {
@@ -132,12 +134,9 @@ async function saveVariants(admin: AdminClient, productId: string, formData: For
       .eq("product_id", productId);
     if (changedStock && r.orig !== null) query = query.eq("stock", r.orig);
     const { data, error } = await query.select("id");
-    if (error) {
-      if (error.code === "23505") throw new Error(`Taille « ${r.size} » en double.`);
-      throw new Error(error.message);
-    }
+    if (error) throw dbError(error, `Taille « ${r.size} » en double.`);
     if (!data?.length) {
-      throw new Error(
+      throw new AdminError(
         `Le stock de la taille « ${r.size || "unique"} » a changé pendant ta saisie (une vente ?). Recharge la page puis recommence.`,
       );
     }
@@ -146,10 +145,7 @@ async function saveVariants(admin: AdminClient, productId: string, formData: For
   const inserts = rows.filter((x) => !x.id).map((r) => ({ product_id: productId, size: r.size, stock: r.stock, position: r.position }));
   if (inserts.length) {
     const { error } = await admin.from("product_variants").insert(inserts);
-    if (error) {
-      if (error.code === "23505") throw new Error("Une de ces tailles existe déjà pour ce produit.");
-      throw new Error(error.message);
-    }
+    if (error) throw dbError(error, "Une de ces tailles existe déjà pour ce produit.");
   }
 }
 
@@ -161,52 +157,52 @@ function revalidateBoutique() {
   revalidateLocalizedPath("/boutique/panier");
 }
 
-export async function createProduct(formData: FormData) {
-  const admin = await assertStaff();
-  const name = field(formData, "name");
-  if (!name) throw new Error("Le nom est obligatoire.");
+export async function createProduct(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const name = field(formData, "name");
+    if (!name) throw new AdminError("Le nom est obligatoire.");
 
-  // Tailles validées AVANT d'écrire quoi que ce soit.
-  parseVariants(formData);
-  const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), null);
-  const row = await buildRow(admin, formData, slug);
-  const { data, error } = await admin.from("products").insert({ slug, ...row }).select("id").single();
-  if (error) {
-    if (error.code === "23505") throw new Error("Un produit avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
-  await saveVariants(admin, data.id, formData);
+    // Tailles validées AVANT d'écrire quoi que ce soit.
+    parseVariants(formData);
+    const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), null);
+    const row = await buildRow(admin, formData, slug);
+    const { data, error } = await admin.from("products").insert({ slug, ...row }).select("id").single();
+    if (error) throw dbError(error, "Un produit avec ce slug existe déjà.");
+    await saveVariants(admin, data.id, formData);
 
-  revalidateBoutique();
+    revalidateBoutique();
+  });
 }
 
-export async function updateProduct(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const name = field(formData, "name");
-  if (!name) throw new Error("Le nom est obligatoire.");
+export async function updateProduct(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const name = field(formData, "name");
+    if (!name) throw new AdminError("Le nom est obligatoire.");
 
-  parseVariants(formData);
-  const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), id);
-  const row = await buildRow(admin, formData, slug);
-  const { error } = await admin.from("products").update({ slug, ...row }).eq("id", id);
-  if (error) {
-    if (error.code === "23505") throw new Error("Un produit avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
-  await saveVariants(admin, id, formData);
+    parseVariants(formData);
+    const slug = await uniqueProductSlug(admin, slugify(field(formData, "slug") || name), id);
+    const row = await buildRow(admin, formData, slug);
+    const { error } = await admin.from("products").update({ slug, ...row }).eq("id", id);
+    if (error) throw dbError(error, "Un produit avec ce slug existe déjà.");
+    await saveVariants(admin, id, formData);
 
-  revalidateBoutique();
+    revalidateBoutique();
+  });
 }
 
-export async function deleteProduct(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
+export async function deleteProduct(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
 
-  const { error } = await admin.from("products").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("products").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateBoutique();
+    revalidateBoutique();
+  });
 }

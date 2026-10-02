@@ -79,3 +79,30 @@ describe("contrôle d'accès du back-office", () => {
     expect(nonGardees).toEqual([]);
   });
 });
+
+describe("erreurs du back-office", () => {
+  // En production, Next remplace le message de toute erreur LEVÉE par une
+  // action serveur : le staff ne voyait que « Échec de l'enregistrement ».
+  // Les actions renvoient donc leurs erreurs (src/lib/admin-result.ts).
+  const actionFiles = adminActionFiles(ADMIN_DIR);
+
+  it("chaque action de formulaire passe par adminAction() et renvoie un AdminResult", () => {
+    const fautives: string[] = [];
+    for (const file of actionFiles) {
+      const blocs = readFileSync(file, "utf8").split(/\nexport async function /).slice(1);
+      for (const bloc of blocs) {
+        const nom = bloc.slice(0, bloc.indexOf("("));
+        if (!bloc.startsWith(`${nom}(formData: FormData)`)) continue; // ex. revalidateAllPublicContent()
+        if (!bloc.includes("): Promise<AdminResult> {") || !bloc.includes("return adminAction(async () => {")) {
+          fautives.push(`${file} → ${nom}`);
+        }
+      }
+    }
+    expect(fautives).toEqual([]);
+  });
+
+  it("aucune erreur levée « brute » : AdminError (message pour le staff) ou dbError (base)", () => {
+    const brutes = actionFiles.filter((f) => /throw new Error\(/.test(readFileSync(f, "utf8")));
+    expect(brutes).toEqual([]);
+  });
+});

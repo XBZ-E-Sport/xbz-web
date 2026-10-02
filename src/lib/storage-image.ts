@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { AdminError } from "@/lib/admin-result";
 import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
 
 // sharp tire une lib native (libvips). On la charge PARESSEUSEMENT — au premier
@@ -33,7 +34,7 @@ type Options = {
   fallbackName: string;
   /** Côté le plus long après redimensionnement. */
   maxDimension: number;
-  /** Mot employé dans les messages d'erreur (« image », « photo »). */
+  /** Désignation AVEC son article, pour les messages d'erreur (« l’image », « la photo »). */
   label: string;
 };
 
@@ -57,27 +58,33 @@ export async function processAndUploadImage(
   file: File,
   { bucket, slug, fallbackName, maxDimension, label }: Options,
 ): Promise<string> {
-  if (!file.type.startsWith("image/")) throw new Error(`Le fichier doit être une ${label}.`);
+  if (!file.type.startsWith("image/")) throw new AdminError(`Le fichier choisi pour ${label} n’est pas une image.`);
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error(`${cap(label)} trop lourde (${formatMegabytes(MAX_INPUT_BYTES)} max).`);
+    throw new AdminError(`Fichier trop lourd pour ${label} (${formatMegabytes(MAX_INPUT_BYTES)} max).`);
   }
 
   const sharp = await loadSharp();
   const input = Buffer.from(await file.arrayBuffer());
-  const output = await sharp(input)
-    .rotate() // respecte l'orientation EXIF (photos de téléphone)
-    .resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 80 })
-    .toBuffer();
+  let output: Buffer;
+  try {
+    output = await sharp(input)
+      .rotate() // respecte l'orientation EXIF (photos de téléphone)
+      .resize({ width: maxDimension, height: maxDimension, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+  } catch {
+    // Extension trompeuse, fichier abîmé, format exotique (HEIC non pris en charge…).
+    throw new AdminError(`Image illisible pour ${label} : utilise un JPG, PNG ou WebP.`);
+  }
 
   const path = `${slug || fallbackName}-${Date.now()}.webp`;
   const { error } = await admin.storage.from(bucket).upload(path, output, {
     contentType: "image/webp",
     upsert: true,
   });
-  if (error) throw new Error(`Upload ${label} : ${error.message}`);
+  if (error) throw new AdminError(`Envoi du fichier impossible (${error.message}). Réessaie.`);
 
-  await assertStoredImageIsReadable(admin, bucket, path, label);
+  await assertStoredImageIsReadable(admin, bucket, path);
 
   const { data } = admin.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
@@ -88,16 +95,11 @@ export async function processAndUploadImage(
  * image décodable. En cas d'échec on SUPPRIME l'objet : mieux vaut aucun visuel
  * qu'une URL enregistrée en base qui pointe vers un fichier illisible.
  */
-async function assertStoredImageIsReadable(
-  admin: AdminClient,
-  bucket: string,
-  path: string,
-  label: string,
-): Promise<void> {
+async function assertStoredImageIsReadable(admin: AdminClient, bucket: string, path: string): Promise<void> {
   const { data, error } = await admin.storage.from(bucket).download(path);
   if (error || !data) {
     await admin.storage.from(bucket).remove([path]);
-    throw new Error(`Relecture ${label} impossible : ${error?.message ?? "fichier introuvable"}.`);
+    throw new AdminError(`Relecture du fichier envoyé impossible (${error?.message ?? "fichier introuvable"}). Réessaie.`);
   }
 
   const sharp = await loadSharp();
@@ -107,11 +109,9 @@ async function assertStoredImageIsReadable(
     if (!meta.width || !meta.height) throw new Error("dimensions absentes");
   } catch {
     await admin.storage.from(bucket).remove([path]);
-    throw new Error(
-      `${cap(label)} corrompue au stockage (le fichier relu n'est pas une image valide). ` +
+    throw new AdminError(
+      `Fichier corrompu au stockage (relu, ce n'est plus une image valide). ` +
         `Rien n'a été enregistré — réessaie, et signale-le si ça recommence.`,
     );
   }
 }
-
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
 import { matchFormats, matchStatuses } from "@/lib/matchs";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
@@ -45,7 +47,7 @@ const uploadLogo = (admin: AdminClient, file: File, opponent: string) =>
       .replace(/^-+|-+$/g, "") || "adversaire",
     fallbackName: "adversaire",
     maxDimension: MAX_DIMENSION,
-    label: "logo",
+    label: "le logo",
   });
 
 /** Champs communs create/update, dérivés du formulaire. */
@@ -84,37 +86,43 @@ function revalidateMatchs() {
   revalidateLocalizedPath("/"); // le bandeau « prochain match » de l'accueil
 }
 
-export async function createMatch(formData: FormData) {
-  const admin = await assertStaff();
-  if (!field(formData, "opponent")) throw new Error("L'adversaire est obligatoire.");
-  if (!field(formData, "starts_at")) throw new Error("La date du match est obligatoire.");
+export async function createMatch(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    if (!field(formData, "opponent")) throw new AdminError("L'adversaire est obligatoire.");
+    if (!field(formData, "starts_at")) throw new AdminError("La date du match est obligatoire.");
 
-  const { error } = await admin.from("matchs").insert(await buildRow(admin, formData));
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("matchs").insert(await buildRow(admin, formData));
+    if (error) throw dbError(error);
 
-  revalidateMatchs();
+    revalidateMatchs();
+  });
 }
 
-export async function updateMatch(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  if (!field(formData, "opponent")) throw new Error("L'adversaire est obligatoire.");
-  if (!field(formData, "starts_at")) throw new Error("La date du match est obligatoire.");
+export async function updateMatch(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    if (!field(formData, "opponent")) throw new AdminError("L'adversaire est obligatoire.");
+    if (!field(formData, "starts_at")) throw new AdminError("La date du match est obligatoire.");
 
-  const { error } = await admin.from("matchs").update(await buildRow(admin, formData)).eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("matchs").update(await buildRow(admin, formData)).eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateMatchs();
+    revalidateMatchs();
+  });
 }
 
-export async function deleteMatch(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
+export async function deleteMatch(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
 
-  const { error } = await admin.from("matchs").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("matchs").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateMatchs();
+    revalidateMatchs();
+  });
 }

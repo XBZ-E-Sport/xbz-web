@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { articleCategories } from "@/lib/actualite";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 
@@ -78,49 +80,49 @@ function revalidateArticle(slug?: string) {
   if (slug) revalidateLocalizedPath(`/actualite/${slug}`);
 }
 
-export async function createArticle(formData: FormData) {
-  const admin = await assertStaff();
-  const title = field(formData, "title");
-  if (!title) throw new Error("Le titre est obligatoire.");
+export async function createArticle(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const title = field(formData, "title");
+    if (!title) throw new AdminError("Le titre est obligatoire.");
 
-  const slug = await uniqueArticleSlug(admin, slugify(field(formData, "slug") || title), null);
-  const { error } = await admin.from("articles").insert({ slug, ...buildRow(formData) });
-  if (error) {
-    if (error.code === "23505") throw new Error("Un article avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
+    const slug = await uniqueArticleSlug(admin, slugify(field(formData, "slug") || title), null);
+    const { error } = await admin.from("articles").insert({ slug, ...buildRow(formData) });
+    if (error) throw dbError(error, "Un article avec ce slug existe déjà.");
 
-  revalidateArticle(slug);
+    revalidateArticle(slug);
+  });
 }
 
-export async function updateArticle(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const title = field(formData, "title");
-  if (!title) throw new Error("Le titre est obligatoire.");
+export async function updateArticle(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const title = field(formData, "title");
+    if (!title) throw new AdminError("Le titre est obligatoire.");
 
-  const slug = await uniqueArticleSlug(admin, slugify(field(formData, "slug") || title), id);
-  const { error } = await admin
-    .from("articles")
-    .update({ slug, ...buildRow(formData) })
-    .eq("id", id);
-  if (error) {
-    if (error.code === "23505") throw new Error("Un article avec ce slug existe déjà.");
-    throw new Error(error.message);
-  }
+    const slug = await uniqueArticleSlug(admin, slugify(field(formData, "slug") || title), id);
+    const { error } = await admin
+      .from("articles")
+      .update({ slug, ...buildRow(formData) })
+      .eq("id", id);
+    if (error) throw dbError(error, "Un article avec ce slug existe déjà.");
 
-  revalidateArticle(slug);
+    revalidateArticle(slug);
+  });
 }
 
-export async function deleteArticle(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const slug = field(formData, "slug");
+export async function deleteArticle(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const slug = field(formData, "slug");
 
-  const { error } = await admin.from("articles").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("articles").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateArticle(slug || undefined);
+    revalidateArticle(slug || undefined);
+  });
 }

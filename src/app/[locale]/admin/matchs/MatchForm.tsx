@@ -1,6 +1,7 @@
 import AdminForm from "@/components/AdminForm";
 
 import { matchFormats, matchStatuses } from "@/lib/matchs";
+import type { AdminAction } from "@/lib/admin-result";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -43,7 +44,7 @@ export default function MatchForm({
   rosters,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AdminAction;
   match?: MatchRow;
   rosters: RosterOption[];
   submitLabel: string;

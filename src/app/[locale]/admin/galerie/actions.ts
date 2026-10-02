@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
 import { mediaTypes, mediaCategories } from "@/lib/medias";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
@@ -45,7 +47,7 @@ const uploadImage = (admin: AdminClient, file: File, title: string) =>
         .replace(/^-+|-+$/g, "") || "media",
     fallbackName: "media",
     maxDimension: MAX_DIMENSION,
-    label: "image",
+    label: "l’image",
   });
 
 async function buildRow(admin: AdminClient, formData: FormData) {
@@ -63,10 +65,10 @@ async function buildRow(admin: AdminClient, formData: FormData) {
 
   // Garde-fous : une vidéo a besoin d'un lien ; une photo a besoin d'une image.
   if (type === "video" && !videoUrl) {
-    throw new Error("Une vidéo a besoin d'un lien (YouTube / Twitch).");
+    throw new AdminError("Une vidéo a besoin d'un lien (YouTube / Twitch).");
   }
   if (type === "photo" && !image) {
-    throw new Error("Une photo a besoin d'une image (upload ou URL).");
+    throw new AdminError("Une photo a besoin d'une image (upload ou URL).");
   }
 
   return {
@@ -86,32 +88,38 @@ function revalidateGalerie() {
   revalidateLocalizedPath("/galerie");
 }
 
-export async function createMedia(formData: FormData) {
-  const admin = await assertStaff();
-  const { error } = await admin.from("medias").insert(await buildRow(admin, formData));
-  if (error) throw new Error(error.message);
+export async function createMedia(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const { error } = await admin.from("medias").insert(await buildRow(admin, formData));
+    if (error) throw dbError(error);
 
-  revalidateGalerie();
+    revalidateGalerie();
+  });
 }
 
-export async function updateMedia(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
+export async function updateMedia(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
 
-  const { error } = await admin.from("medias").update(await buildRow(admin, formData)).eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("medias").update(await buildRow(admin, formData)).eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateGalerie();
+    revalidateGalerie();
+  });
 }
 
-export async function deleteMedia(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
+export async function deleteMedia(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
 
-  const { error } = await admin.from("medias").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("medias").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidateGalerie();
+    revalidateGalerie();
+  });
 }

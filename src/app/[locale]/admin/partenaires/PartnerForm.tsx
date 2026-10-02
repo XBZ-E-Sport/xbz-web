@@ -3,6 +3,7 @@ import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 
 import { partnerTypes } from "@/lib/partenaires";
 import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
+import type { AdminAction } from "@/lib/admin-result";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -31,7 +32,7 @@ export default function PartnerForm({
   partner,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AdminAction;
   partner?: PartnerRow;
   submitLabel: string;
 }) {

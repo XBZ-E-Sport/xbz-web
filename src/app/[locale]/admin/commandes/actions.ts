@@ -1,6 +1,8 @@
 "use server";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { revalidateLocalizedPath } from "@/lib/cache";
 
 /**
@@ -11,19 +13,21 @@ import { revalidateLocalizedPath } from "@/lib/cache";
  * pour que le back-office ne puisse pas dire autre chose que Stripe.
  * Server action = endpoint joignable directement : la garde vit ICI.
  */
-export async function markOrderShipped(formData: FormData) {
-  const admin = await assertStaff();
-  const id = String(formData.get("id") ?? "").trim();
-  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error("Identifiant de commande invalide.");
+export async function markOrderShipped(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = String(formData.get("id") ?? "").trim();
+    if (!/^[0-9a-f-]{36}$/i.test(id)) throw new AdminError("Identifiant de commande invalide.");
 
-  const { data, error } = await admin
-    .from("orders")
-    .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("status", "paid")
-    .select("id");
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("Cette commande n'est plus « payée » (déjà expédiée ou remboursée).");
+    const { data, error } = await admin
+      .from("orders")
+      .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("status", "paid")
+      .select("id");
+    if (error) throw dbError(error);
+    if (!data?.length) throw new AdminError("Cette commande n'est plus « payée » (déjà expédiée ou remboursée).");
 
-  revalidateLocalizedPath("/admin/commandes");
+    revalidateLocalizedPath("/admin/commandes");
+  });
 }

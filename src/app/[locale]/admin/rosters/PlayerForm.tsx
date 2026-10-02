@@ -1,6 +1,7 @@
 import AdminForm from "@/components/AdminForm";
 import EnglishBlock from "@/app/[locale]/admin/EnglishBlock";
 import { UPLOAD_MAX_BYTES, formatMegabytes } from "@/lib/limits";
+import type { AdminAction } from "@/lib/admin-result";
 
 const inputCls =
   "w-full rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white placeholder:text-neutral-400 outline-none";
@@ -42,7 +43,7 @@ export default function PlayerForm({
   player,
   submitLabel,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: AdminAction;
   rosterId?: string;
   poleId?: string;
   player?: PlayerRow;

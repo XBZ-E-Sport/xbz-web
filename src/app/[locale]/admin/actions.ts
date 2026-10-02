@@ -5,6 +5,8 @@ import { after } from "next/server";
 // Garde d'autorisation partagée (@/lib/adminguard) : une seule implémentation
 // pour TOUTES les server actions — une copie locale finirait par diverger.
 import { requireStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { revalidateTag } from "next/cache";
 
 import { CACHE_TAGS, DETAIL_ROUTES, revalidateLocalizedPath } from "@/lib/cache";
@@ -58,23 +60,25 @@ function notifyBot(id: string, statut: string, by: string) {
   });
 }
 
-export async function updateStatut(formData: FormData) {
-  const id = String(formData.get("id"));
-  const statut = String(formData.get("statut"));
+export async function updateStatut(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const id = String(formData.get("id"));
+    const statut = String(formData.get("statut"));
 
-  if (!id || !STATUTS.includes(statut as Statut)) {
-    throw new Error("Requête invalide.");
-  }
+    if (!id || !STATUTS.includes(statut as Statut)) {
+      throw new AdminError("Requête invalide.");
+    }
 
-  const { user, admin } = await requireStaff();
+    const { user, admin } = await requireStaff();
 
-  const { error } = await admin.from("candidatures").update({ statut }).eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("candidatures").update({ statut }).eq("id", id);
+    if (error) throw dbError(error);
 
-  // La base est la source de vérité ; Discord n'en est qu'un reflet.
-  notifyBot(id, statut, user.email ?? "le staff");
+    // La base est la source de vérité ; Discord n'en est qu'un reflet.
+    notifyBot(id, statut, user.email ?? "le staff");
 
-  revalidateLocalizedPath("/admin");
+    revalidateLocalizedPath("/admin");
+  });
 }
 
 /**

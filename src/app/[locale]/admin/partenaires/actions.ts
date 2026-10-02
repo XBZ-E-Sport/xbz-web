@@ -3,6 +3,8 @@
 import { revalidateTag } from "next/cache";
 
 import { assertStaff } from "@/lib/adminguard";
+import { adminAction, dbError } from "@/lib/admin-action";
+import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
 import { partnerTypes } from "@/lib/partenaires";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
@@ -37,7 +39,7 @@ const uploadLogo = (admin: AdminClient, file: File, name: string) =>
     slug: name,
     fallbackName: "partenaire",
     maxDimension: MAX_DIMENSION,
-    label: "logo",
+    label: "le logo",
   });
 
 /** Nom de fichier de logo dérivé du nom du partenaire (accents/espaces retirés). */
@@ -85,39 +87,45 @@ function revalidatePartenaires() {
   revalidateLocalizedPath("/"); // le bandeau de logos de la page d'accueil
 }
 
-export async function createPartner(formData: FormData) {
-  const admin = await assertStaff();
-  const name = field(formData, "name");
-  if (!name) throw new Error("Le nom est obligatoire.");
+export async function createPartner(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const name = field(formData, "name");
+    if (!name) throw new AdminError("Le nom est obligatoire.");
 
-  const row = await buildRow(admin, formData);
-  const { error } = await admin.from("partners").insert(row);
-  if (error) throw new Error(error.message);
+    const row = await buildRow(admin, formData);
+    const { error } = await admin.from("partners").insert(row);
+    if (error) throw dbError(error);
 
-  revalidatePartenaires();
+    revalidatePartenaires();
+  });
 }
 
-export async function updatePartner(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
-  const name = field(formData, "name");
-  if (!name) throw new Error("Le nom est obligatoire.");
+export async function updatePartner(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const name = field(formData, "name");
+    if (!name) throw new AdminError("Le nom est obligatoire.");
 
-  const row = await buildRow(admin, formData);
-  const { error } = await admin.from("partners").update(row).eq("id", id);
-  if (error) throw new Error(error.message);
+    const row = await buildRow(admin, formData);
+    const { error } = await admin.from("partners").update(row).eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidatePartenaires();
+    revalidatePartenaires();
+  });
 }
 
-export async function deletePartner(formData: FormData) {
-  const admin = await assertStaff();
-  const id = field(formData, "id");
-  if (!id) throw new Error("Identifiant manquant.");
+export async function deletePartner(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
 
-  const { error } = await admin.from("partners").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+    const { error } = await admin.from("partners").delete().eq("id", id);
+    if (error) throw dbError(error);
 
-  revalidatePartenaires();
+    revalidatePartenaires();
+  });
 }
