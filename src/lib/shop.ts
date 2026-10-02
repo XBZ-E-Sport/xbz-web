@@ -98,6 +98,8 @@ function stockChanged(): void {
   revalidateTag(CACHE_TAGS.products, { expire: 0 });
   revalidateLocalizedPath("/boutique");
   revalidateLocalizedPath("/boutique/panier");
+  // Pages produit : le stock (« épuisée », « plus que 2 pièces ») y est affiché.
+  revalidateLocalizedPath("/boutique/[slug]");
 }
 
 // --- 1. Réservation --------------------------------------------------------

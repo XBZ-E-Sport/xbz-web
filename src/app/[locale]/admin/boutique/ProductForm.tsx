@@ -25,20 +25,27 @@ export type ProductRow = {
   position: number;
   active: boolean;
   variants: VariantRow[];
+  /** Photos supplémentaires (page produit), après la principale (`image`). */
+  images: string[];
+  size_guide: string | null;
+  size_guide_en: string | null;
 };
 
 export default function ProductForm({
   action,
   product,
   submitLabel,
+  sizeGuide = false,
 }: {
   action: AdminAction;
   product?: ProductRow;
   submitLabel: string;
+  /** Champs « guide des tailles » (colonnes présentes en base). */
+  sizeGuide?: boolean;
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = product ? `product-${product.id}` : "product-new";
-  const hasEnglish = Boolean(product?.name_en || product?.description_en);
+  const hasEnglish = Boolean(product?.name_en || product?.description_en || product?.size_guide_en);
 
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -157,6 +164,23 @@ export default function ProductForm({
         />
       </div>
 
+      {sizeGuide && (
+        <div className="block sm:col-span-2">
+          <label htmlFor={`${uid}-size-guide`} className={labelCls}>
+            Guide des tailles (facultatif, affiché sur la page produit)
+          </label>
+          <textarea
+            id={`${uid}-size-guide`}
+            name="size_guide"
+            defaultValue={product?.size_guide ?? ""}
+            rows={3}
+            maxLength={4000}
+            placeholder={"S : 50 cm de large, 70 cm de long\nM : 53 × 72 cm\nCoupe ajustée : prends ta taille habituelle."}
+            className={inputCls}
+          />
+        </div>
+      )}
+
       <div className="block">
         <label htmlFor={`${uid}-position`} className={labelCls}>
           Position (ordre)
@@ -200,6 +224,21 @@ export default function ProductForm({
             className={inputCls}
           />
         </div>
+        {sizeGuide && (
+          <div className="block sm:col-span-2">
+            <label htmlFor={`${uid}-size-guide-en`} className={labelCls}>
+              Size guide
+            </label>
+            <textarea
+              id={`${uid}-size-guide-en`}
+              name="size_guide_en"
+              defaultValue={product?.size_guide_en ?? ""}
+              rows={3}
+              maxLength={4000}
+              className={inputCls}
+            />
+          </div>
+        )}
       </EnglishBlock>
 
       <div className="sm:col-span-2">

@@ -225,7 +225,15 @@ export default function CartView({
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h2 className="font-display text-base text-xbz-red-light">{name}</h2>
+                    <h2 className="font-display text-base text-xbz-red-light">
+                      {r.product ? (
+                        <Link href={`/boutique/${r.product.slug}`} className="hover:underline underline-offset-4">
+                          {name}
+                        </Link>
+                      ) : (
+                        name
+                      )}
+                    </h2>
                     {!r.unavailable && r.product && (
                       <span className="font-bold text-white">
                         {formatEuros(r.product.price * r.line.quantity, locale)}

@@ -57,4 +57,5 @@ export const DETAIL_ROUTES = [
   "/equipes/[roster]",
   "/equipes/[roster]/[joueur]",
   "/carrieres/[slug]",
+  "/boutique/[slug]",
 ] as const;

@@ -15,12 +15,14 @@ const data = vi.hoisted(() => ({
   offers: [{ slug: "dev-web", datePosted: "2026-09-07" }],
   equipes: ["/equipes/ssl", "/equipes/vide", "/equipes/ssl/alpha"] as string[],
   empty: new Set<string>(["/calendrier"]),
+  products: ["maillot-officiel"] as string[],
 }));
 
 vi.mock("@/lib/actualite", () => ({ getArticles: async () => data.articles }));
 vi.mock("@/lib/offres", () => ({ getOffers: async () => data.offers }));
 vi.mock("@/lib/equipes", () => ({ getEquipesUrls: async () => data.equipes }));
 vi.mock("@/lib/empty-pages", () => ({ emptyListPages: async () => data.empty }));
+vi.mock("@/lib/boutique", () => ({ getProductSlugs: async () => data.products }));
 
 const { default: sitemap } = await import("@/app/sitemap");
 const u = (path: string) => `${siteConfig.url}${path}`;
@@ -77,5 +79,13 @@ describe("sitemap", () => {
     const urls = (await sitemap()).map((e) => e.url);
     expect(urls).toContain(u("/fr/equipes/ssl"));
     expect(urls).toContain(u("/fr/equipes/vide"));
+  });
+
+  it("propose chaque page produit dans les deux langues, sans fausse date", async () => {
+    const entries = await sitemap();
+    const product = entries.filter((e) => e.url.endsWith("/boutique/maillot-officiel"));
+    expect(product.map((e) => e.url)).toEqual([u("/fr/boutique/maillot-officiel"), u("/en/boutique/maillot-officiel")]);
+    expect(product.every((e) => e.lastModified === undefined)).toBe(true);
+    expect(product[0].alternates?.languages).toMatchObject({ "x-default": u("/fr/boutique/maillot-officiel") });
   });
 });

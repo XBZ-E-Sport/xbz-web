@@ -1,5 +1,6 @@
 // Helpers d'affichage partagés (client-safe : n'importe que des types).
 import type { ArticleCategory } from "@/lib/actualite";
+import type { ProductCategory } from "@/lib/boutique";
 
 /**
  * Date ISO → format long, fuseau Paris (ex: "14 juillet 2026", "July 14, 2026").
@@ -40,4 +41,15 @@ export const articleCategoryStyles: Record<ArticleCategory, string> = {
   Annonce: "bg-white/10 text-white",
   Communauté: "ring-1 ring-inset ring-xbz-cyan/50 text-[#ffd964]",
   Création: "ring-1 ring-inset ring-xbz-blue/70 text-[#f4a79b]",
+};
+
+/**
+ * Badge de catégorie d'un produit (liste de la boutique ET page produit) :
+ * mêmes couleurs de la charte que les badges d'article. L'ordre des clés est
+ * celui des filtres de la boutique.
+ */
+export const productCategoryStyles: Record<ProductCategory, string> = {
+  Textile: "bg-xbz-blue/15 text-[#f4a79b]",
+  Accessoire: "ring-1 ring-inset ring-xbz-cyan/50 text-[#ffd964]",
+  Gaming: "bg-[rgba(252,205,5,0.15)] text-[#ffd964]",
 };

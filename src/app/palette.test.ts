@@ -70,7 +70,6 @@ describe("charte — pas de bleu ni de violet", () => {
 // Fichiers qui définissent des badges (tables `Clé: "classes"`).
 const BADGE_FILES = [
   "src/lib/format.ts",
-  "src/components/BoutiqueList.tsx",
   "src/components/PlayerCard.tsx",
   "src/app/[locale]/equipes/page.tsx",
 ];

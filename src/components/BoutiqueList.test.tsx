@@ -5,7 +5,7 @@ import BoutiqueList from "@/components/BoutiqueList";
 import type { Product } from "@/lib/boutique";
 import { renderIntl, messages } from "../../test/intl";
 
-const base = { description: "", image: null, available: false, variants: [] };
+const base = { description: "", image: null, images: [], sizeGuide: null, available: false, variants: [] };
 const products: Product[] = [
   { ...base, slug: "tshirt", name: "T-shirt XBZ", price: 25, category: "Textile", icon: "👕" },
   { ...base, slug: "mug", name: "Mug XBZ", price: 12, category: "Accessoire", icon: "☕" },

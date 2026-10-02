@@ -51,6 +51,11 @@ export function dbError(error: DbError, duplicate?: string): Error {
       return new AdminError("Une valeur est hors des limites autorisées.");
     case "22001":
       return new AdminError("Un texte est trop long.");
+    case "42703":
+    case "PGRST204":
+      return new AdminError(
+        "La base n’est pas à jour (une migration Supabase n’a pas été exécutée). Préviens la personne qui gère le site.",
+      );
     case "22P02":
     case "22007":
     case "22008":

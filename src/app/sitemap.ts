@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getArticles } from "@/lib/actualite";
+import { getProductSlugs } from "@/lib/boutique";
 import { emptyListPages } from "@/lib/empty-pages";
 import { getEquipesUrls } from "@/lib/equipes";
 import { getOffers } from "@/lib/offres";
@@ -120,5 +121,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   });
 
-  return [...staticEntries, ...articleEntries, ...equipesEntries, ...offerEntries];
+  // Pages produit (produits actifs, en vente ou « bientôt disponibles »).
+  const productEntries: MetadataRoute.Sitemap = (await getProductSlugs()).flatMap((slug) => {
+    const path = `/boutique/${slug}`;
+    return routing.locales.map((locale) => ({
+      url: url(path, locale),
+      changeFrequency: "weekly" as const,
+      priority: rank(0.5, locale),
+      alternates: localized(path),
+    }));
+  });
+
+  return [...staticEntries, ...articleEntries, ...equipesEntries, ...offerEntries, ...productEntries];
 }

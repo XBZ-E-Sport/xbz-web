@@ -22,6 +22,9 @@ export const CLIENT_NAMESPACES = {
   ErrorPage: ["error", "common", "notFound"],
   ActualiteList: ["actualite", "articleCategories"],
   BoutiqueList: ["boutique", "productCategories"],
+  // Taille + ajout au panier : cartes de la boutique ET page produit.
+  BuyBox: ["boutique"],
+  ProductGallery: ["product"],
   CartView: ["cart"],
   MediaGallery: ["galerie", "mediaCategories"],
   RecrutementForm: ["recrutementForm", "formErrors", "fieldLabels", "recrutementCategories", "playerRoles"],

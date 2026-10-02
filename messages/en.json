@@ -255,6 +255,23 @@
     "ctaOpenTitle": "Never miss a drop",
     "ctaOpenText": "Join the Discord to hear about new items and restocks."
   },
+  "product": {
+    "metaTitle": "{name} — XBZ Esport shop",
+    "metaFallback": "{name} for {price}: official XBZ Esport merch in the club's colours. Shipping across France and Europe.",
+    "metaNotFound": "Product not found — XBZ Esport",
+    "backToShop": "Back to the shop",
+    "photoAlt": "{name} — photo {n} of {total}",
+    "showPhoto": "Show photo {n} of {total}",
+    "photos": "Product photos",
+    "inStock": "In stock",
+    "description": "Description",
+    "sizeGuide": "Size guide",
+    "delivery": "Shipping and returns",
+    "deliveryText": "Shipping costs {price} per order, to France and neighbouring countries (Belgium, Switzerland, Luxembourg, Germany, Spain, Italy, the Netherlands, Portugal, Monaco).",
+    "returnsText": "You have 14 days after delivery to withdraw from your purchase; return shipping is at your expense (see the <cgv>terms of sale</cgv>).",
+    "securePayment": "Card payment on a secure Stripe page.",
+    "related": "Also in the shop"
+  },
   "cart": {
     "metaTitle": "Cart — XBZ Esport",
     "metaDescription": "Your XBZ Esport shop cart.",

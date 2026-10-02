@@ -2,6 +2,7 @@ import AdminForm from "@/components/AdminForm";
 import { requireStaff } from "@/lib/adminguard";
 import ConfirmButton from "@/components/ConfirmButton";
 import ProductForm, { type ProductRow } from "./ProductForm";
+import ProductPhotos from "./ProductPhotos";
 import { createProduct, updateProduct, deleteProduct } from "./actions";
 
 export const metadata = { title: "Boutique — Back-office XBZ" };
@@ -15,23 +16,35 @@ export default async function AdminBoutiquePage() {
   // page interroger la base et sérialiser ses données dans la réponse, même
   // quand la redirection part. La garde doit donc vivre ici aussi.
   const { admin } = await requireStaff();
-  const { data, error } = await admin
-    .from("products")
-    .select(
-      "id, slug, name, name_en, description, description_en, price, category, icon, image, available, position, active, " +
-        "variants:product_variants(id, size, stock, position)",
-    )
-    .order("position", { ascending: true })
-    .order("created_at", { ascending: true });
+  const base =
+    "id, slug, name, name_en, description, description_en, price, category, icon, image, available, position, active, " +
+    "variants:product_variants(id, size, stock, position)";
+  const select = (cols: string) =>
+    admin.from("products").select(cols).order("position", { ascending: true }).order("created_at", { ascending: true });
+
+  // Photos supplémentaires et guide des tailles : seulement une fois la
+  // migration des pages produit passée. Avant, la page reste utilisable.
+  let pageColumns = true;
+  let { data, error } = await select(`${base}, images, size_guide, size_guide_en`);
+  if (error?.code === "42703") {
+    pageColumns = false;
+    ({ data, error } = await select(base));
+  }
 
   if (error) {
     return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
   }
-  type Raw = Omit<ProductRow, "variants"> & {
+  type Raw = Omit<ProductRow, "variants" | "images" | "size_guide" | "size_guide_en"> & {
     variants: { id: string; size: string; stock: number; position: number }[] | null;
+    images?: string[] | null;
+    size_guide?: string | null;
+    size_guide_en?: string | null;
   };
   const products: ProductRow[] = ((data ?? []) as unknown as Raw[]).map((p) => ({
     ...p,
+    images: p.images ?? [],
+    size_guide: p.size_guide ?? null,
+    size_guide_en: p.size_guide_en ?? null,
     variants: (p.variants ?? [])
       .slice()
       .sort((a, b) => a.position - b.position)
@@ -43,7 +56,7 @@ export default async function AdminBoutiquePage() {
       {/* Ajouter un produit */}
       <section className="card-xbz p-6">
         <h2 className="mb-4 font-display text-lg text-white">➕ Nouveau produit</h2>
-        <ProductForm action={createProduct} submitLabel="Ajouter le produit" />
+        <ProductForm action={createProduct} submitLabel="Ajouter le produit" sizeGuide={pageColumns} />
       </section>
 
       {/* Liste */}
@@ -96,7 +109,15 @@ export default async function AdminBoutiquePage() {
                     Modifier / Supprimer
                   </summary>
                   <div className="mt-4">
-                    <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" />
+                    <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" sizeGuide={pageColumns} />
+                    {pageColumns ? (
+                      <ProductPhotos product={p} />
+                    ) : (
+                      <p className="mt-4 rounded-lg bg-white/5 p-3 text-sm text-neutral-400">
+                        Photos supplémentaires et guide des tailles : exécute la migration
+                        « migration_pages_produit_02102026.sql » dans Supabase pour les activer.
+                      </p>
+                    )}
                     <AdminForm
                       action={deleteProduct}
                       className="mt-3"

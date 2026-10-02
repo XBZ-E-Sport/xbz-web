@@ -80,7 +80,7 @@ export default async function BoutiquePage({ params }: PageProps) {
       {products.length === 0 ? (
         <p className="card-xbz p-10 text-center text-neutral-400">{t("empty")}</p>
       ) : (
-        <ClientMessages locale={locale} clients={["BoutiqueList"]}>
+        <ClientMessages locale={locale} clients={["BoutiqueList", "BuyBox"]}>
           <BoutiqueList products={products} open={open} />
         </ClientMessages>
       )}

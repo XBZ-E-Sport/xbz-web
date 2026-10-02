@@ -9,8 +9,10 @@
 import { getTranslations } from "next-intl/server";
 
 import { getArticleBySlug } from "@/lib/actualite";
+import { getProductBySlug } from "@/lib/boutique";
 import { getPoleBySlug } from "@/lib/equipes";
 import { articleCategoryTone } from "@/lib/format";
+import { formatEuros } from "@/lib/money";
 import { getOfferBySlug } from "@/lib/offres";
 import { getPlayer, getRosterBySlug, type Player } from "@/lib/roster";
 import { ogAlt as alt, type Banner } from "@/lib/og-version";
@@ -121,5 +123,24 @@ export async function offerBanner(locale: string, slug: string): Promise<Banner>
   return {
     frame: { eyebrow: offer.department || t("carrieres.eyebrow"), title: offer.title, subtitle: offer.excerpt || null },
     alt: alt(offer.title),
+  };
+}
+
+/** Bannière d'un produit : catégorie, nom, prix et début de description. */
+export async function productBanner(locale: string, slug: string): Promise<Banner> {
+  const t = await getTranslations({ locale, namespace: "og" });
+  const product = await getProductBySlug(slug, locale);
+  if (!product) {
+    const tNotFound = await getTranslations({ locale, namespace: "notFound" });
+    return { frame: { eyebrow: t("boutique.eyebrow"), title: tNotFound("title") }, alt: alt(tNotFound("title")) };
+  }
+  const tCat = await getTranslations({ locale, namespace: "productCategories" });
+  return {
+    frame: {
+      eyebrow: tCat(product.category),
+      title: product.name,
+      subtitle: [formatEuros(product.price, locale), product.description].filter(Boolean).join("  ·  "),
+    },
+    alt: alt(product.name),
   };
 }

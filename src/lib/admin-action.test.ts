@@ -59,6 +59,11 @@ describe("dbError", () => {
     }
   });
 
+  it("colonne inconnue (migration pas encore passée) : dit quoi faire", () => {
+    expect(msg(dbError({ code: "42703", message: "column products.images does not exist" }))).toMatch(/migration/);
+    expect(msg(dbError({ code: "PGRST204", message: "Could not find the 'images' column" }))).toMatch(/migration/);
+  });
+
   it("code inconnu : erreur interne (message générique à l'affichage)", () => {
     const e = dbError({ code: "XX000", message: "internal_error" });
     expect(e).not.toBeInstanceOf(AdminError);

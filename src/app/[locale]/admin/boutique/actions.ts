@@ -6,7 +6,7 @@ import { assertStaff } from "@/lib/adminguard";
 import { adminAction, dbError } from "@/lib/admin-action";
 import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
-import { productCategories } from "@/lib/boutique";
+import { MAX_EXTRA_PHOTOS, SIZE_GUIDE_MAX, productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 import { parseVariants } from "@/lib/variants-form";
 
@@ -14,6 +14,9 @@ function field(fd: FormData, key: string): string {
   const v = fd.get(key);
   return typeof v === "string" ? v.trim() : "";
 }
+
+/** Retours à la ligne d'une zone de texte : le navigateur envoie « \r\n », on garde « \n ». */
+const multiline = (text: string) => text.replace(/\r\n?/g, "\n");
 
 /** Entier ≥ 0 depuis un champ ; retombe sur `def` si vide ou invalide. */
 function intField(fd: FormData, key: string, def: number): number {
@@ -105,7 +108,80 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     available: formData.get("available") === "on",
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
+    // Guide des tailles : seulement si le formulaire le propose (il ne le
+    // propose pas tant que la migration des pages produit n'est pas passée).
+    ...(formData.has("size_guide") && {
+      size_guide: multiline(field(formData, "size_guide")).slice(0, SIZE_GUIDE_MAX) || null,
+      size_guide_en: multiline(field(formData, "size_guide_en")).slice(0, SIZE_GUIDE_MAX) || null,
+    }),
   };
+}
+
+// --- Photos supplémentaires (page produit) --------------------------------
+// Une photo par envoi : une server action reçoit tout le formulaire dans UN
+// corps de requête, plafonné à 4,5 Mo par Vercel (voir src/lib/limits.ts).
+// Plusieurs photos d'un coup dépasseraient la limite sans explication.
+
+
+async function readPhotos(admin: AdminClient, id: string): Promise<{ slug: string; image: string | null; images: string[] }> {
+  const { data, error } = await admin.from("products").select("slug, image, images").eq("id", id).maybeSingle();
+  if (error) throw dbError(error);
+  if (!data) throw new AdminError("Ce produit n’existe plus. Recharge la page.");
+  return { slug: data.slug, image: data.image, images: data.images ?? [] };
+}
+
+async function savePhotos(admin: AdminClient, id: string, patch: { image?: string | null; images: string[] }) {
+  const { error } = await admin.from("products").update(patch).eq("id", id);
+  if (error) throw dbError(error);
+  revalidateBoutique();
+}
+
+export async function addProductPhoto(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    if (!id) throw new AdminError("Identifiant manquant.");
+    const file = formData.get("photo_file");
+    if (!(file instanceof File) || file.size === 0) throw new AdminError("Choisis une photo à ajouter.");
+
+    const current = await readPhotos(admin, id);
+    if (current.images.length >= MAX_EXTRA_PHOTOS) {
+      throw new AdminError(`${MAX_EXTRA_PHOTOS} photos supplémentaires au plus : retire-en une avant d’en ajouter.`);
+    }
+    const url = await uploadImage(admin, file, current.slug);
+    // Relu juste avant d'écrire : un autre envoi a pu passer pendant l'upload.
+    const fresh = await readPhotos(admin, id);
+    if (fresh.images.length >= MAX_EXTRA_PHOTOS) {
+      throw new AdminError(`${MAX_EXTRA_PHOTOS} photos supplémentaires au plus : retire-en une avant d’en ajouter.`);
+    }
+    await savePhotos(admin, id, { images: [...fresh.images, url] });
+  });
+}
+
+export async function removeProductPhoto(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    const url = field(formData, "url");
+    if (!id || !url) throw new AdminError("Photo ou produit manquant.");
+    const { images } = await readPhotos(admin, id);
+    if (!images.includes(url)) throw new AdminError("Cette photo a déjà été retirée. Recharge la page.");
+    await savePhotos(admin, id, { images: images.filter((u) => u !== url) });
+  });
+}
+
+/** La photo choisie devient la principale ; l'ancienne principale passe en tête des supplémentaires. */
+export async function setMainProductPhoto(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = field(formData, "id");
+    const url = field(formData, "url");
+    if (!id || !url) throw new AdminError("Photo ou produit manquant.");
+    const { image, images } = await readPhotos(admin, id);
+    if (!images.includes(url)) throw new AdminError("Cette photo n’est plus dans la galerie. Recharge la page.");
+    const rest = images.filter((u) => u !== url);
+    await savePhotos(admin, id, { image: url, images: image ? [image, ...rest] : rest });
+  });
 }
 
 // --- Tailles & stock -------------------------------------------------------
@@ -155,6 +231,7 @@ function revalidateBoutique() {
   revalidateLocalizedPath("/admin/boutique");
   revalidateLocalizedPath("/boutique");
   revalidateLocalizedPath("/boutique/panier");
+  revalidateLocalizedPath("/boutique/[slug]");
 }
 
 export async function createProduct(formData: FormData): Promise<AdminResult> {

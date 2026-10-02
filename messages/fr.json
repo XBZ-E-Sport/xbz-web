@@ -255,6 +255,23 @@
     "ctaOpenTitle": "Ne rate aucun drop",
     "ctaOpenText": "Rejoins le Discord pour être prévenu des nouveautés et des réassorts."
   },
+  "product": {
+    "metaTitle": "{name} — Boutique XBZ Esport",
+    "metaFallback": "{name} à {price} : le merch officiel XBZ Esport, aux couleurs du club. Livraison en France et en Europe.",
+    "metaNotFound": "Produit introuvable — XBZ Esport",
+    "backToShop": "Retour à la boutique",
+    "photoAlt": "{name} — photo {n} sur {total}",
+    "showPhoto": "Afficher la photo {n} sur {total}",
+    "photos": "Photos du produit",
+    "inStock": "En stock",
+    "description": "Description",
+    "sizeGuide": "Guide des tailles",
+    "delivery": "Livraison et retours",
+    "deliveryText": "Livraison à {price} par commande, en France et dans les pays voisins (Belgique, Suisse, Luxembourg, Allemagne, Espagne, Italie, Pays-Bas, Portugal, Monaco).",
+    "returnsText": "Tu disposes de 14 jours après réception pour te rétracter ; les frais de retour sont à ta charge (voir les <cgv>conditions générales de vente</cgv>).",
+    "securePayment": "Paiement par carte sur une page sécurisée Stripe.",
+    "related": "Dans la boutique aussi"
+  },
   "cart": {
     "metaTitle": "Panier — XBZ Esport",
     "metaDescription": "Ton panier de la boutique XBZ Esport.",
