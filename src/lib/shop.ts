@@ -79,6 +79,8 @@ export type Order = {
   fulfilled_at: string | null;
   cancelled_at: string | null;
   refunded_at: string | null;
+  /** Montant remboursé (€), total ou partiel. Absent tant que la migration d'export n'est pas passée. */
+  refunded_amount?: number | string | null;
 };
 
 /** Numéro de commande lisible (reçu, back-office, formulaire de rétractation). */
@@ -277,24 +279,59 @@ export async function recordPayment(
   return result;
 }
 
-/** Remboursement fait depuis Stripe : total → « refunded », partiel → note. */
+/**
+ * Remboursement fait depuis Stripe : total → « refunded », partiel → note.
+ * Dans les deux cas, le montant remboursé est gardé (comptabilité, export).
+ *
+ * Stripe ne garantit pas l'ordre des événements : `charge.refunded` peut
+ * arriver AVANT que le paiement soit enregistré (webhook « payé » en retard ou
+ * en nouvel essai). La commande n'a alors pas encore son identifiant de
+ * paiement, la mise à jour ne trouve rien, et répondre 200 perdrait ce
+ * remboursement pour de bon. Dans ce cas on lève une erreur : Stripe rejoue
+ * l'événement, et cette fois le paiement est enregistré.
+ */
 export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise<void> {
   const paymentIntent =
     typeof charge.payment_intent === "string" ? charge.payment_intent : (charge.payment_intent?.id ?? null);
   if (!paymentIntent) return;
 
-  const refunded = formatEuros((charge.amount_refunded ?? 0) / 100, "fr");
+  const amount = (charge.amount_refunded ?? 0) / 100;
+  const refunded = formatEuros(amount, "fr");
   // La note dit toujours le DERNIER état : un remboursement total efface la
   // mention d'un partiel antérieur.
   const update = charge.refunded
     ? { status: "refunded", refunded_at: new Date().toISOString(), note: `Remboursée en totalité : ${refunded} (voir Stripe).` }
     : { note: `Remboursement partiel : ${refunded} (voir Stripe).` };
-  const { error } = await admin
-    .from("orders")
-    .update(update)
-    .eq("stripe_payment_intent", paymentIntent)
-    .in("status", ["paid", "fulfilled", "refunded"]);
+
+  const write = (values: Record<string, unknown>) =>
+    admin
+      .from("orders")
+      .update(values)
+      .eq("stripe_payment_intent", paymentIntent)
+      .in("status", ["paid", "fulfilled", "refunded"])
+      .select("id");
+  let { data, error } = await write({ ...update, refunded_amount: amount });
+  // Migration d'export pas encore passée : on enregistre le remboursement sans
+  // le montant plutôt que de perdre l'événement.
+  if (error?.code === "42703") ({ data, error } = await write(update));
   if (error) throw new Error(error.message);
+
+  if (!data?.length) {
+    // Aucune commande payée avec ce paiement. Le paiement est-il simplement en
+    // retard ? Les paiements du site portent `order_id` (voir
+    // buildCheckoutParams). On le lit sur le paiement lui-même, la source sûre :
+    // une erreur réseau ici fait aussi réessayer Stripe.
+    const orderId =
+      charge.metadata?.order_id ?? (await stripe().paymentIntents.retrieve(paymentIntent)).metadata?.order_id;
+    if (orderId) {
+      const { data: order } = await admin.from("orders").select("id, status").eq("id", orderId).maybeSingle();
+      if (order && order.status === "pending") {
+        throw new Error(`remboursement reçu avant l'enregistrement du paiement (commande ${orderNumber(orderId)})`);
+      }
+    }
+    // Sinon : paiement étranger à la boutique (ou commande inconnue), rien à faire.
+    return;
+  }
   revalidateLocalizedPath("/admin/commandes");
 }
 
