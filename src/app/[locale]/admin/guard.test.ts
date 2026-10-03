@@ -80,6 +80,42 @@ describe("contrôle d'accès du back-office", () => {
   });
 });
 
+describe("routes du back-office (téléchargements, exports…)", () => {
+  // Une route n'est protégée ni par le layout, ni par le proxy : sans garde
+  // dans son propre fichier, elle est publique. L'export des commandes en est
+  // le cas : nom, e-mail et adresse des clients.
+  function routeFiles(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) routeFiles(full, out);
+      else if (entry === "route.ts") out.push(full);
+    }
+    return out;
+  }
+  const routes = routeFiles(ADMIN_DIR);
+
+  it("trouve l'export des commandes", () => {
+    expect(routes.some((f) => f.includes("commandes"))).toBe(true);
+  });
+
+  it("chaque route appelle requireStaff() AVANT de lire la base", () => {
+    const fautives: string[] = [];
+    for (const file of routes) {
+      const src = readFileSync(file, "utf8");
+      const garde = src.indexOf("requireStaff(");
+      // Premier accès aux données : `admin.from(` / `admin.rpc(` / `fetch(`.
+      const acces = src.search(/\badmin\s*\.\s*(from|rpc|storage)\b|\bfetch\(/);
+      if (garde === -1 || (acces !== -1 && acces < garde)) fautives.push(file);
+    }
+    expect(fautives).toEqual([]);
+  });
+
+  it("chaque route ne répond qu'aux méthodes sûres (GET) : pas de POST/DELETE sans garde de formulaire", () => {
+    const fautives = routes.filter((f) => /export\s+(async\s+)?function\s+(POST|PUT|PATCH|DELETE)\b/.test(readFileSync(f, "utf8")));
+    expect(fautives).toEqual([]);
+  });
+});
+
 describe("erreurs du back-office", () => {
   // En production, Next remplace le message de toute erreur LEVÉE par une
   // action serveur : le staff ne voyait que « Échec de l'enregistrement ».
