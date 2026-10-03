@@ -1,7 +1,11 @@
+import { getLocale } from "next-intl/server";
+
 import AdminForm from "@/components/AdminForm";
 import { Link } from "@/i18n/navigation";
 import { requireStaff } from "@/lib/adminguard";
 import { formatEuros } from "@/lib/money";
+import { parisDay } from "@/lib/orders-export";
+import { localizedPath } from "@/lib/site";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import { markOrderShipped } from "./actions";
@@ -39,6 +43,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   // Garde DANS la page (layout et page sont rendus en parallèle).
   const { admin } = await requireStaff();
   const { vue } = await searchParams;
+  const today = parisDay(new Date());
+  const exportAction = localizedPath("/admin/commandes/export", await getLocale());
   const key: FilterKey = vue && vue in FILTERS ? (vue as FilterKey) : "a-expedier";
 
   const { data, error } = await admin
@@ -53,6 +59,68 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-col gap-6">
+      <details className="card-xbz p-5">
+        <summary className="cursor-pointer text-sm font-semibold text-xbz-cyan">Export comptable (CSV)</summary>
+        {/* Téléchargement : un simple GET, le navigateur enregistre le fichier
+            sans quitter la page. Route : export/route.ts (réservée au staff). */}
+        <form method="get" action={exportAction} className="mt-4 flex flex-wrap items-end gap-4 text-sm text-neutral-200">
+          <div>
+            <label htmlFor="export-du" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Du
+            </label>
+            <input
+              id="export-du"
+              name="du"
+              type="date"
+              required
+              defaultValue={`${today.slice(0, 8)}01`}
+              max={today}
+              className="rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="export-au" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Au (inclus)
+            </label>
+            <input
+              id="export-au"
+              name="au"
+              type="date"
+              required
+              defaultValue={today}
+              max={today}
+              className="rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="export-detail" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Détail
+            </label>
+            <select
+              id="export-detail"
+              name="detail"
+              defaultValue="commandes"
+              className="rounded-lg border-0 bg-[#0d0d13] px-3 py-2 text-sm text-white outline-none"
+            >
+              <option value="commandes">Une ligne par commande</option>
+              <option value="articles">Une ligne par article (et par port)</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input id="export-perso" name="perso" type="checkbox" value="1" className="h-4 w-4" />
+            <label htmlFor="export-perso">Inclure nom, e-mail et adresse (par commande)</label>
+          </div>
+          <button className="rounded-lg bg-xbz-blue px-5 py-2 text-sm font-bold text-white transition hover:brightness-110 hover:cursor-pointer">
+            Télécharger le CSV
+          </button>
+        </form>
+        <p className="mt-3 text-xs text-neutral-400">
+          Commandes payées (expédiées et remboursées comprises), classées par date de paiement. Un remboursement
+          figure sur la ligne de la commande remboursée, avec sa date. Le fichier s’ouvre directement dans Excel. Nom,
+          e-mail et adresse sont des données personnelles : à ne cocher que si nécessaire.
+        </p>
+      </details>
+
       <nav aria-label="Filtrer les commandes" className="flex flex-wrap gap-2">
         {(Object.keys(FILTERS) as FilterKey[]).map((k) => (
           <Link

@@ -183,6 +183,15 @@ Exécute les migrations dans **Supabase → SQL Editor**, **dans cet ordre** :
 9. `migration_candidatures_roster_24072026.sql` — renomme `candidatures.rang` → `roster`
    (à ne pas confondre avec `joueurs.rang`, le vrai rang d'un joueur, inchangé).
 
+Boutique en ligne (voir [Boutique](#boutique-stripe)), **avant** de déployer le code
+correspondant :
+
+- `migration_boutique_stripe_01102026.sql` — tailles et stock (`product_variants`),
+  commandes (`orders`) et fonctions de réservation du stock.
+- `migration_pages_produit_02102026.sql` — photos supplémentaires et guide des tailles.
+- `migration_export_commandes_03102026.sql` — `orders.refunded_amount` (montant remboursé,
+  pour l'export comptable). Le code fonctionne avant cette migration.
+
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
 fichier à passer sur un projet Supabase qui aurait pris du retard (dev, test ou prod).
@@ -220,7 +229,34 @@ La garde vit dans `src/lib/adminguard.ts` (`requireStaff`) et sert **à la fois*
 directement, on ne se repose jamais sur le layout seul.
 
 Sections du back-office : **Candidatures**, **Rosters & Joueurs**, **Pôles & Staff**,
-**Actualité**, **Boutique**.
+**Actualité**, **Boutique**, **Commandes**.
+
+## Boutique (Stripe)
+
+Paiement sur la page **Stripe Checkout** hébergée : aucune clé n'atteint le navigateur.
+Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperçu
+(« Bientôt disponible ») : déployer avant de les renseigner ne risque rien.
+
+- **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
+  (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
+  autorité côté base. Détail du parcours : `src/lib/shop.ts`.
+- **Webhook Stripe** — endpoint `https://www.xbz-esport.org/api/stripe/webhook`, cinq
+  événements : `checkout.session.completed`, `…async_payment_succeeded`,
+  `…async_payment_failed`, `checkout.session.expired`, `charge.refunded`. Un secret
+  différent par mode (test / live).
+- **Remboursements** : faits depuis Stripe, la commande passe seule en « Remboursée »
+  (total) ou reçoit une note (partiel) ; le montant est gardé. Le stock n'est pas remis
+  automatiquement : un colis remboursé n'est pas forcément revenu.
+- **Back-office › Commandes** : « à expédier » avec l'adresse, lien vers le paiement dans
+  Stripe, « Marquer expédiée ».
+- **Export comptable (CSV)** — encart « Export comptable » de la page Commandes, route
+  `/admin/commandes/export` (réservée au staff). Commandes payées, classées par **date de
+  paiement** (heure de Paris), une ligne par commande ou par article ; montants au
+  centime, date et montant des remboursements, référence Stripe. Format Excel français
+  (UTF-8 avec BOM, séparateur `;`, virgule décimale). Nom, e-mail et adresse ne sortent
+  que si la case est cochée ; chaque export est tracé dans les journaux (qui, quelle
+  période, avec ou sans données personnelles). Les textes saisis par les clients sont
+  neutralisés contre l'**injection de formules** (`=`, `+`, `-`, `@` en tête de cellule).
 
 ## RGPD
 

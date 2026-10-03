@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const stripeMock = vi.hoisted(() => ({
   checkout: { sessions: { expire: vi.fn(), retrieve: vi.fn() } },
+  paymentIntents: { retrieve: vi.fn() },
 }));
 vi.mock("@/lib/stripe", () => ({ stripe: () => stripeMock }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
@@ -25,7 +26,7 @@ import {
 function fakeAdmin(opts: {
   rpc?: (name: string, args: Record<string, unknown>) => { data: unknown; error: unknown };
   select?: (table: string) => { data: unknown; error?: unknown };
-  update?: { error: unknown };
+  update?: { error: unknown; data?: unknown } | ((values: Record<string, unknown>) => { error: unknown; data?: unknown });
 }) {
   const calls: { op: string; table?: string; args?: unknown; filters: [string, unknown][] }[] = [];
   const chain = (call: (typeof calls)[number], result: () => unknown) => {
@@ -55,7 +56,7 @@ function fakeAdmin(opts: {
       update: (values: unknown) => {
         const call = { op: "update", table, args: values, filters: [] as [string, unknown][] };
         calls.push(call);
-        return chain(call, () => opts.update ?? { error: null });
+        return chain(call, () => (typeof opts.update === "function" ? opts.update(values as Record<string, unknown>) : (opts.update ?? { error: null })));
       },
     }),
   };
@@ -93,6 +94,7 @@ const texts = { size: (s: string) => `taille ${s}`, shipping: "Livraison standar
 beforeEach(() => {
   stripeMock.checkout.sessions.expire.mockReset();
   stripeMock.checkout.sessions.retrieve.mockReset();
+  stripeMock.paymentIntents.retrieve.mockReset();
 });
 afterEach(() => vi.unstubAllEnvs());
 
@@ -266,18 +268,66 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
     expect(admin.calls[0]).toMatchObject({ op: "rpc:shop_release_order", args: { p_order: ORDER_ID } });
   });
 
-  it("remboursement total → « refunded » ; partiel → note", async () => {
-    const full = fakeAdmin({});
+  it("remboursement total → « refunded » ; partiel → note ; le montant remboursé est gardé", async () => {
+    const updated = { error: null, data: [{ id: ORDER_ID }] };
+    const full = fakeAdmin({ update: updated });
     await recordRefund(full as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 11987 } as never);
-    expect(full.calls[0]).toMatchObject({ op: "update", table: "orders", args: { status: "refunded" } });
+    expect(full.calls[0]).toMatchObject({ op: "update", table: "orders", args: { status: "refunded", refunded_amount: 119.87 } });
     // Le remboursement total remplace la mention d'un éventuel partiel.
     expect((full.calls[0].args as { note: string }).note).toMatch(/^Remboursée en totalité : 119,87\s€ \(voir Stripe\)\.$/);
     expect(full.calls[0].filters).toContainEqual(["eq", ["stripe_payment_intent", "pi_9"]]);
 
-    const partial = fakeAdmin({});
+    const partial = fakeAdmin({ update: updated });
     await recordRefund(partial as unknown as Admin, { payment_intent: "pi_9", refunded: false, amount_refunded: 490 } as never);
     expect((partial.calls[0].args as { note: string }).note).toMatch(/^Remboursement partiel : 4,90\s€ \(voir Stripe\)\.$/);
-    expect(Object.keys(partial.calls[0].args as object)).toEqual(["note"]);
+    expect(Object.keys(partial.calls[0].args as object).sort()).toEqual(["note", "refunded_amount"]);
+    expect((partial.calls[0].args as { refunded_amount: number }).refunded_amount).toBe(4.9);
+  });
+
+  it("migration d'export pas encore passée (colonne absente) : le remboursement est enregistré SANS le montant", async () => {
+    const admin = fakeAdmin({
+      update: (values) => ("refunded_amount" in values ? { error: { code: "42703", message: "column does not exist" } } : { error: null, data: [{ id: ORDER_ID }] }),
+    });
+    await recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 11987 } as never);
+    const updates = admin.calls.filter((c) => c.op === "update");
+    expect(updates).toHaveLength(2);
+    expect(updates[1].args).toMatchObject({ status: "refunded" });
+    expect(updates[1].args).not.toHaveProperty("refunded_amount");
+  });
+
+  it("remboursement reçu AVANT l'enregistrement du paiement : erreur, pour que Stripe rejoue l'événement", async () => {
+    // Stripe ne garantit pas l'ordre des événements. Répondre 200 ici perdait le remboursement.
+    const admin = fakeAdmin({ update: { error: null, data: [] }, select: () => ({ data: { id: ORDER_ID, status: "pending" } }) });
+    await expect(
+      recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 11987, metadata: { order_id: ORDER_ID } } as never),
+    ).rejects.toThrow(/avant l'enregistrement du paiement \(commande XBZ-0B6F1D3E\)/);
+  });
+
+  it("l'identifiant de commande manque sur la charge : lu sur le paiement lui-même", async () => {
+    stripeMock.paymentIntents.retrieve.mockResolvedValue({ metadata: { order_id: ORDER_ID } });
+    const admin = fakeAdmin({ update: { error: null, data: [] }, select: () => ({ data: { id: ORDER_ID, status: "pending" } }) });
+    await expect(recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 100, metadata: {} } as never)).rejects.toThrow(
+      /avant l'enregistrement du paiement/,
+    );
+    expect(stripeMock.paymentIntents.retrieve).toHaveBeenCalledWith("pi_9");
+  });
+
+  it("paiement étranger à la boutique (pas de commande liée) : ignoré sans erreur", async () => {
+    stripeMock.paymentIntents.retrieve.mockResolvedValue({ metadata: {} });
+    const admin = fakeAdmin({ update: { error: null, data: [] } });
+    await expect(recordRefund(admin as unknown as Admin, { payment_intent: "pi_x", refunded: true, amount_refunded: 100, metadata: {} } as never)).resolves.toBeUndefined();
+  });
+
+  it("commande déjà abandonnée ou inconnue : ignoré sans erreur (rien à réessayer)", async () => {
+    const admin = fakeAdmin({ update: { error: null, data: [] }, select: () => ({ data: { id: ORDER_ID, status: "cancelled" } }) });
+    await expect(
+      recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 100, metadata: { order_id: ORDER_ID } } as never),
+    ).resolves.toBeUndefined();
+  });
+
+  it("erreur de base : remontée (le webhook répond 500, Stripe réessaie)", async () => {
+    const admin = fakeAdmin({ update: { error: { code: "XX000", message: "boom" } } });
+    await expect(recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 100 } as never)).rejects.toThrow("boom");
   });
 });
 
