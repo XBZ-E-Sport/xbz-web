@@ -109,15 +109,15 @@ export default async function AdminBoutiquePage() {
                     Modifier / Supprimer
                   </summary>
                   <div className="mt-4">
-                    <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" sizeGuide={pageColumns} />
                     {pageColumns ? (
                       <ProductPhotos product={p} />
                     ) : (
-                      <p className="mt-4 rounded-lg bg-white/5 p-3 text-sm text-neutral-400">
+                      <p className="mb-4 rounded-lg bg-white/5 p-3 text-sm text-neutral-400">
                         Photos supplémentaires et guide des tailles : exécute la migration
                         « migration_pages_produit_02102026.sql » dans Supabase pour les activer.
                       </p>
                     )}
+                    <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" sizeGuide={pageColumns} />
                     <AdminForm
                       action={deleteProduct}
                       className="mt-3"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { Fragment, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { oversizedUpload } from "@/lib/limits";
@@ -17,9 +17,19 @@ class ActionFailure extends Error {}
  *     le renvoie au lieu de le lever (voir src/lib/admin-result.ts).
  *  2. **Saisie conservée en cas d'erreur** — l'envoi est piloté ici plutôt que
  *     par `<form action>` : React réinitialise un formulaire d'action dès
- *     l'envoi, et une erreur effaçait tout ce qui venait d'être tapé. Le
- *     formulaire n'est remis à zéro qu'après un succès.
- *  3. **Repli de la carte** — le `<details>` parent se referme après un succès.
+ *     l'envoi, et une erreur effaçait tout ce qui venait d'être tapé. Rien
+ *     n'est touché tant que l'action n'a pas réussi.
+ *  3. **Après un succès**, selon le formulaire :
+ *     - un formulaire d'AJOUT (sans champ `id`) repart à neuf : ses enfants
+ *       sont remontés, ce qui vide aussi l'état des éditeurs (tailles…) que
+ *       `form.reset()` ne voit pas ;
+ *     - un formulaire de MODIFICATION (champ `id`) garde ce qui vient d'être
+ *       enregistré. Le remettre « à zéro » le ramenait aux valeurs d'AVANT
+ *       l'enregistrement : React ne met pas à jour le choix par défaut d'un
+ *       menu déroulant après le premier rendu, si bien que le menu reprenait
+ *       l'ancienne valeur, et l'enregistrement suivant la réécrivait en base.
+ *       Seuls les fichiers choisis sont vidés (ils sont partis).
+ *  4. **Repli de la carte** — le `<details>` parent se referme après un succès.
  *
  * Composant client, mais ses enfants restent rendus côté serveur : les
  * formulaires existants n'ont pas eu à changer de nature.
@@ -41,6 +51,8 @@ export default function AdminForm({
   closeOnSuccess?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  // Incrémenté après l'envoi réussi d'un formulaire d'ajout : remonte les enfants.
+  const [fresh, setFresh] = useState(0);
   // Double clic : un seul envoi (l'état `pending` arrive un rendu trop tard).
   const busy = useRef(false);
 
@@ -86,9 +98,14 @@ export default function AdminForm({
       } finally {
         busy.current = false;
       }
-      // Succès : le formulaire repart des valeurs enregistrées (un formulaire
-      // d'ajout se vide), puis la carte dépliée qui le contient se referme.
-      form.reset();
+      // Succès. Un formulaire de modification (champ `id`) garde ses valeurs :
+      // ce sont celles qui viennent d'être enregistrées. Un formulaire d'ajout
+      // repart à neuf.
+      if (form.elements.namedItem("id")) {
+        for (const input of form.querySelectorAll<HTMLInputElement>('input[type="file"]')) input.value = "";
+      } else {
+        setFresh((n) => n + 1);
+      }
       if (closeOnSuccess) form.closest("details")?.removeAttribute("open");
     });
   }
@@ -97,7 +114,7 @@ export default function AdminForm({
     // `method="post"` : un envoi avant que la page ne soit interactive ne met
     // pas la saisie dans l'adresse (GET par défaut).
     <form method="post" onSubmit={handleSubmit} aria-busy={pending || undefined} className={className}>
-      {children}
+      <Fragment key={fresh}>{children}</Fragment>
     </form>
   );
 }

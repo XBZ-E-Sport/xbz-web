@@ -8,58 +8,79 @@ import type { ProductRow } from "./ProductForm";
 const btn = "rounded-md px-2 py-1 text-xs font-semibold transition hover:cursor-pointer";
 
 /**
- * Photos supplémentaires d'un produit (page produit), APRÈS la principale.
+ * Photos d'un produit, EN TÊTE de la fiche : la principale, puis les
+ * supplémentaires (page produit) avec leurs actions, puis l'ajout.
  * Une photo par envoi : le corps d'une requête est plafonné à 4,5 Mo.
+ *
+ * Ces formulaires sont indépendants de celui du produit (un `<form>` ne peut
+ * pas en contenir un autre) : changer la photo principale d'ici n'attend pas
+ * l'enregistrement du reste, et le formulaire du produit ne la réécrit pas
+ * (voir `image_orig` dans actions.ts).
  */
 export default function ProductPhotos({ product }: { product: ProductRow }) {
   const full = product.images.length >= MAX_EXTRA_PHOTOS;
+  const titleId = `photos-${product.id}`;
   return (
-    <section aria-label={`Photos supplémentaires de ${product.name}`} className="mt-6 border-t border-white/10 pt-4">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
-        Photos supplémentaires ({product.images.length}/{MAX_EXTRA_PHOTOS})
+    <section aria-labelledby={titleId} className="mb-6 border-b border-white/10 pb-5">
+      <h4 id={titleId} className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+        Photos
       </h4>
       <p className="mt-1 text-xs text-neutral-400">
-        Affichées sur la page du produit, après la photo principale (le « Visuel produit » ci-dessus).
+        La photo principale s’affiche en premier sur la page du produit, suivie des photos supplémentaires (jusqu’à{" "}
+        {MAX_EXTRA_PHOTOS}). Pour remplacer la principale par un nouveau fichier, utilise « Visuel produit » plus bas.
       </p>
 
-      {product.images.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-3">
-          {product.images.map((url, i) => (
-            <li key={url} className="flex w-28 flex-col gap-1.5">
-              {/* eslint-disable-next-line @next/next/no-img-element -- aperçu du back-office */}
-              <img src={url} alt={`Photo supplémentaire ${i + 1}`} className="h-28 w-28 rounded-lg object-cover" />
-              <AdminForm
-                action={setMainProductPhoto}
-                closeOnSuccess={false}
-                loadingMessage="Changement de photo principale…"
-                successMessage="Photo principale changée"
+      <ul className="mt-3 flex flex-wrap gap-3">
+        <li className="flex w-28 flex-col gap-1.5">
+          {product.image ? (
+            // eslint-disable-next-line @next/next/no-img-element -- aperçu du back-office
+            <img src={product.image} alt="Photo principale" className="h-28 w-28 rounded-lg object-cover" />
+          ) : (
+            <span className="flex h-28 w-28 items-center justify-center rounded-lg bg-white/5 text-center text-xs text-neutral-400">
+              Pas de photo : l’emoji est affiché
+            </span>
+          )}
+          <span className="rounded-md bg-xbz-cyan/15 px-2 py-1 text-center text-xs font-semibold text-xbz-cyan">
+            Principale
+          </span>
+        </li>
+        {product.images.map((url, i) => (
+          <li key={url} className="flex w-28 flex-col gap-1.5">
+            {/* eslint-disable-next-line @next/next/no-img-element -- aperçu du back-office */}
+            <img src={url} alt={`Photo supplémentaire ${i + 1}`} className="h-28 w-28 rounded-lg object-cover" />
+            <AdminForm
+              action={setMainProductPhoto}
+              closeOnSuccess={false}
+              loadingMessage="Changement de photo principale…"
+              successMessage="Photo principale changée"
+            >
+              <input type="hidden" name="id" value={product.id} />
+              <input type="hidden" name="url" value={url} />
+              <button className={`${btn} w-full bg-white/5 text-neutral-200 hover:bg-white/10`}>En principale</button>
+            </AdminForm>
+            <AdminForm
+              action={removeProductPhoto}
+              closeOnSuccess={false}
+              loadingMessage="Retrait de la photo…"
+              successMessage="Photo retirée"
+            >
+              <input type="hidden" name="id" value={product.id} />
+              <input type="hidden" name="url" value={url} />
+              <ConfirmButton
+                className={`${btn} w-full bg-red-500/15 text-red-300 hover:bg-red-500/25`}
+                message="Retirer cette photo de la page produit ?"
               >
-                <input type="hidden" name="id" value={product.id} />
-                <input type="hidden" name="url" value={url} />
-                <button className={`${btn} w-full bg-white/5 text-neutral-200 hover:bg-white/10`}>Principale</button>
-              </AdminForm>
-              <AdminForm
-                action={removeProductPhoto}
-                closeOnSuccess={false}
-                loadingMessage="Retrait de la photo…"
-                successMessage="Photo retirée"
-              >
-                <input type="hidden" name="id" value={product.id} />
-                <input type="hidden" name="url" value={url} />
-                <ConfirmButton
-                  className={`${btn} w-full bg-red-500/15 text-red-300 hover:bg-red-500/25`}
-                  message="Retirer cette photo de la page produit ?"
-                >
-                  Retirer
-                </ConfirmButton>
-              </AdminForm>
-            </li>
-          ))}
-        </ul>
-      )}
+                Retirer
+              </ConfirmButton>
+            </AdminForm>
+          </li>
+        ))}
+      </ul>
 
       {full ? (
-        <p className="mt-3 text-sm text-neutral-400">Maximum atteint : retire une photo pour en ajouter une autre.</p>
+        <p className="mt-3 text-sm text-neutral-400">
+          Maximum atteint ({product.images.length}/{MAX_EXTRA_PHOTOS}) : retire une photo pour en ajouter une autre.
+        </p>
       ) : (
         <AdminForm
           action={addProductPhoto}
@@ -69,8 +90,8 @@ export default function ProductPhotos({ product }: { product: ProductRow }) {
           successMessage="Photo ajoutée"
         >
           <input type="hidden" name="id" value={product.id} />
-          <label htmlFor={`photo-${product.id}`} className="sr-only">
-            Photo à ajouter à {product.name}
+          <label htmlFor={`photo-${product.id}`} className="text-sm font-semibold text-neutral-200">
+            Ajouter une photo supplémentaire ({product.images.length}/{MAX_EXTRA_PHOTOS})
           </label>
           <input
             id={`photo-${product.id}`}

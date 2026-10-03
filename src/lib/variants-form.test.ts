@@ -33,12 +33,20 @@ describe("parseVariants (back-office)", () => {
   it.each([
     ["stock négatif", [{ size: "M", stock: "-1" }], /Stock invalide/],
     ["stock décimal", [{ size: "M", stock: "1.5" }], /Stock invalide/],
-    ["stock vide", [{ size: "M", stock: "abc" }], /Stock invalide/],
+    ["stock non numérique", [{ size: "M", stock: "abc" }], /Stock invalide/],
+    ["stock en notation scientifique", [{ size: "M", stock: "1e2" }], /Stock invalide/],
+    ["stock vidé", [{ size: "M", stock: "" }], /Stock manquant pour la taille « M »/],
+    ["stock réduit à des espaces", [{ size: "M", stock: "  " }], /Stock manquant/],
+    ["stock vidé d'une taille unique", [{ size: "", stock: "" }], /Stock manquant pour la taille « unique »/],
     ["taille en double", [{ size: "M", stock: "1" }, { size: "m", stock: "2" }], /en double/],
     ["taille vide parmi plusieurs", [{ size: "", stock: "1" }, { size: "M", stock: "2" }], /chacune doit avoir un nom/],
     ["taille trop longue", [{ size: "x".repeat(21), stock: "1" }], /trop longue/],
   ])("refuse : %s", (_, rows, message) => {
     expect(() => parseVariants(form(rows))).toThrow(message);
+  });
+
+  it("un stock saisi 0 reste valide (épuisé volontairement)", () => {
+    expect(parseVariants(form([{ size: "M", stock: "0" }])).rows[0].stock).toBe(0);
   });
 
   it("ne garde que des identifiants valides à supprimer", () => {

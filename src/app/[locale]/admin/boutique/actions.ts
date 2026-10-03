@@ -85,12 +85,17 @@ async function uniqueProductSlug(
 
 /** Champs communs create/update, dérivés du formulaire. */
 async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
-  // Image : un fichier uploadé est prioritaire ; sinon on garde l'URL saisie.
-  let image = field(formData, "image_url") || null;
+  // Photo principale : un fichier uploadé est prioritaire ; sinon l'URL saisie.
+  // En modification, elle n'est réécrite que si ce formulaire l'a vraiment
+  // changée (`image_orig` = ce qu'il affichait au chargement). Sans cela, un
+  // formulaire resté ouvert pendant qu'on changeait la photo principale
+  // (« En principale ») la remettait à l'ancienne en enregistrant autre chose.
   const imageFile = formData.get("image_file");
-  if (imageFile instanceof File && imageFile.size > 0) {
-    image = await uploadImage(admin, imageFile, slug);
-  }
+  const hasFile = imageFile instanceof File && imageFile.size > 0;
+  const url = field(formData, "image_url") || null;
+  const changed = !formData.has("image_orig") || hasFile || url !== (field(formData, "image_orig") || null);
+  let image = url;
+  if (hasFile) image = await uploadImage(admin, imageFile, slug);
 
   return {
     name: field(formData, "name"),
@@ -102,7 +107,7 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     price: priceField(formData, "price"),
     category: normalizeCategory(field(formData, "category")),
     icon: field(formData, "icon") || "",
-    image,
+    ...(changed && { image }),
     // `url` (ancien lien d'achat externe) n'est plus saisi : la vente passe
     // par le panier et Stripe. La colonne reste en base, intacte.
     available: formData.get("available") === "on",
