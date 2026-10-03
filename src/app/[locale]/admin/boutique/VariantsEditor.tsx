@@ -30,23 +30,42 @@ export default function VariantsEditor({ uid, variants }: { uid: string; variant
       : [{ key: newKey(), id: null, size: "", stock: "0", orig: null }],
   );
   const [removed, setRemoved] = useState<string[]>([]);
+  // Explication affichée quand un bouton ne fait pas ce qu'il propose.
+  const [notice, setNotice] = useState<string | null>(null);
 
   const update = (key: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const remove = (row: Row) => {
+    setNotice(null);
     if (row.id) setRemoved((ids) => [...ids, row.id!]);
     setRows((rs) => rs.filter((r) => r.key !== row.key));
   };
-  const addSizes = (sizes: string[]) =>
-    setRows((rs) => {
-      // Une « taille unique » vide et sans stock laisse la place aux vraies tailles.
-      const kept = rs.filter((r) => !(r.size === "" && (r.stock === "" || r.stock === "0") && !r.id));
-      const have = new Set(kept.map((r) => r.size.trim().toUpperCase()));
-      return [
-        ...kept,
-        ...sizes.filter((s) => !have.has(s)).map((s) => ({ key: newKey(), id: null, size: s, stock: "0", orig: null })),
-      ];
-    });
+  const addSizes = (sizes: string[]) => {
+    // La « taille unique » (nom vide) ne cohabite pas avec de vraies tailles :
+    // le serveur refuserait « Plusieurs tailles : chacune doit avoir un nom ».
+    //  - sans stock, elle laisse la place aux vraies tailles — y compris celle,
+    //    déjà en base, que la migration a créée pour chaque produit antérieur
+    //    à la boutique (elle porte un identifiant : il faut aussi la supprimer) ;
+    //  - avec du stock, on ne la supprime pas en silence : on explique.
+    const blank = rows.filter((r) => r.size.trim() === "");
+    const withStock = blank.find((r) => Number(r.stock) > 0);
+    if (withStock) {
+      setNotice(
+        `La taille unique contient encore ${Number(withStock.stock)} pièce${Number(withStock.stock) > 1 ? "s" : ""} : ` +
+          "donne-lui un nom (ex. M), ou mets son stock à 0, avant d’ajouter des tailles.",
+      );
+      return;
+    }
+    setNotice(null);
+    const dropped = blank.filter((r) => r.id).map((r) => r.id!);
+    if (dropped.length) setRemoved((ids) => [...ids, ...dropped]);
+    const kept = rows.filter((r) => r.size.trim() !== "");
+    const have = new Set(kept.map((r) => r.size.trim().toUpperCase()));
+    setRows([
+      ...kept,
+      ...sizes.filter((s) => !have.has(s)).map((s) => ({ key: newKey(), id: null, size: s, stock: "0", orig: null })),
+    ]);
+  };
 
   return (
     <fieldset className="sm:col-span-2">
@@ -108,7 +127,10 @@ export default function VariantsEditor({ uid, variants }: { uid: string; variant
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setRows((rs) => [...rs, { key: newKey(), id: null, size: "", stock: "0", orig: null }])}
+          onClick={() => {
+            setNotice(null);
+            setRows((rs) => [...rs, { key: newKey(), id: null, size: "", stock: "0", orig: null }]);
+          }}
           className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-semibold text-neutral-200 transition hover:bg-white/10 hover:cursor-pointer"
         >
           + Ajouter une taille
@@ -121,6 +143,11 @@ export default function VariantsEditor({ uid, variants }: { uid: string; variant
           + Tailles vêtements ({CLOTHING.join(", ")})
         </button>
       </div>
+      {notice && (
+        <p role="status" className="mt-2 rounded-lg bg-white/5 px-3 py-2 text-sm text-neutral-200">
+          {notice}
+        </p>
+      )}
     </fieldset>
   );
 }

@@ -50,6 +50,9 @@ export default function ProductForm({
   return (
     <AdminForm action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {product && <input type="hidden" name="id" value={product.id} />}
+      {/* Photo principale telle qu'affichée au chargement : l'action ne la
+          réécrit que si ce champ change — voir buildRow (actions.ts). */}
+      {product && <input type="hidden" name="image_orig" value={product.image ?? ""} />}
 
       <div className="block sm:col-span-2">
         <label htmlFor={`${uid}-name`} className={labelCls}>
@@ -60,7 +63,7 @@ export default function ProductForm({
           name="name"
           defaultValue={product?.name}
           required
-          placeholder="Maillot officiel XBZ"
+          placeholder="ex. Maillot officiel XBZ"
           className={inputCls}
         />
       </div>
@@ -69,7 +72,7 @@ export default function ProductForm({
         <label htmlFor={`${uid}-slug`} className={labelCls}>
           Slug (auto si vide)
         </label>
-        <input id={`${uid}-slug`} name="slug" defaultValue={product?.slug} placeholder="maillot-officiel" className={inputCls} />
+        <input id={`${uid}-slug`} name="slug" defaultValue={product?.slug} placeholder="ex. maillot-officiel" className={inputCls} />
       </div>
 
       <div className="block">
@@ -96,7 +99,7 @@ export default function ProductForm({
           min={0}
           step="0.01"
           defaultValue={product ? String(product.price ?? "") : ""}
-          placeholder="49.99"
+          placeholder="ex. 49.99"
           className={inputCls}
         />
       </div>
@@ -105,12 +108,12 @@ export default function ProductForm({
         <label htmlFor={`${uid}-icon`} className={labelCls}>
           Emoji de repli (si pas d’image)
         </label>
-        <input id={`${uid}-icon`} name="icon" defaultValue={product?.icon ?? ""} placeholder="👕" className={inputCls} />
+        <input id={`${uid}-icon`} name="icon" defaultValue={product?.icon ?? ""} placeholder="ex. 👕" className={inputCls} />
       </div>
 
       <div className="block sm:col-span-2">
         <label htmlFor={`${uid}-image-file`} className={labelCls}>
-          Visuel produit
+          Visuel produit (photo principale)
         </label>
         <div className="flex items-center gap-3">
           {product?.image && (
@@ -159,7 +162,7 @@ export default function ProductForm({
           name="description"
           defaultValue={product?.description ?? ""}
           rows={2}
-          placeholder="Le maillot compétitif aux couleurs de la structure."
+          placeholder="ex. Le maillot compétitif aux couleurs de la structure."
           className={inputCls}
         />
       </div>
@@ -175,7 +178,7 @@ export default function ProductForm({
             defaultValue={product?.size_guide ?? ""}
             rows={3}
             maxLength={4000}
-            placeholder={"S : 50 cm de large, 70 cm de long\nM : 53 × 72 cm\nCoupe ajustée : prends ta taille habituelle."}
+            placeholder={"ex.\nS : 50 cm de large, 70 cm de long\nM : 53 × 72 cm\nCoupe ajustée : prends ta taille habituelle."}
             className={inputCls}
           />
         </div>
@@ -208,7 +211,7 @@ export default function ProductForm({
             id={`${uid}-name-en`}
             name="name_en"
             defaultValue={product?.name_en ?? ""}
-            placeholder="XBZ mouse pad"
+            placeholder="ex. XBZ mouse pad"
             className={inputCls}
           />
         </div>

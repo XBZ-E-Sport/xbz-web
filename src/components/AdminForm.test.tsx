@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, act, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { useState } from "react";
+import { render, act, fireEvent, cleanup } from "@testing-library/react";
 
 const { toastError, toastPromise } = vi.hoisted(() => ({ toastError: vi.fn(), toastPromise: vi.fn() }));
 vi.mock("sonner", () => ({
@@ -12,11 +13,12 @@ import { ADMIN_GENERIC_ERROR, type AdminAction } from "@/lib/admin-result";
 import { UPLOAD_MAX_BYTES } from "@/lib/limits";
 
 /** Formulaire (dans une carte <details> ouverte) avec un champ texte et un champ fichier. */
-function setup(action: AdminAction = vi.fn(async () => undefined), bytes = 0, closeOnSuccess = true) {
+function setup(action: AdminAction = vi.fn(async () => undefined), bytes = 0, closeOnSuccess = true, edit = false) {
   const { container } = render(
     <details open>
       <summary>Modifier</summary>
       <AdminForm action={action} closeOnSuccess={closeOnSuccess}>
+        {edit && <input type="hidden" name="id" value="abc" />}
         <input name="nom" defaultValue="Maillot" />
         <input name="photo_file" type="file" />
         <button name="statut" value="accepte">Accepter</button>
@@ -34,6 +36,8 @@ function setup(action: AdminAction = vi.fn(async () => undefined), bytes = 0, cl
   return {
     action,
     nom,
+    /** Le champ « nom » ACTUEL (un formulaire d'ajout remonte ses champs après un succès). */
+    currentNom: () => container.querySelector<HTMLInputElement>('input[name="nom"]')!,
     form: container.querySelector("form")!,
     details: container.querySelector("details")!,
     button: (label: string) => [...container.querySelectorAll("button")].find((b) => b.textContent === label)!,
@@ -57,6 +61,8 @@ async function toastErrorText(): Promise<string | null> {
     return options.error(e);
   }
 }
+
+afterEach(() => cleanup());
 
 beforeEach(() => {
   toastError.mockClear();
@@ -96,11 +102,21 @@ describe("AdminForm — résultat de l'action", () => {
     expect(nom.value).toBe("Maillot RENOMMÉ");
   });
 
-  it("succès : formulaire remis à zéro et carte refermée", async () => {
-    const { nom, form, details } = setup();
+  it("succès d'un AJOUT (pas de champ id) : formulaire remis à zéro et carte refermée", async () => {
+    const { currentNom, form, details } = setup();
     await submit(form);
     expect(await toastErrorText()).toBeNull();
-    expect(nom.value).toBe("Maillot");
+    expect(currentNom().value).toBe("Maillot");
+    expect(details.open).toBe(false);
+  });
+
+  it("succès d'une MODIFICATION (champ id) : garde ce qui vient d'être enregistré", async () => {
+    // Revenir aux valeurs d'avant l'enregistrement ramenait un menu déroulant
+    // à son ancienne valeur — réécrite en base à l'enregistrement suivant.
+    const { currentNom, form, details } = setup(undefined, 0, true, true);
+    await submit(form);
+    expect(await toastErrorText()).toBeNull();
+    expect(currentNom().value).toBe("Maillot RENOMMÉ");
     expect(details.open).toBe(false);
   });
 
@@ -129,5 +145,99 @@ describe("AdminForm — résultat de l'action", () => {
     await act(async () => finish());
     await submit(form);
     expect(action).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("AdminForm — menus déroulants et éditeurs à état", () => {
+  /** Menu non contrôlé dont la valeur par défaut vient du serveur (comme `defaultValue={product.category}`). */
+  function Edit({ saved, action }: { saved: string; action: AdminAction }) {
+    return (
+      <AdminForm action={action}>
+        <input type="hidden" name="id" value="abc" />
+        <select name="category" defaultValue={saved}>
+          <option value="Textile">Textile</option>
+          <option value="Accessoire">Accessoire</option>
+        </select>
+      </AdminForm>
+    );
+  }
+
+  it("modification : le menu garde la valeur enregistrée, même quand les données serveur arrivent ensuite", async () => {
+    const action = vi.fn<AdminAction>(async () => undefined);
+    const { container, rerender } = render(<Edit saved="Textile" action={action} />);
+    const select = () => container.querySelector<HTMLSelectElement>("select")!;
+    fireEvent.change(select(), { target: { value: "Accessoire" } });
+    await submit(container.querySelector("form")!);
+    expect(action.mock.calls[0][0].get("category")).toBe("Accessoire");
+
+    // La page revalidée repasse la nouvelle valeur par défaut…
+    rerender(<Edit saved="Accessoire" action={action} />);
+    expect(select().value).toBe("Accessoire");
+
+    // …et l'enregistrement suivant, sans recharger, n'écrit PAS l'ancienne.
+    await submit(container.querySelector("form")!);
+    expect(action.mock.calls[1][0].get("category")).toBe("Accessoire");
+  });
+
+  it("ajout : un éditeur à état (tailles…) repart à neuf après un succès", async () => {
+    function Counter() {
+      const [n, setN] = useState(0);
+      return (
+        <>
+          <input type="hidden" name="n" value={n} />
+          <button type="button" onClick={() => setN((x) => x + 1)}>
+            +1
+          </button>
+          <output>{n}</output>
+        </>
+      );
+    }
+    const action = vi.fn<AdminAction>(async () => undefined);
+    const { container, getByText } = render(
+      <AdminForm action={action}>
+        <Counter />
+      </AdminForm>,
+    );
+    fireEvent.click(getByText("+1"));
+    fireEvent.click(getByText("+1"));
+    expect(container.querySelector("output")!.textContent).toBe("2");
+    await submit(container.querySelector("form")!);
+    expect(action.mock.calls[0][0].get("n")).toBe("2");
+    expect(container.querySelector("output")!.textContent).toBe("0");
+  });
+
+  it("ajout en échec : l'éditeur à état garde sa saisie", async () => {
+    function Counter() {
+      const [n, setN] = useState(0);
+      return (
+        <>
+          <button type="button" onClick={() => setN((x) => x + 1)}>
+            +1
+          </button>
+          <output>{n}</output>
+        </>
+      );
+    }
+    const { container, getByText } = render(
+      <AdminForm action={vi.fn(async () => ({ error: "Refusé." }))}>
+        <Counter />
+      </AdminForm>,
+    );
+    fireEvent.click(getByText("+1"));
+    await submit(container.querySelector("form")!);
+    expect(container.querySelector("output")!.textContent).toBe("1");
+  });
+
+  it("modification : les fichiers choisis sont vidés après l'envoi (pas de renvoi au prochain enregistrement)", async () => {
+    const { container } = render(
+      <AdminForm action={vi.fn(async () => undefined)}>
+        <input type="hidden" name="id" value="abc" />
+        <input name="photo_file" type="file" />
+      </AdminForm>,
+    );
+    const file = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const spy = vi.spyOn(file, "value", "set");
+    await submit(container.querySelector("form")!);
+    expect(spy).toHaveBeenCalledWith("");
   });
 });

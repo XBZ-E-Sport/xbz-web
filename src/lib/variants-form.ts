@@ -27,9 +27,15 @@ export function parseVariants(fd: FormData): { rows: VariantInput[]; deleted: st
   if (sizes.length > MAX_VARIANTS) throw new AdminError(`${MAX_VARIANTS} tailles au plus par produit.`);
   const rows = sizes.map((size, i): VariantInput => {
     if (size.length > 20) throw new AdminError(`Taille « ${size.slice(0, 20)}… » trop longue (20 caractères).`);
-    const stock = Number(stocks[i]);
-    if (!Number.isInteger(stock) || stock < 0 || stock > MAX_STOCK) {
-      throw new AdminError(`Stock invalide pour la taille « ${size || "unique"} » : un nombre entier positif.`);
+    // Champ vidé : refusé, pas lu comme 0 (`Number("")` vaut 0) — un stock
+    // effacé par mégarde ne doit pas passer pour « épuisé » sans que personne
+    // ne l'ait voulu.
+    const raw = (stocks[i] ?? "").trim();
+    const label = size || "unique";
+    if (raw === "") throw new AdminError(`Stock manquant pour la taille « ${label} » : saisis un nombre (0 si épuisée).`);
+    const stock = /^\d+$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isInteger(stock) || stock > MAX_STOCK) {
+      throw new AdminError(`Stock invalide pour la taille « ${label} » : un nombre entier positif.`);
     }
     const id = UUID.test(ids[i] ?? "") ? ids[i] : null;
     const orig = origs[i] === "" || origs[i] === undefined ? null : Number(origs[i]);
