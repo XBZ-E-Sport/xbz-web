@@ -81,7 +81,7 @@ const PURPOSE_KEYS = [
   "purposeText6",
   "purposeText7",
 ] as const;
-const PROCESSOR_KEYS = ["supabase", "vercel", "stripe", "discord"] as const;
+const PROCESSOR_KEYS = ["supabase", "vercel", "render", "stripe", "discord"] as const;
 
 export default async function ConfidentialitePage({ params }: PageProps) {
   const { locale } = await params;

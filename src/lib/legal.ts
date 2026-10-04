@@ -29,7 +29,7 @@ export const LEGAL = {
    * (article D.211-1) et les mentions légales d'un éditeur (LCEN, art. 6-III).
    * `null` tant qu'il manque : la boutique refuse alors les paiements réels.
    */
-  phone: null as null | string,
+  phone: "06 72 42 19 20" as null | string,
   /** Adresse où les clients renvoient un colis (rétractation). Même lieu que le siège ; à séparer ici le jour où ça change. */
   returnAddress: ADDRESS,
   /** Délai de livraison promis, en jours ouvrés, à compter du paiement. */

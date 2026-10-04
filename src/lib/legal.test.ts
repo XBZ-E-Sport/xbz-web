@@ -57,6 +57,8 @@ describe("identité de l'association", () => {
     expect(Number.isNaN(Date.parse(LEGAL.cgvEffective))).toBe(false);
     expect(LEGAL.deliveryDays).toBeGreaterThan(0);
     expect(LEGAL.address).toMatch(/76140/);
+    // Téléphone français affiché par paires de chiffres (« 06 12 34 56 78 »).
+    expect(LEGAL.phone).toMatch(/^0[1-9]( \d{2}){4}$/);
     expect(LEGAL.returnAddress.length).toBeGreaterThan(10);
   });
 
@@ -430,6 +432,9 @@ describe("politique de confidentialité : couverture des traitements", () => {
     }
     // La copie Discord est annoncée comme une copie COMPLÈTE, pas comme une simple notification.
     expect(p.processors.discord).toMatch(locale === "fr" ? /copie complète/ : /full copy/);
+    // Le bot Discord est hébergé chez Render, à Francfort : il figure parmi les prestataires et les transferts.
+    expect(p.processors.render).toMatch(locale === "fr" ? /Render.*Francfort/ : /Render.*Frankfurt/);
+    expect(p.transfersText1).toMatch(/Render/);
     // L'adresse IP anti-spam n'est plus décrite comme supprimée « quelques instants » après.
     expect(p.collected.antispam).not.toMatch(/quelques instants|few moments/);
   });

@@ -585,6 +585,7 @@
     "processors": {
       "supabase": "<b>Supabase</b> — hosting of the database where applications, messages, orders, member profiles and sign-in accounts are stored (Paris region, France).",
       "vercel": "<b>Vercel</b> — website hosting, technical logs and cookieless audience measurement (aggregated visit statistics).",
+      "render": "<b>Render</b> — hosting of the organisation’s Discord bot, which relays received forms and internal notifications to the staff (Frankfurt region, Germany).",
       "discord": "<b>Discord</b> — when a form is received, the full copy of your application or message (including your email address for support) is posted by our bot in a staff channel; technical error reports are also sent there.",
       "stripe": "<b>Stripe</b> — secure payment of shop orders (Stripe Payments Europe, Ireland). Stripe also acts as a controller for its own obligations (fraud prevention): see <b>stripe.com/privacy</b>."
     },
@@ -593,7 +594,7 @@
     "rightsContact": "To exercise these rights, contact us via <discord>the official Discord server</discord><mail> or at </mail>. We will reply within one month, extendable by two months for a complex request (you would be informed). If there is reasonable doubt about your identity, we may ask for proof of identity.",
     "rightsComplaint": "You may also lodge a complaint with the CNIL, the French data protection authority — <cnil>cnil.fr</cnil>.",
     "transfersHeading": "Transfers outside the European Union",
-    "transfersText1": "Vercel (site hosting), Discord (internal notifications) and Stripe (payment) are US companies: the data these providers process may therefore be transferred to the United States. These transfers rely on the European Commission’s adequacy decision for companies certified under the EU–US Data Privacy Framework and, failing that, on the Commission’s standard contractual clauses, included in these providers’ data processing terms. You can obtain a copy by contacting us (see “Your rights”).",
+    "transfersText1": "Vercel (site hosting), Render (Discord bot hosting), Discord (internal notifications) and Stripe (payment) are US companies: the data these providers process may therefore be transferred to the United States. These transfers rely on the European Commission’s adequacy decision for companies certified under the EU–US Data Privacy Framework and, failing that, on the Commission’s standard contractual clauses, included in these providers’ data processing terms. You can obtain a copy by contacting us (see “Your rights”).",
     "transfersText2": "The database is hosted in Paris by Supabase (Supabase Inc., a US company); any access from outside the European Union is covered by Supabase’s standard contractual clauses.",
     "rightsPostMortem": "You may also set directives on the retention, deletion and disclosure of your data after your death."
   },

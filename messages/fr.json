@@ -585,6 +585,7 @@
     "processors": {
       "supabase": "<b>Supabase</b> — hébergement de la base de données où sont stockés les candidatures, messages, commandes, fiches de membres et comptes de connexion (région de Paris, France).",
       "vercel": "<b>Vercel</b> — hébergement du site, journaux techniques et mesure d’audience sans cookie (statistiques de visite agrégées).",
+      "render": "<b>Render</b> — hébergement du bot Discord de la structure, qui relaie au staff les formulaires reçus et les notifications internes (région de Francfort, Allemagne).",
       "discord": "<b>Discord</b> — à la réception d’un formulaire, la copie complète de ta candidature ou de ton message (y compris ton adresse email pour le support) est publiée par notre bot dans un salon du staff ; les rapports d’erreur techniques y sont aussi envoyés.",
       "stripe": "<b>Stripe</b> — paiement sécurisé des commandes de la boutique (Stripe Payments Europe, Irlande). Stripe agit aussi en responsable de traitement pour ses propres obligations (lutte contre la fraude) : voir <b>stripe.com/fr/privacy</b>."
     },
@@ -593,7 +594,7 @@
     "rightsContact": "Pour exercer ces droits, contacte-nous via <discord>le serveur Discord officiel</discord><mail> ou à </mail>. Nous te répondrons dans un délai d'un mois, prolongeable de deux mois en cas de demande complexe (tu en serais informé). En cas de doute raisonnable sur ton identité, nous pouvons te demander un justificatif.",
     "rightsComplaint": "Tu peux également introduire une réclamation auprès de la CNIL — <cnil>cnil.fr</cnil>.",
     "transfersHeading": "Transferts hors de l'Union européenne",
-    "transfersText1": "Vercel (hébergement du site), Discord (notifications internes) et Stripe (paiement) sont des sociétés américaines : les données traitées par ces prestataires peuvent donc être transférées aux États-Unis. Ces transferts reposent sur la décision d’adéquation de la Commission européenne pour les entreprises adhérant au cadre de protection des données UE–États-Unis et, à défaut, sur les clauses contractuelles types de la Commission, intégrées aux conditions de traitement de ces prestataires. Tu peux en obtenir une copie en nous contactant (voir « Tes droits »).",
+    "transfersText1": "Vercel (hébergement du site), Render (hébergement du bot Discord), Discord (notifications internes) et Stripe (paiement) sont des sociétés américaines : les données traitées par ces prestataires peuvent donc être transférées aux États-Unis. Ces transferts reposent sur la décision d’adéquation de la Commission européenne pour les entreprises adhérant au cadre de protection des données UE–États-Unis et, à défaut, sur les clauses contractuelles types de la Commission, intégrées aux conditions de traitement de ces prestataires. Tu peux en obtenir une copie en nous contactant (voir « Tes droits »).",
     "transfersText2": "La base de données est hébergée à Paris chez Supabase (Supabase Inc., société américaine) ; d’éventuels accès depuis hors de l’Union européenne sont encadrés par les clauses contractuelles types de Supabase.",
     "rightsPostMortem": "Tu peux également définir des directives relatives à la conservation, à l'effacement et à la communication de tes données après ton décès."
   },
