@@ -145,6 +145,50 @@ export async function clearDiscordStaff(userId: string): Promise<void> {
   if (error) console.error("[auth] révocation du verdict Discord échouée:", error.message);
 }
 
+type AuthUser = {
+  id: string;
+  email?: string | null;
+  identities?: { provider?: string }[] | null;
+};
+
+/**
+ * Supprime le compte d'une personne REFUSÉE à la connexion Discord.
+ *
+ * `/login` est public : `signInWithOAuth` crée un compte (identifiant Discord,
+ * pseudo, email, avatar) pour n'importe quel utilisateur Discord qui clique,
+ * même s'il est aussitôt refusé. Sans cette purge, ces comptes d'inconnus
+ * resteraient indéfiniment dans Supabase Auth — une donnée personnelle que la
+ * politique de confidentialité promet de ne pas garder.
+ *
+ * Garde-fous : on ne supprime JAMAIS un compte qui peut être celui d'un membre
+ * du staff — adresse présente dans `allow_staff_list`, ou identité autre que
+ * Discord (compte email + mot de passe). À n'appeler qu'après un refus
+ * DÉFINITIF (`not_member`, `missing_role`), jamais sur une panne.
+ */
+export async function deleteUnauthorizedAccount(user: AuthUser): Promise<boolean> {
+  const identities = user.identities ?? [];
+  const discordOnly = identities.length > 0 && identities.every((i) => i.provider === "discord");
+  if (!discordOnly) return false;
+
+  const admin = createAdminClient();
+  if (user.email) {
+    const { data: listed, error } = await admin
+      .from("allow_staff_list")
+      .select("email")
+      .eq("email", user.email)
+      .maybeSingle();
+    // Doute (erreur de lecture) ou adresse listée : on garde le compte.
+    if (error || listed) return false;
+  }
+
+  const { error } = await admin.auth.admin.deleteUser(user.id);
+  if (error) {
+    console.error("[auth] suppression du compte refusé échouée:", error.message);
+    return false;
+  }
+  return true;
+}
+
 /** Vrai si le compte porte un verdict Discord valide ET encore frais. */
 export function hasFreshDiscordStaff(appMetadata: AppMetadata): boolean {
   if (!appMetadata || appMetadata.xbz_staff !== true) return false;

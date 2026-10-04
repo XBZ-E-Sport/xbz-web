@@ -9,13 +9,14 @@ import { Link } from "@/i18n/navigation";
 import { getProductBySlug, getProductSlugs, getProducts, isPurchasable, type Product } from "@/lib/boutique";
 import { productCategoryStyles } from "@/lib/format";
 import { jsonLdString } from "@/lib/jsonld";
+import { LEGAL } from "@/lib/legal";
 import { formatEuros } from "@/lib/money";
 import { bannerVersion, productBanner } from "@/lib/og-banners";
 import { productJsonLd } from "@/lib/product-seo";
 import { breadcrumbJsonLd, pageDescription } from "@/lib/seo";
 import { SHIPPING_COUNTRIES, shippingEuros } from "@/lib/shop";
 import { absoluteUrl, localizedPath, pageMetadata } from "@/lib/site";
-import { isStripeConfigured } from "@/lib/stripe";
+import { isShopOpen } from "@/lib/stripe";
 
 // Page d'un produit : photos, tailles et ajout au panier, description, guide
 // des tailles, livraison et retours — et ce que Google lit (prix, stock).
@@ -66,7 +67,7 @@ export default async function ProductPage({ params }: PageProps) {
   const tCat = await getTranslations({ locale, namespace: "productCategories" });
   const tNav = await getTranslations({ locale, namespace: "nav" });
 
-  const open = isStripeConfigured();
+  const open = isShopOpen();
   const purchasable = open && isPurchasable(product);
   const path = `/boutique/${product.slug}`;
   const shipping = shippingEuros();
@@ -169,7 +170,7 @@ export default async function ProductPage({ params }: PageProps) {
               <h2 id="product-delivery" className="font-display text-base text-white">
                 {t("delivery")}
               </h2>
-              <p className="mt-2">{t("deliveryText", { price: formatEuros(shipping, locale) })}</p>
+              <p className="mt-2">{t("deliveryText", { price: formatEuros(shipping, locale), days: LEGAL.deliveryDays })}</p>
               <p className="mt-2">
                 {t.rich("returnsText", {
                   cgv: (chunks) => (

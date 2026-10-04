@@ -25,6 +25,22 @@ test.describe("Pages publiques", () => {
     );
   });
 
+  test("CGV : l'encadré officiel des garanties légales est affiché, dans les deux langues", async ({ page }) => {
+    // Modèle annexé à l'article D. 211-2 du Code de la consommation (décret 2022-946) :
+    // une CGV de vente de biens qui ne l'affiche pas est non conforme.
+    await page.goto("/fr/cgv");
+    const fr = page.locator('section[aria-labelledby="garanties"]');
+    await expect(fr.getByText("Rappel des garanties légales")).toBeVisible();
+    await expect(fr).toContainText("Le consommateur dispose d'un délai de deux ans à compter de la délivrance du bien");
+    await expect(fr).toContainText("articles 1641 à 1649 du code civil");
+
+    await page.goto("/en/cgv");
+    const en = page.locator('section[aria-labelledby="garanties"]');
+    await expect(en.getByText("Reminder of the legal guarantees")).toBeVisible();
+    await expect(en).toContainText("The consumer has a period of two years from delivery of the goods");
+    await expect(en).toContainText("The French text prevails");
+  });
+
   test("Support : la FAQ s'ouvre au clic (accordéon <details>)", async ({ page }) => {
     await page.goto("/fr/support");
 

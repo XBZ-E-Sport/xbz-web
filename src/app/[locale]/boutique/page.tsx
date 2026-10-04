@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { getProducts, isPurchasable } from "@/lib/boutique";
-import { isStripeConfigured } from "@/lib/stripe";
+import { isShopOpen } from "@/lib/stripe";
 import ClientMessages from "@/components/ClientMessages";
 import BoutiqueList from "@/components/BoutiqueList";
 import { pageMetadata } from "@/lib/site";
@@ -47,7 +47,7 @@ export default async function BoutiquePage({ params }: PageProps) {
 
   const products = await getProducts(locale);
   // La boutique encaisse-t-elle ? (clés Stripe en place.) Sinon, aperçu seul.
-  const open = isStripeConfigured();
+  const open = isShopOpen();
   // Bandeau « ouvre bientôt » tant qu'aucun produit n'est achetable.
   const anyAvailable = open && products.some(isPurchasable);
 

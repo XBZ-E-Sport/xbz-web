@@ -7,7 +7,10 @@ import { isStripeConfigured } from "@/lib/stripe";
 
 // Purge RGPD (minimisation / limitation de conservation).
 // Supprime les candidatures et messages support plus vieux que RETENTION_MONTHS.
-// Les COMMANDES n'y passent pas : ce sont des pièces comptables.
+// Les COMMANDES n'y passent pas : ce sont des pièces comptables, gardées 10 ans.
+// RAPPEL : les premières ont 10 ans en octobre 2036 — d'ici là, ajouter ici leur
+// suppression (ou anonymisation de nom, e-mail et adresse), avec un an de marge
+// (le délai court souvent à partir de la clôture de l'exercice, pas de la vente).
 //
 // Au passage, filet de la boutique : une réservation de stock dont le webhook
 // Stripe se serait perdu est rendue (après vérification chez Stripe).

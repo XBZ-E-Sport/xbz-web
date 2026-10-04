@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { LEGAL, legalValues } from "@/lib/legal";
 import { siteConfig, pageMetadata } from "@/lib/site";
 
 type PageProps = { params: Promise<{ locale: string }> };
@@ -42,6 +44,28 @@ export default async function MentionsLegalesPage({ params }: PageProps) {
   // Locale passée EXPLICITEMENT : voir le commentaire de `force-static` ci-dessus.
   const t = await getTranslations({ locale, namespace: "legal" });
   const tNotFound = await getTranslations({ locale, namespace: "notFound" });
+  const values = legalValues(locale);
+  // `<mail>` = lien vers l'adresse de contact ; `<discord>` = lien si l'invitation est configurée.
+  const contactTags = {
+    mail: (chunks: ReactNode) => (
+      <a href={`mailto:${LEGAL.email}`} className="font-semibold text-xbz-cyan hover:underline">
+        {chunks}
+      </a>
+    ),
+    discord: (chunks: ReactNode) =>
+      DISCORD_URL ? (
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-xbz-cyan hover:underline"
+        >
+          {chunks}
+        </a>
+      ) : (
+        <>{chunks}</>
+      ),
+  };
 
   return (
     <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
@@ -59,29 +83,14 @@ export default async function MentionsLegalesPage({ params }: PageProps) {
           <h2 id="editeur" className={h2Cls}>
             {t("publisherHeading")}
           </h2>
-          <p>{t("publisherText", { name: siteConfig.name })}</p>
+          <p>{t("publisherText", { name: siteConfig.name, ...values })}</p>
+          <p className="mt-2">{t("registeredOffice", values)}</p>
           <p className="mt-2">
             {t.rich("publisherManager", {
               manager: (chunks) => <span className="text-neutral-400">{chunks}</span>,
             })}
           </p>
-          <p className="mt-2">
-            {t.rich("contact", {
-              discord: (chunks) =>
-                DISCORD_URL ? (
-                  <a
-                    href={DISCORD_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-xbz-cyan hover:underline"
-                  >
-                    {chunks}
-                  </a>
-                ) : (
-                  <>{chunks}</>
-                ),
-            })}
-          </p>
+          <p className="mt-2">{t.rich("contact", { ...values, ...contactTags })}</p>
         </section>
 
         <section aria-labelledby="hebergement">
@@ -116,7 +125,7 @@ export default async function MentionsLegalesPage({ params }: PageProps) {
             {t("dataHeading")}
           </h2>
           <p>{t("dataText1")}</p>
-          <p className="mt-2">{t("dataText2")}</p>
+          <p className="mt-2">{t.rich("dataText2", { ...values, ...contactTags })}</p>
           <p className="mt-2">
             {t.rich("dataText3", {
               privacy: (chunks) => (

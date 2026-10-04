@@ -50,7 +50,6 @@ et **ce qui se passe quand elle est absente** (plusieurs ont un repli silencieux
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Domaine public (sitemap, canonicals, OG, JSON-LD) | repli sur le domaine par défaut |
 | `NEXT_PUBLIC_DISCORD_URL` | Invitation Discord publique | les liens deviennent du texte |
-| `NEXT_PUBLIC_MAIL` | Adresse de contact affichée | masquée |
 | `NEXT_PUBLIC_SUPABASE_URL` | Projet Supabase | **le site ne démarre pas** |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clé publique (lecture soumise à la RLS) | **idem** |
 | `SUPABASE_SECRET_KEY` | Clé service_role — **serveur uniquement** | **idem** |
@@ -222,7 +221,11 @@ Deux chemins mènent à `/admin`, **le premier suffit** :
    l'adresse d'un membre listé suffirait à hériter de son accès.
 
 Retirer un accès : enlever le rôle Discord (effectif à la prochaine connexion, au plus
-tard sous 1 jour) et/ou supprimer la ligne dans `allow_staff_list`.
+tard sous 1 jour) et/ou supprimer la ligne dans `allow_staff_list` — puis **supprimer le
+compte** dans Supabase (Authentication › Users), faute de quoi ses données de connexion
+(identifiant, pseudo, e-mail) restent chez nous. Un refus définitif à la connexion Discord
+(`not_member` / `missing_role`) supprime, lui, le compte d'un inconnu automatiquement ;
+jamais celui d'un compte e-mail + mot de passe ni d'une adresse de `allow_staff_list`.
 
 La garde vit dans `src/lib/adminguard.ts` (`requireStaff`) et sert **à la fois** au layout
 `/admin` et à **chaque server action** — une server action est un endpoint POST joignable
@@ -236,6 +239,18 @@ Sections du back-office : **Candidatures**, **Rosters & Joueurs**, **Pôles & St
 Paiement sur la page **Stripe Checkout** hébergée : aucune clé n'atteint le navigateur.
 Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperçu
 (« Bientôt disponible ») : déployer avant de les renseigner ne risque rien.
+
+> **Avant de passer en clé live (`sk_live_…`)** : `src/lib/legal.ts` doit avoir un
+> **médiateur de la consommation** (`mediator`), un **numéro de téléphone** (`phone`,
+> exigé par les articles R.111-1 et D.211-1 du Code de la consommation) et la
+> **rétractation en ligne** doit exister (`onlineWithdrawal: true`, obligatoire depuis le
+> 19 juin 2026). Sinon le paiement est refusé et la boutique affiche « bientôt » ; la
+> liste de ce qui manque est dans les journaux Vercel (`[boutique] paiement live refusé :
+> …`, voir `legalMissing()`). La clé de test n'est pas concernée.
+>
+> **L'encadré des garanties légales** des CGV (`cgv.garantiesEncadre`) est le modèle
+> officiel du décret n° 2022-946, annexe I-A : ne jamais le reformuler. Un test en
+> verrouille l'empreinte ; ne la recalculer qu'après avoir recopié un nouveau modèle.
 
 - **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
   (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
@@ -266,6 +281,13 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   anciens, plus les IP anti-flood de plus d'une heure. Déclenché par le cron Vercel
   (`vercel.json`, 3 h du matin) et protégé par `CRON_SECRET` — **sans ce secret, la route
   refuse tout appel** plutôt que d'exposer un endpoint de suppression ouvert.
+- **Commandes : conservées 10 ans** (pièces comptables), aucune purge automatique. Les
+  premières atteindront 10 ans en **octobre 2036** : ajouter alors la suppression ou
+  l'anonymisation dans `/api/cron/purge` (délai à compter de la clôture de l'exercice, donc
+  avec une marge d'un an).
+- **Copies Discord** : chaque formulaire est aussi publié par le bot dans un salon du staff ;
+  ces messages ne sont pas purgés par le cron. À supprimer à la main au bout de 24 mois (ou
+  sur demande) — l'identifiant de la base figure dans le message.
 - **Page `/confidentialite`** : données collectées (formulaires + IP anti-flood), finalités,
   bases légales (consentement / intérêt légitime), durées, destinataires, droits.
 

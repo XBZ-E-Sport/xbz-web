@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { legalValues } from "@/lib/legal";
 import { pageMetadata } from "@/lib/site";
 
 // Rendu statique explicite (aucune donnée liée à la requête), comme les autres
@@ -22,8 +23,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 // Articles rendus dans l'ordre ; chaque `${id}Body` peut contenir plusieurs
-// paragraphes séparés par une ligne vide. Deux articles ont un complément :
-// le formulaire type (rétractation) et le lien vers la confidentialité (données).
+// paragraphes séparés par une ligne vide. Trois articles ont un complément :
+// le formulaire type (rétractation), l'encadré officiel des garanties légales
+// (modèle annexé à l'article D. 211-2 du Code de la consommation, repris MOT
+// POUR MOT : ne pas le reformuler) et le lien vers la confidentialité (données).
 const ARTICLES = [
   "objet",
   "vendeur",
@@ -46,6 +49,8 @@ export default async function CgvPage({ params }: PageProps) {
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: "cgv" });
+  // Identité du vendeur, délais, médiateur… : src/lib/legal.ts, une seule source.
+  const values = legalValues(locale);
   const tNotFound = await getTranslations({ locale, namespace: "notFound" });
 
   return (
@@ -57,7 +62,7 @@ export default async function CgvPage({ params }: PageProps) {
         <h1 className="font-display text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_0_30px_rgba(220,37,21,0.4)] sm:text-5xl">
           {t("title")}
         </h1>
-        <p className="mt-4 text-sm text-neutral-400">{t("effective")}</p>
+        <p className="mt-4 text-sm text-neutral-400">{t("effective", values)}</p>
       </header>
 
       <div className="space-y-10 leading-relaxed text-neutral-300">
@@ -66,7 +71,7 @@ export default async function CgvPage({ params }: PageProps) {
             <h2 id={id} className={h2Cls}>
               {i + 1}. {t(`${id}Title`)}
             </h2>
-            {t(`${id}Body`)
+            {t(`${id}Body`, values)
               .split("\n\n")
               .map((paragraph, j) => (
                 <p key={j} className={j > 0 ? "mt-3" : undefined}>
@@ -78,8 +83,16 @@ export default async function CgvPage({ params }: PageProps) {
               <div className="mt-5 rounded-xl border border-white/10 bg-white/3 p-5">
                 <p className="font-semibold text-white">{t("retractationFormTitle")}</p>
                 <p className="mt-2 whitespace-pre-line text-sm text-neutral-400">
-                  {t("retractationForm")}
+                  {t("retractationForm", values)}
                 </p>
+              </div>
+            )}
+
+            {id === "garanties" && (
+              <div className="mt-5 rounded-xl border border-white/10 bg-white/3 p-5">
+                <p className="font-semibold text-white">{t("garantiesEncadreTitle")}</p>
+                <p className="mt-2 whitespace-pre-line text-sm text-neutral-300">{t("garantiesEncadre")}</p>
+                <p className="mt-3 text-xs text-neutral-400">{t("garantiesEncadreNote")}</p>
               </div>
             )}
 

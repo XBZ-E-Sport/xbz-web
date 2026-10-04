@@ -1,8 +1,9 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const m = vi.hoisted(() => ({
   configured: true,
+  live: false,
   rate: { allowed: true, retryAfter: 0 },
   reserve: vi.fn(),
   abandon: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("next/headers", () => ({
 vi.mock("next-intl/server", () => ({ getTranslations: async () => (k: string) => k }));
 vi.mock("@/lib/stripe", () => ({
   isStripeConfigured: () => m.configured,
+  isLiveStripeKey: () => m.live,
   stripe: () => ({ checkout: { sessions: { create: m.create } } }),
 }));
 vi.mock("@/lib/ratelimit", () => ({
@@ -41,6 +43,7 @@ vi.mock("@/lib/shop", async (orig) => ({
 }));
 
 import { POST } from "@/app/api/boutique/checkout/route";
+import { LEGAL } from "@/lib/legal";
 
 const VARIANT = "00000000-0000-4000-8000-000000000001";
 const ORDER = { id: "0b6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d", items: [], shipping: 4.9, locale: "fr", expires_at: null };
@@ -57,6 +60,7 @@ const call = (body: unknown = good, headers: Record<string, string> = {}) =>
 
 beforeEach(() => {
   m.configured = true;
+  m.live = false;
   m.rate = { allowed: true, retryAfter: 0 };
   m.jar.clear();
   for (const f of [m.reserve, m.abandon, m.create, m.update, m.setCookie]) f.mockReset();
@@ -138,5 +142,63 @@ describe("POST /api/boutique/checkout", () => {
   it("le prix envoyé par le navigateur est ignoré (seules tailles et quantités comptent)", async () => {
     await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, price: 0.01 }] });
     expect(m.reserve).toHaveBeenCalledWith(expect.anything(), [{ variantId: VARIANT, quantity: 1 }], "fr");
+  });
+});
+
+describe("POST /api/boutique/checkout — vrais paiements et informations légales", () => {
+  const mediator = { name: "Médiateur de test", address: "1 rue du Test, 75000 Paris", website: "https://mediateur.test" };
+  const saved = { ...LEGAL };
+  const ready = { mediator, phone: "02 35 00 00 00", onlineWithdrawal: true };
+  afterEach(() => {
+    Object.assign(LEGAL, saved);
+    vi.restoreAllMocks();
+  });
+
+  it("clé LIVE sans médiateur de la consommation : paiement refusé, rien n'est réservé", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
+    m.live = true;
+    Object.assign(LEGAL, ready, { mediator: null });
+    const res = await call();
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe("unavailable");
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(m.create).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /médiateur/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE avec médiateur mais sans rétractation en ligne : paiement refusé aussi", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
+    m.live = true;
+    Object.assign(LEGAL, ready, { onlineWithdrawal: false });
+    const res = await call();
+    expect(res.status).toBe(503);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /rétractation/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE sans numéro de téléphone : paiement refusé aussi", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
+    m.live = true;
+    Object.assign(LEGAL, ready, { phone: null });
+    expect((await call()).status).toBe(503);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /téléphone/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE avec médiateur, téléphone ET rétractation en ligne : le paiement s'ouvre", async () => {
+    m.live = true;
+    Object.assign(LEGAL, ready);
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(m.reserve).toHaveBeenCalledTimes(1);
+  });
+
+  it("clé de TEST sans médiateur : la boutique reste utilisable pour essayer", async () => {
+    m.live = false;
+    Object.assign(LEGAL, { mediator: null, phone: null, onlineWithdrawal: false });
+    expect((await call()).status).toBe(200);
   });
 });

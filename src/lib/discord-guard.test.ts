@@ -1,8 +1,34 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+const admin = vi.hoisted(() => ({
+  listed: null as { email: string } | null,
+  listError: null as { message: string } | null,
+  deleteError: null as { message: string } | null,
+  deleteUser: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => ({ data: admin.listed, error: admin.listError }) }),
+      }),
+    }),
+    auth: {
+      admin: {
+        deleteUser: async (id: string) => {
+          admin.deleteUser(id);
+          return { error: admin.deleteError };
+        },
+      },
+    },
+  }),
+}));
+
 import {
   checkDiscordStaff,
+  deleteUnauthorizedAccount,
   denyMessage,
   hasFreshDiscordStaff,
   STAFF_TTL_DAYS,
@@ -146,5 +172,55 @@ describe("hasFreshDiscordStaff", () => {
     expect(hasFreshDiscordStaff({ xbz_staff: true })).toBe(false);
     expect(hasFreshDiscordStaff({ xbz_staff: true, xbz_staff_at: "bientôt" })).toBe(false);
     expect(hasFreshDiscordStaff({ xbz_staff: "true", xbz_staff_at: iso(0) })).toBe(false);
+  });
+});
+
+describe("deleteUnauthorizedAccount", () => {
+  const discordUser = { id: "u1", email: "inconnu@exemple.fr", identities: [{ provider: "discord" }] };
+
+  beforeEach(() => {
+    admin.listed = null;
+    admin.listError = null;
+    admin.deleteError = null;
+    admin.deleteUser.mockReset();
+  });
+
+  it("supprime le compte Discord d'un inconnu (hors liste staff)", async () => {
+    expect(await deleteUnauthorizedAccount(discordUser)).toBe(true);
+    expect(admin.deleteUser).toHaveBeenCalledWith("u1");
+  });
+
+  it("supprime aussi un compte Discord sans email", async () => {
+    expect(await deleteUnauthorizedAccount({ ...discordUser, email: undefined })).toBe(true);
+    expect(admin.deleteUser).toHaveBeenCalledWith("u1");
+  });
+
+  it("garde un compte dont l'email est dans allow_staff_list", async () => {
+    admin.listed = { email: discordUser.email };
+    expect(await deleteUnauthorizedAccount(discordUser)).toBe(false);
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("garde un compte avec une identité email + mot de passe (staff possible)", async () => {
+    const mixed = { ...discordUser, identities: [{ provider: "discord" }, { provider: "email" }] };
+    expect(await deleteUnauthorizedAccount(mixed)).toBe(false);
+    expect(await deleteUnauthorizedAccount({ ...discordUser, identities: [{ provider: "email" }] })).toBe(false);
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("dans le doute (identités inconnues, lecture de la liste en erreur) : on garde", async () => {
+    expect(await deleteUnauthorizedAccount({ ...discordUser, identities: [] })).toBe(false);
+    expect(await deleteUnauthorizedAccount({ ...discordUser, identities: undefined })).toBe(false);
+    admin.listError = { message: "boom" };
+    expect(await deleteUnauthorizedAccount(discordUser)).toBe(false);
+    expect(admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it("échec de la suppression : renvoie false et journalise sans l'email", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    admin.deleteError = { message: "db down" };
+    expect(await deleteUnauthorizedAccount(discordUser)).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(String(log.mock.calls[0])).not.toContain(discordUser.email);
   });
 });

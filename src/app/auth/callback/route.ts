@@ -8,6 +8,7 @@ import { localizedPath } from "@/lib/site";
 import {
   checkDiscordStaff,
   clearDiscordStaff,
+  deleteUnauthorizedAccount,
   denyMessage,
   markDiscordStaff,
 } from "@/lib/discord-guard";
@@ -80,10 +81,12 @@ export async function GET(request: Request) {
     // session (sinon un compte non autorisé resterait connecté).
     // `not_configured` / `error` ne sont pas des refus de rôle : on ne retire
     // rien sur une panne, sinon une coupure Discord dégraderait tout le staff.
-    if (check.reason === "not_member" || check.reason === "missing_role") {
-      await clearDiscordStaff(userId);
-    }
+    const definitive = check.reason === "not_member" || check.reason === "missing_role";
+    if (definitive) await clearDiscordStaff(userId);
     await supabase.auth.signOut();
+    // Refus définitif d'un inconnu : son compte (identifiant, pseudo, email
+    // Discord) n'a aucune raison de rester chez nous.
+    if (definitive) await deleteUnauthorizedAccount(data.session.user);
     // Identifiant seulement, jamais l'email : ces lignes partent dans les logs
     // Vercel, qui ne sont pas l'endroit où entreposer des données personnelles.
     // L'id suffit pour retrouver le compte dans Supabase en cas de litige.

@@ -6,7 +6,7 @@ import ClientMessages from "@/components/ClientMessages";
 import { getProducts } from "@/lib/boutique";
 import { shippingEuros } from "@/lib/shop";
 import { pageMetadata } from "@/lib/site";
-import { isStripeConfigured } from "@/lib/stripe";
+import { isShopOpen } from "@/lib/stripe";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -52,7 +52,7 @@ export default async function CartPage({ params }: PageProps) {
         {t("title")}
       </h1>
       <ClientMessages locale={locale} clients={["CartView"]}>
-        <CartView products={products} shipping={shippingEuros()} open={isStripeConfigured()} />
+        <CartView products={products} shipping={shippingEuros()} open={isShopOpen()} />
       </ClientMessages>
     </div>
   );

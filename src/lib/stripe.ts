@@ -2,6 +2,8 @@ import "server-only";
 
 import Stripe from "stripe";
 
+import { legalReady } from "@/lib/legal";
+
 // Client Stripe, CÔTÉ SERVEUR UNIQUEMENT.
 //
 // Paiement par Checkout HÉBERGÉ : le client paie sur une page de Stripe.
@@ -45,9 +47,27 @@ export function stripe(): Stripe {
   return client;
 }
 
+/**
+ * La clé secrète est-elle une clé LIVE (vrais paiements) ? Une clé de test
+ * commence par `sk_test_` (ou `rk_test_` pour une clé restreinte).
+ */
+export function isLiveStripeKey(): boolean {
+  return /^(sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY ?? "");
+}
+
 /** La boutique encaisse : clé secrète ET secret du webhook configurés. */
 export function isStripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+}
+
+/**
+ * La boutique accepte-t-elle des commandes ? Stripe branché ET, si c'est une
+ * clé LIVE, les obligations légales en place (voir `legalMissing`). Les pages
+ * (fiche produit, panier) s'appuient dessus pour ne pas proposer d'acheter ce
+ * que la route de paiement refuserait ensuite.
+ */
+export function isShopOpen(): boolean {
+  return isStripeConfigured() && (!isLiveStripeKey() || legalReady());
 }
 
 /** Lien vers un paiement dans le tableau de bord Stripe (mode test compris). */

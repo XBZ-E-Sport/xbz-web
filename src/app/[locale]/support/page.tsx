@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import ClientMessages from "@/components/ClientMessages";
 import SupportForm from "@/components/SupportForm";
 import { jsonLdString } from "@/lib/jsonld";
+import { LEGAL } from "@/lib/legal";
 import { pageMetadata } from "@/lib/site";
 
 type PageProps = { params: Promise<{ locale: string }> };
@@ -31,7 +32,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export const dynamic = "force-static";
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL ?? "#";
-const MAIL = process.env.NEXT_PUBLIC_MAIL ?? "";
+// Même adresse que les CGV et les mentions légales (src/lib/legal.ts).
+const MAIL = LEGAL.email;
 
 // Icônes + destinations ici, libellés dans `support.needs.*`.
 const demandes = [

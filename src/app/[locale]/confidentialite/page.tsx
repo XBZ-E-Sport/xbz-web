@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { LEGAL, legalValues } from "@/lib/legal";
 import { siteConfig, pageMetadata } from "@/lib/site";
 
 type PageProps = { params: Promise<{ locale: string }> };
@@ -29,7 +30,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export const dynamic = "force-static";
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;
-const MAIL = process.env.NEXT_PUBLIC_MAIL ?? "";
+// Même adresse que les CGV et les mentions légales (src/lib/legal.ts).
+const MAIL = LEGAL.email;
 
 // Durée de conservation appliquée par la purge automatique (/api/cron/purge).
 const RETENTION_MONTHS = 24;
@@ -69,7 +71,16 @@ const contactTags = {
   b: (chunks: ReactNode) => <strong>{chunks}</strong>,
 };
 
-const COLLECTED_KEYS = ["recruitment", "support", "orders", "antispam"] as const;
+const COLLECTED_KEYS = ["recruitment", "support", "orders", "members", "antispam", "staff", "logs"] as const;
+const PURPOSE_KEYS = [
+  "purposeText1",
+  "purposeText2",
+  "purposeText3",
+  "purposeText4",
+  "purposeText5",
+  "purposeText6",
+  "purposeText7",
+] as const;
 const PROCESSOR_KEYS = ["supabase", "vercel", "stripe", "discord"] as const;
 
 export default async function ConfidentialitePage({ params }: PageProps) {
@@ -80,6 +91,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
   const t = await getTranslations({ locale, namespace: "privacy" });
   const tLegal = await getTranslations({ locale, namespace: "legal" });
   const tNotFound = await getTranslations({ locale, namespace: "notFound" });
+  const values = legalValues(locale);
 
   return (
     <div className="relative z-10 mx-auto max-w-3xl px-6 pb-24 pt-32">
@@ -100,7 +112,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           <h2 id="responsable" className={h2Cls}>
             {t("controllerHeading")}
           </h2>
-          <p>{t.rich("controllerText", { ...contactTags, name: siteConfig.name })}</p>
+          <p>{t.rich("controllerText", { ...contactTags, name: siteConfig.name, ...values })}</p>
         </section>
 
         <section aria-labelledby="donnees">
@@ -136,10 +148,11 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           <h2 id="finalites" className={h2Cls}>
             {t("purposeHeading")}
           </h2>
-          <p>{t.rich("purposeText1", contactTags)}</p>
-          <p className="mt-2">{t.rich("purposeText2", contactTags)}</p>
-          <p className="mt-2">{t.rich("purposeText3", contactTags)}</p>
-          <p className="mt-2">{t.rich("purposeText4", contactTags)}</p>
+          {PURPOSE_KEYS.map((key, i) => (
+            <p key={key} className={i > 0 ? "mt-2" : undefined}>
+              {t.rich(key, contactTags)}
+            </p>
+          ))}
         </section>
 
         <section aria-labelledby="duree">
@@ -148,6 +161,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           </h2>
           <p>{t.rich("retentionText", { ...contactTags, months: RETENTION_MONTHS })}</p>
           <p className="mt-2">{t.rich("retentionOrdersText", contactTags)}</p>
+          <p className="mt-2">{t.rich("retentionStaffText", contactTags)}</p>
         </section>
 
         <section aria-labelledby="destinataires">
@@ -167,12 +181,21 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           </ul>
         </section>
 
+        <section aria-labelledby="transferts">
+          <h2 id="transferts" className={h2Cls}>
+            {t("transfersHeading")}
+          </h2>
+          <p>{t("transfersText1")}</p>
+          <p className="mt-2">{t("transfersText2")}</p>
+        </section>
+
         <section aria-labelledby="droits">
           <h2 id="droits" className={h2Cls}>
             {t("rightsHeading")}
           </h2>
           <p>{t("rightsText")}</p>
           <p className="mt-2">{t.rich("rightsContact", contactTags)}</p>
+          <p className="mt-2">{t("rightsPostMortem")}</p>
           <p className="mt-2">
             {t.rich("rightsComplaint", {
               cnil: (chunks) => (

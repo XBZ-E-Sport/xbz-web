@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation";
 // Types seulement : lib/boutique tire le client Supabase serveur.
 import type { Product, ProductVariant } from "@/lib/boutique";
 import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, type CartLine } from "@/lib/cart";
+import { LEGAL } from "@/lib/legal";
 import { removeFromCart, setCartQuantity, useCart } from "@/lib/cart-store";
 import { formatEuros } from "@/lib/money";
 
@@ -309,7 +310,7 @@ export default function CartView({
             <dd>{formatEuros(total, locale)}</dd>
           </div>
         </dl>
-        <p className="text-xs text-neutral-400">{t("shippingNote")}</p>
+        <p className="text-xs text-neutral-400">{t("shippingNote", { days: LEGAL.deliveryDays })}</p>
 
         {open ? (
           <>

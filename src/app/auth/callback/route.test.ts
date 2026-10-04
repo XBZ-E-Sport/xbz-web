@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { exchangeMock, signOutMock, checkMock, markMock, clearMock, jar } = vi.hoisted(() => ({
+const { exchangeMock, signOutMock, checkMock, markMock, clearMock, deleteMock, jar } = vi.hoisted(() => ({
   exchangeMock: vi.fn(),
   signOutMock: vi.fn(),
   checkMock: vi.fn(),
   markMock: vi.fn(),
   clearMock: vi.fn(),
+  deleteMock: vi.fn(),
   // Cookies du navigateur au retour de Discord.
   jar: new Map<string, string>(),
 }));
@@ -30,6 +31,7 @@ vi.mock("@/lib/discord-guard", () => ({
   checkDiscordStaff: (...a: unknown[]) => checkMock(...a),
   markDiscordStaff: (...a: unknown[]) => markMock(...a),
   clearDiscordStaff: (...a: unknown[]) => clearMock(...a),
+  deleteUnauthorizedAccount: (...a: unknown[]) => deleteMock(...a),
   denyMessage: (reason: string) => `refus:${reason}`,
   DISCORD_SCOPES: "identify email guilds.members.read",
 }));
@@ -59,6 +61,7 @@ beforeEach(() => {
   checkMock.mockReset().mockResolvedValue({ ok: true, roles: ["role-admin"] });
   markMock.mockReset();
   clearMock.mockReset();
+  deleteMock.mockReset();
   jar.clear();
 });
 
@@ -90,6 +93,27 @@ describe("GET /auth/callback", () => {
     expect(signOutMock).toHaveBeenCalledTimes(1);
     expect(clearMock).toHaveBeenCalledWith("u1");
     expect(decodeURIComponent(location(res))).toContain("refus:missing_role");
+  });
+
+  it("supprime le compte d'un inconnu refusé (après la déconnexion)", async () => {
+    checkMock.mockResolvedValue({ ok: false, reason: "not_member" });
+
+    await call("?code=abc");
+    expect(deleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "u1" }));
+    expect(deleteMock.mock.invocationCallOrder[0]).toBeGreaterThan(signOutMock.mock.invocationCallOrder[0]);
+  });
+
+  it("ne supprime aucun compte sur une panne ou une config manquante", async () => {
+    for (const reason of ["error", "no_token", "not_configured"]) {
+      checkMock.mockResolvedValue({ ok: false, reason });
+      await call("?code=abc");
+    }
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
+  it("ne supprime rien quand la personne est admise", async () => {
+    await call("?code=abc");
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 
   it("ne retire PAS l'accès quand Discord est en panne", async () => {
