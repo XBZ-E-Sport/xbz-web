@@ -7,6 +7,7 @@ import { formatEuros } from "@/lib/money";
 import { parisDay } from "@/lib/orders-export";
 import { printText } from "@/lib/personalization";
 import { localizedPath } from "@/lib/site";
+import { CONFIRMATION_SINCE } from "@/lib/order-mail";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import type { WithdrawalRow } from "@/lib/withdrawal";
@@ -33,6 +34,10 @@ const FILTERS = {
   abandonnees: { label: "Abandonnées", statuses: ["cancelled"] },
 } as const satisfies Record<string, { label: string; statuses: OrderStatus[] }>;
 type FilterKey = keyof typeof FILTERS;
+
+/** Suivi de la confirmation connu : migration passée ET commande payée depuis la mise en service. */
+const confirmationTracked = (o: Order) =>
+  "confirmation_sent_at" in o && o.paid_at !== null && Date.parse(o.paid_at) >= Date.parse(CONFIRMATION_SINCE);
 
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" });
 
@@ -258,7 +263,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                       <span className="text-neutral-400"> · {formatEuros(i.unit_amount / 100, "fr")} pièce</span>
                       {i.print && (
                         <span className="mt-1 block rounded-md border border-xbz-cyan/30 bg-xbz-cyan/10 px-2 py-1 font-semibold text-xbz-cyan">
-                          ✏️ À personnaliser : {printText(i.print, "n°")}{i.print.validated_at ? " ✅" : " (à valider)"}
+                          ✏️ À personnaliser : {printText(i.print, "n°")}{i.print.validated_at ? " ✅" : o.status === "paid" ? " (à valider)" : ""}
                           {i.print.extra > 0 && (
                             <span className="font-normal text-neutral-300">
                               {" "}
@@ -272,7 +277,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                   <li className="text-neutral-400">+ port {formatEuros(Number(o.shipping), "fr")}</li>
                 </ul>
 
-                {printedItems(o.items).length > 0 && (
+                {printedItems(o.items).length > 0 && (o.status === "paid" || printedItems(o.items).every((i) => i.print?.validated_at)) && (
                   <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-xbz-cyan/30 bg-xbz-cyan/10 px-3 py-2 text-sm">
                     {printedItems(o.items).every((i) => i.print?.validated_at) ? (
                       <span className="font-semibold text-emerald-300">
@@ -317,13 +322,15 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                   )}
                   {(o.status === "paid" || o.status === "fulfilled") && o.customer_email && (
                     <>
-                      <span className={`text-sm ${o.confirmation_error && !o.confirmation_sent_at ? "font-semibold text-red-300" : "text-neutral-400"}`}>
-                        {o.confirmation_sent_at
-                          ? `✉️ Confirmation envoyée le ${dateTime.format(new Date(o.confirmation_sent_at))}`
-                          : o.confirmation_error
-                            ? `⚠️ Confirmation non envoyée (${o.confirmation_error})`
-                            : "✉️ Confirmation pas encore envoyée"}
-                      </span>
+                      {confirmationTracked(o) && (
+                        <span className={`text-sm ${o.confirmation_error && !o.confirmation_sent_at ? "font-semibold text-red-300" : "text-neutral-400"}`}>
+                          {o.confirmation_sent_at
+                            ? `✉️ Confirmation envoyée le ${dateTime.format(new Date(o.confirmation_sent_at))}`
+                            : o.confirmation_error
+                              ? `⚠️ Confirmation non envoyée (${o.confirmation_error})`
+                              : "✉️ Confirmation pas encore envoyée"}
+                        </span>
+                      )}
                       <AdminForm action={resendOrderConfirmation} loadingMessage="Envoi…" successMessage="Confirmation envoyée">
                         <input type="hidden" name="id" value={o.id} />
                         <button className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-semibold text-neutral-200 transition hover:bg-white/15 hover:cursor-pointer">

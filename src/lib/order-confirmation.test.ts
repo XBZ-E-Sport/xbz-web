@@ -1,12 +1,16 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const m = vi.hoisted(() => ({ sendMail: vi.fn() }));
+const m = vi.hoisted(() => ({ sendMail: vi.fn(), configured: true }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn() }));
 // Traductions : la clé en guise de texte (la mise en forme est testée dans order-mail.test.ts).
-vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) => key }));
-vi.mock("@/lib/mailer", () => ({ sendMail: m.sendMail, isMailConfigured: () => true }));
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string, values?: Record<string, unknown>) =>
+    values ? `${key}${JSON.stringify(values)}` : key,
+}));
+vi.mock("@/lib/mailer", () => ({ sendMail: m.sendMail, isMailConfigured: () => m.configured }));
 
+import { CONFIRMATION_SINCE } from "@/lib/order-mail";
 import { retryPendingConfirmations, sendOrderConfirmation, sendOrderConfirmationAfterResponse } from "@/lib/order-confirmation";
 
 type Reply = { data: unknown; error: { code?: string; message: string } | null };
@@ -60,6 +64,7 @@ const ok = (row: unknown): Reply => ({ data: row, error: null });
 
 beforeEach(() => {
   m.sendMail.mockReset();
+  m.configured = true;
   m.sendMail.mockResolvedValue({ ok: true });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -73,7 +78,7 @@ describe("sendOrderConfirmation", () => {
     const { admin, calls } = fakeAdmin({ reads: [ok(order())] });
     expect(await sendOrderConfirmation(admin, ID)).toEqual({ sent: true });
     expect(m.sendMail).toHaveBeenCalledTimes(1);
-    expect(m.sendMail.mock.calls[0][0]).toMatchObject({ to: "client@example.fr", replyTo: "support@xbz-esport.com", subject: "subject" });
+    expect(m.sendMail.mock.calls[0][0]).toMatchObject({ to: "client@example.fr", replyTo: "support@xbz-esport.com", subject: expect.stringContaining("subject") });
     expect(calls.updates).toHaveLength(1);
     expect(calls.updates[0]).toMatchObject({ confirmation_error: null });
     expect(typeof calls.updates[0].confirmation_sent_at).toBe("string");
@@ -143,7 +148,20 @@ describe("sendOrderConfirmation", () => {
   it("montant : le total encaissé, ou à défaut sous-total + port", async () => {
     const { admin } = fakeAdmin({ reads: [ok(order({ amount_total: null, subtotal: "49.99", shipping: "4.90" }))] });
     await sendOrderConfirmation(admin, ID);
-    expect(m.sendMail.mock.calls[0][0].text).toContain("totalLine");
+    expect(m.sendMail.mock.calls[0][0].text).toContain('totalLine{"amount":"54,89');
+  });
+
+  it("montant : amount_total prime sur sous-total + port", async () => {
+    const { admin } = fakeAdmin({ reads: [ok(order({ amount_total: "60.00" }))] });
+    await sendOrderConfirmation(admin, ID);
+    expect(m.sendMail.mock.calls[0][0].text).toContain('totalLine{"amount":"60,00');
+  });
+
+  it("erreur inattendue : une trace est laissée (le filet et le back-office la voient), sans masquer l'erreur", async () => {
+    m.sendMail.mockRejectedValue(new Error("boom"));
+    const { admin, calls } = fakeAdmin({ reads: [ok(order())] });
+    expect(await sendOrderConfirmation(admin, ID)).toEqual({ sent: false, error: "erreur inattendue" });
+    expect(calls.updates).toEqual([{ confirmation_error: "erreur inattendue" }]);
   });
 });
 
@@ -170,44 +188,60 @@ describe("sendOrderConfirmationAfterResponse", () => {
 });
 
 describe("retryPendingConfirmations — filet quotidien", () => {
-  it("ne vise que les commandes payées dont un PREMIER envoi a échoué, dans la fenêtre de reprise", async () => {
+  it("vise les commandes payées non confirmées, dans la fenêtre de reprise et depuis la mise en service", async () => {
     const f = fakeAdmin({ reads: [], list: ok([]) });
     expect(await retryPendingConfirmations(f.admin, 10)).toBe(0);
-    const names = f.calls.filters.map(([n]) => n);
-    expect(names).toEqual(expect.arrayContaining(["in", "is", "not", "gte", "lte", "order", "limit"]));
     expect(f.calls.filters).toContainEqual(["in", ["status", ["paid", "fulfilled"]]]);
     expect(f.calls.filters).toContainEqual(["is", ["confirmation_sent_at", null]]);
-    // Une erreur déjà notée est LA condition : une commande jamais tentée (payée avant la mise en service) est ignorée.
-    expect(f.calls.filters).toContainEqual(["not", ["confirmation_error", "is", null]]);
     expect(f.calls.filters).toContainEqual(["limit", [10]]);
-    // Fenêtre : payée depuis au moins 15 min (l'envoi immédiat a eu sa chance) et au plus 3 jours.
     const gte = f.calls.filters.find(([n]) => n === "gte")![1][1] as string;
     const lte = f.calls.filters.find(([n]) => n === "lte")![1][1] as string;
-    expect(Date.now() - Date.parse(gte)).toBeGreaterThan(71 * 3600_000);
+    // Jamais avant la mise en service ; au plus 3 jours en arrière.
+    expect(Date.parse(gte)).toBeGreaterThanOrEqual(Date.parse(CONFIRMATION_SINCE));
+    expect(Date.now() - Date.parse(gte)).toBeLessThanOrEqual(72 * 3600_000 + 1000);
+    // Payée depuis au moins 15 min : l'envoi immédiat a eu sa chance.
     expect(Date.now() - Date.parse(lte)).toBeGreaterThan(14 * 60_000);
     expect(Date.now() - Date.parse(lte)).toBeLessThan(16 * 60_000);
   });
 
-  it("renvoie le nombre de confirmations parties", async () => {
-    // Liste de 2 commandes ; chaque envoi relit sa commande (réponse partagée « liste » puis lectures).
-    const reads: Reply[] = [ok(order()), ok(order({ id: "1c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d" }))];
-    const calls = { n: 0 };
+  /** Liste de commandes à reprendre ; chaque envoi relit sa commande. */
+  function listAdmin(list: { id: string; confirmation_error: string | null }[]) {
+    const reads: Reply[] = list.map((o) => ok(order({ id: o.id })));
+    let n = 0;
     const admin = {
       from: () => ({
         select: (cols: string) => {
-          const isList = cols === "id";
+          const isList = cols.startsWith("id, confirmation_error");
           const c: Record<string, unknown> = {};
           for (const f of ["in", "is", "not", "gte", "lte", "order", "limit", "eq"]) c[f] = () => c;
-          c.maybeSingle = () => Promise.resolve(reads[calls.n++] ?? ok(null));
-          c.then = (res: (v: unknown) => unknown) =>
-            Promise.resolve(isList ? ok([{ id: ID }, { id: "1c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d" }]) : ok(null)).then(res);
+          c.maybeSingle = () => Promise.resolve(reads[n++] ?? ok(null));
+          c.then = (res: (v: unknown) => unknown) => Promise.resolve(isList ? ok(list) : ok(null)).then(res);
           return c;
         },
-        update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+        update: () => ({ eq: () => ({ is: () => Promise.resolve({ error: null }), then: (r: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(r) }) }),
       }),
     };
-    expect(await retryPendingConfirmations(admin as never, 10)).toBe(2);
+    return admin as never;
+  }
+  const A = ID;
+  const B = "1c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
+  const C = "2c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
+
+  it("reprend un envoi interrompu sans trace et une panne passagère ; renvoie le nombre parti", async () => {
+    expect(await retryPendingConfirmations(listAdmin([{ id: A, confirmation_error: null }, { id: B, confirmation_error: "Brevo HTTP 503" }]), 10)).toBe(2);
     expect(m.sendMail).toHaveBeenCalledTimes(2);
+  });
+
+  it("ne rejoue pas une erreur définitive (adresse refusée, clé invalide)", async () => {
+    expect(await retryPendingConfirmations(listAdmin([{ id: C, confirmation_error: "Brevo HTTP 400 invalid_parameter" }]), 10)).toBe(0);
+    expect(m.sendMail).not.toHaveBeenCalled();
+  });
+
+  it("envoi non configuré : rien n'est tenté", async () => {
+    m.configured = false;
+    const f = fakeAdmin({ reads: [], list: ok([]) });
+    expect(await retryPendingConfirmations(f.admin)).toBe(0);
+    expect(f.calls.selects).toHaveLength(0);
   });
 
   it("migration pas passée : 0, sans bruit dans les journaux", async () => {

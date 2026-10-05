@@ -10,7 +10,7 @@
 //  - l'accusé de réception part sans délai, sur support durable (e-mail), avec
 //    le contenu de la déclaration ET la date et l'heure de son envoi.
 
-import { orderNumber } from "@/lib/shop";
+import { orderNumber } from "@/lib/order-number";
 
 /** Fonction de traduction (`getTranslations` ou `createTranslator`). */
 export type Translate = (key: string, values?: Record<string, string | number>) => string;

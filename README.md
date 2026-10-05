@@ -282,8 +282,9 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   du reçu de Stripe) : articles et texte imprimé, montants, délai, droit de rétractation et lien
   « Renoncer au contrat ici », exclusion pour les articles personnalisés, garanties légales
   (`src/lib/order-mail.ts`, textes `orderMail` dans `messages/*.json`). Il part **après** la
-  réponse à Stripe : une panne du fournisseur ne fait jamais échouer le webhook. Un premier
-  envoi raté est noté (`confirmation_error`) et repris par le cron quotidien ; le back-office
+  réponse à Stripe : une panne du fournisseur ne fait jamais échouer le webhook. Un envoi
+  raté sur une panne passagère, ou interrompu sans trace, est repris par le cron quotidien
+  (jamais une erreur définitive, ni une commande payée avant la mise en service) ; le back-office
   affiche l'état et permet de renvoyer (Commandes → « Renvoyer la confirmation »).
 - **Validation des textes à imprimer** : une commande avec un article personnalisé affiche, dans
   Back-office → Commandes, « Textes à valider avant l'envoi à l'atelier ». Le staff relit

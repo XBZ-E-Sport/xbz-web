@@ -11,6 +11,12 @@ import { formatEuros } from "@/lib/money";
 import { printText, type Print } from "@/lib/personalization";
 import { escapeHtml, type Translate } from "@/lib/withdrawal";
 
+/**
+ * Mise en service de la confirmation : une commande payée avant n'a jamais dû la recevoir
+ * (aucun e-mail surprise) et le back-office n'affiche pas d'état pour elle.
+ */
+export const CONFIRMATION_SINCE = "2026-10-05T00:00:00.000Z";
+
 export type ConfirmationItem = {
   name: string;
   size: string;

@@ -4,8 +4,8 @@ import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
 
 import { LEGAL } from "@/lib/legal";
-import { sendMail } from "@/lib/mailer";
-import { buildOrderConfirmation, type ConfirmationItem } from "@/lib/order-mail";
+import { isMailConfigured, sendMail } from "@/lib/mailer";
+import { buildOrderConfirmation, CONFIRMATION_SINCE, type ConfirmationItem } from "@/lib/order-mail";
 import { orderNumber } from "@/lib/order-number";
 import { localizedPath, siteConfig } from "@/lib/site";
 import type { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +15,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 // panne ne doit pas faire échouer le webhook de Stripe), en plus du reçu de Stripe.
 //
 // Le suivi (`orders.confirmation_sent_at` / `confirmation_error`) vient de la migration
-// `migration_confirmation_commande_06102026.sql` ; sans elle, l'e-mail part quand même, une
+// `migration_confirmation_commande_05102026.sql` ; sans elle, l'e-mail part quand même, une
 // seule fois, sans reprise possible.
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -100,6 +100,12 @@ export async function sendOrderConfirmation(
     return result.ok ? { sent: true } : { sent: false, error: result.error };
   } catch (e) {
     console.error("[boutique] confirmation, erreur inattendue:", orderId, e);
+    // Laisse une trace : le filet quotidien et le back-office la voient. Au mieux (sans la migration, rien à noter).
+    try {
+      await admin.from("orders").update({ confirmation_error: "erreur inattendue" }).eq("id", orderId).is("confirmation_sent_at", null);
+    } catch {
+      /* déjà journalisé */
+    }
     return { sent: false, error: "erreur inattendue" };
   }
 }
@@ -121,21 +127,24 @@ const SETTLE_MINUTES = 15;
 const GIVE_UP_DAYS = 3;
 
 /**
- * Filet quotidien : renvoie les confirmations dont un PREMIER envoi a échoué
- * (`confirmation_error` renseignée). Une commande jamais tentée — payée avant la mise en
- * service de cette fonction — n'est pas concernée : aucun e-mail surprise. Renvoie le
- * nombre de confirmations parties ; 0 si la migration n'est pas passée.
+ * Filet quotidien : renvoie les confirmations qui ne sont pas parties : premier envoi en
+ * échec sur une panne passagère (429, 5xx, réseau), ou envoi interrompu sans trace (processus
+ * tué, erreur imprévue). Une erreur définitive (adresse refusée, clé invalide) n'est pas
+ * rejouée : le staff voit le motif et peut renvoyer à la main. Seules les commandes payées
+ * depuis la mise en service (`CONFIRMATION_SINCE`) comptent. Renvoie le nombre de
+ * confirmations parties ; 0 si la migration n'est pas passée ou si l'envoi n'est pas configuré.
  */
 export async function retryPendingConfirmations(admin: Admin, limit = 10): Promise<number> {
+  if (!isMailConfigured()) return 0;
   const now = Date.now();
+  const since = Math.max(Date.parse(CONFIRMATION_SINCE), now - GIVE_UP_DAYS * 24 * 3600_000);
   const { data, error } = await admin
     .from("orders")
-    .select("id")
+    .select("id, confirmation_error")
     .in("status", ["paid", "fulfilled"])
     .is("confirmation_sent_at", null)
-    .not("confirmation_error", "is", null)
     .not("customer_email", "is", null)
-    .gte("paid_at", new Date(now - GIVE_UP_DAYS * 24 * 3600_000).toISOString())
+    .gte("paid_at", new Date(since).toISOString())
     .lte("paid_at", new Date(now - SETTLE_MINUTES * 60_000).toISOString())
     .order("paid_at", { ascending: true })
     .limit(limit);
@@ -143,6 +152,9 @@ export async function retryPendingConfirmations(admin: Admin, limit = 10): Promi
     if (error.code !== MISSING_COLUMN) console.error("[boutique] filet des confirmations:", error.message);
     return 0;
   }
-  const results = await Promise.all((data ?? []).map((o: { id: string }) => sendOrderConfirmation(admin, o.id)));
+  const retry = (data ?? []).filter(
+    (o: { id: string; confirmation_error: string | null }) => !o.confirmation_error || TRANSIENT.test(o.confirmation_error),
+  );
+  const results = await Promise.all(retry.map((o: { id: string }) => sendOrderConfirmation(admin, o.id)));
   return results.filter((r) => r.sent).length;
 }

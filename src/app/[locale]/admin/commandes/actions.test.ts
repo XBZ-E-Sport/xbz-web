@@ -7,6 +7,7 @@ const db = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
   updateRows: [{ id: "x" }] as unknown[],
   confirm: vi.fn(),
+  filters: [] as [string, string, unknown][],
 }));
 
 /** Faux client Supabase : une commande, ses mises à jour notées. */
@@ -15,14 +16,20 @@ vi.mock("@/lib/adminguard", () => ({
     from: () => ({
       select: () => {
         const c: Record<string, unknown> = {};
-        c.eq = () => c;
+        c.eq = (col: string, v: unknown) => {
+          db.filters.push(["select", col, v]);
+          return c;
+        };
         c.maybeSingle = async () => ({ data: db.order, error: db.readError });
         return c;
       },
       update: (values: Record<string, unknown>) => {
         db.updates.push(values);
         const c: Record<string, unknown> = {};
-        c.eq = () => c;
+        c.eq = (col: string, v: unknown) => {
+          db.filters.push(["update", col, v]);
+          return c;
+        };
         c.select = async () => ({ data: db.updateRows, error: null });
         return c;
       },
@@ -57,6 +64,7 @@ beforeEach(() => {
   db.order = { status: "paid", items: [plain] };
   db.readError = null;
   db.updates.length = 0;
+  db.filters.length = 0;
   db.updateRows = [{ id: "x" }];
   db.confirm.mockReset();
 });
@@ -124,6 +132,33 @@ describe("markOrderShipped — pas d'expédition avant la relecture des textes",
     const r = await markOrderShipped(form({ id: ID }));
     expect(r).toHaveProperty("error");
     expect(db.updates).toHaveLength(0);
+  });
+});
+
+describe("garde-fous : les filtres sur le statut sont bien posés", () => {
+  it("validation : l'écriture est limitée à une commande « payée » (le statut est aussi relu avant)", async () => {
+    db.order = { status: "paid", items: [printed()] };
+    await validateOrderPrints(form({ id: ID }));
+    expect(db.filters).toContainEqual(["update", "status", "paid"]);
+    expect(db.filters).toContainEqual(["update", "id", ID]);
+  });
+
+  it("expédition : lecture ET écriture limitées à une commande « payée »", async () => {
+    db.order = { status: "paid", items: [plain] };
+    await markOrderShipped(form({ id: ID }));
+    expect(db.filters).toContainEqual(["select", "status", "paid"]);
+    expect(db.filters).toContainEqual(["update", "status", "paid"]);
+  });
+
+  it("expédition d'une commande déjà expédiée ou remboursée (lecture vide) : aucune écriture réussie, message clair", async () => {
+    db.order = null;
+    db.updateRows = [];
+    expect(await markOrderShipped(form({ id: ID }))).toEqual({ error: expect.stringMatching(/n'est plus/) });
+  });
+
+  it("lignes sans personnalisation ou items absents : rien à valider, pas de plantage", async () => {
+    db.order = { status: "paid", items: null };
+    expect(await markOrderShipped(form({ id: ID }))).toBeUndefined();
   });
 });
 
