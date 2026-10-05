@@ -129,6 +129,17 @@ describe("médiateur de la consommation et rétractation en ligne", () => {
     expect(legalReady()).toBe(true);
   });
 
+  it("état livré : le médiateur CM2C est renseigné ; il ne reste que la rétractation en ligne à construire", () => {
+    expect(saved.mediator).toEqual({
+      name: expect.stringMatching(/CM2C/),
+      address: expect.stringMatching(/75008 Paris/),
+      website: "https://www.cm2c.net",
+    });
+    expect(legalMissing()).toEqual([expect.stringMatching(/rétractation/)]);
+    // Le texte public contient bien les trois informations exigées (nom, adresse postale, site).
+    expect(mediatorText()).toMatch(/CM2C.*75008 Paris.*cm2c\.net/);
+  });
+
   it("état livré : la rétractation en ligne n'est pas construite, le drapeau reste à false", () => {
     // Passer à true SEULEMENT avec la fonction « Renoncer au contrat ici » (+ accusé sur support durable).
     expect(saved.onlineWithdrawal).toBe(false);

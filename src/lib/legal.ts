@@ -46,9 +46,16 @@ export const LEGAL = {
    * article L.616-1). `null` tant qu'aucune adhésion n'est faite : la boutique
    * REFUSE alors les paiements réels (voir `legalMissing`).
    *
-   * Exemple : { name: "…", address: "…", website: "https://…" }
+   * Adhésion à CM2C (Centre de la Médiation de la Consommation de Conciliateurs
+   * de Justice) payée le 5 octobre 2026. Siège : 49 rue de Ponthieu, 75008 Paris
+   * (l'ancienne adresse, 14 rue Saint-Jean 75017, est fermée depuis mars 2023).
+   * À comparer à l'attestation d'adhésion reçue de CM2C si elle indique autre chose.
    */
-  mediator: null as null | { name: string; address: string; website: string },
+  mediator: {
+    name: "CM2C — Centre de la Médiation de la Consommation de Conciliateurs de Justice",
+    address: "49 rue de Ponthieu, 75008 Paris",
+    website: "https://www.cm2c.net",
+  } as null | { name: string; address: string; website: string },
   /**
    * Le client peut-il se rétracter EN LIGNE ? Depuis le 19 juin 2026, un site
    * qui vend à des consommateurs doit offrir une fonction de rétractation
