@@ -595,7 +595,7 @@
     "publisherManager": "Responsable de la publication : <manager>Forux</manager>.",
     "contact": "Contact : <mail>{email}</mail>, téléphone : {phone}, ou <discord>via le serveur Discord officiel</discord>.",
     "hostingHeading": "Hébergement",
-    "hostingText": "Ce site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — <vercel>vercel.com</vercel>.",
+    "hostingText": "Ce site est hébergé par Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis — <vercel>vercel.com</vercel>. Vercel ne communique pas de numéro de téléphone public : le contact se fait par le formulaire en ligne de son site (vercel.com/contact).",
     "ipHeading": "Propriété intellectuelle",
     "ipText": "L’ensemble des contenus présents sur ce site (textes, logo, visuels, mise en page) est la propriété de {name}, sauf mention contraire. Toute reproduction ou réutilisation, totale ou partielle, sans autorisation préalable est interdite.",
     "dataHeading": "Données personnelles",
