@@ -6,7 +6,7 @@ import { assertStaff } from "@/lib/adminguard";
 import { adminAction, dbError } from "@/lib/admin-action";
 import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
-import { MAX_EXTRA_PHOTOS, SIZE_GUIDE_MAX, productCategories } from "@/lib/boutique";
+import { MAX_EXTRA_PHOTOS, MAX_PERSONALIZATION_PRICE, SIZE_GUIDE_MAX, productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 import { parseVariants } from "@/lib/variants-form";
 
@@ -31,6 +31,23 @@ function priceField(fd: FormData, key: string): number {
   const raw = field(fd, key).replace(",", ".");
   const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
+}
+
+/**
+ * Supplément de personnalisation (€ TTC) : « 5 », « 7,50 » ou « 5 € ». Refusé avec un
+ * message — jamais ramené à 0 ou à 100 en silence, le staff croirait l'avoir réglé.
+ */
+function personalizationPriceField(fd: FormData): number {
+  const raw = field(fd, "personalization_price").replace(",", ".").replace(/\s*€$/, "");
+  if (raw === "") return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new AdminError("Supplément de personnalisation illisible : saisis un montant en euros, par exemple 5 ou 7,50.");
+  }
+  if (n > MAX_PERSONALIZATION_PRICE) {
+    throw new AdminError(`Supplément de personnalisation : ${MAX_PERSONALIZATION_PRICE} € au plus.`);
+  }
+  return Math.round(n * 100) / 100;
 }
 
 /** Normalise un texte en slug URL-safe (ex: "Maillot XBZ !" → "maillot-xbz"). */
@@ -113,6 +130,13 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     available: formData.get("available") === "on",
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
+    // Personnalisation : seulement si le formulaire la propose (il ne la propose
+    // pas tant que la migration de personnalisation n'est pas passée). Le champ du
+    // supplément est toujours envoyé avec elle : la case décochée, elle, est absente.
+    ...(formData.has("personalization_price") && {
+      personalizable: formData.get("personalizable") === "on",
+      personalization_price: personalizationPriceField(formData),
+    }),
     // Guide des tailles : seulement si le formulaire le propose (il ne le
     // propose pas tant que la migration des pages produit n'est pas passée).
     ...(formData.has("size_guide") && {

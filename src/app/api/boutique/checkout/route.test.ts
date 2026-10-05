@@ -151,6 +151,75 @@ describe("POST /api/boutique/checkout", () => {
     await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, price: 0.01 }] });
     expect(m.reserve).toHaveBeenCalledWith(expect.anything(), [{ variantId: VARIANT, quantity: 1 }], "fr");
   });
+
+  it("article personnalisé : le texte, mis en forme, est transmis à la réservation (jamais un prix ni un supplément)", async () => {
+    await call({
+      ...good,
+      lines: [{ variantId: VARIANT, quantity: 1, print: { name: " martin ", number: "07", extra: 0 }, price: 1, unit_amount: 1 }],
+    });
+    expect(m.reserve).toHaveBeenCalledWith(
+      expect.anything(),
+      [{ variantId: VARIANT, quantity: 1, print: { name: "MARTIN", number: "7" } }],
+      "fr",
+    );
+  });
+
+  it.each([
+    ["nom invalide", { name: "M4RTIN" }],
+    ["nom trop long", { name: "ABCDEFGHIJKLM" }],
+    ["numéro hors bornes", { number: "100" }],
+    ["format inattendu", "MARTIN"],
+  ])("personnalisation invalide (%s) : 400, refusée AVANT toute réservation", async (_label, print) => {
+    const res = await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, print }] });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("invalid");
+    expect(m.reserve).not.toHaveBeenCalled();
+  });
+
+  it("personnalisation refusée par la base (produit qui ne la propose plus) : 422, aucune page Stripe", async () => {
+    m.reserve.mockResolvedValue({ ok: false, reason: "personalization" });
+    const res = await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, print: { name: "MARTIN" } }] });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ ok: false, code: "personalization" });
+    expect(m.create).not.toHaveBeenCalled();
+  });
+
+  it("page de paiement : l'exclusion de la rétractation n'est répétée QUE si la commande contient un article personnalisé", async () => {
+    await call();
+    expect(m.create.mock.calls[0][0].custom_text.submit.message).toBe("submit");
+    m.create.mockClear();
+    m.reserve.mockResolvedValue({
+      ok: true,
+      order: { ...ORDER, items: [{ variant_id: VARIANT, product_id: "p", slug: "m", name: "M", size: "M", quantity: 1, unit_amount: 5499, image: null, print: { name: "A", extra: 500 } }] },
+    });
+    await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, print: { name: "A" } }] });
+    expect(m.create.mock.calls[0][0].custom_text.submit.message).toBe("submitPrint");
+  });
+
+  it("la page Stripe reçoit le texte imprimé et le supplément, en toutes lettres", async () => {
+    const printed = {
+      ...ORDER,
+      items: [
+        {
+          variant_id: VARIANT,
+          product_id: "p",
+          slug: "maillot",
+          name: "Maillot",
+          size: "M",
+          quantity: 1,
+          unit_amount: 5499,
+          image: null,
+          print: { name: "MARTIN", number: "10", extra: 500 },
+        },
+      ],
+    };
+    m.reserve.mockResolvedValue({ ok: true, order: printed });
+    await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, print: { name: "MARTIN", number: "10" } }] });
+    const params = m.create.mock.calls[0][0];
+    expect(params.line_items[0].price_data.unit_amount).toBe(5499);
+    // Les traductions sont ici l'identité (clé en guise de texte) : on vérifie les clés choisies.
+    expect(params.line_items[0].price_data.product_data.description).toBe("print");
+  });
 });
 
 describe("POST /api/boutique/checkout — vrais paiements et informations légales", () => {

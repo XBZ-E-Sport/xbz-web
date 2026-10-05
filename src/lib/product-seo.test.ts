@@ -16,6 +16,8 @@ const product: Product = {
   images: ["https://x.supabase.co/a.webp", "http://insecure.example/b.png"],
   sizeGuide: null,
   available: true,
+  personalizable: false,
+  personalizationPrice: 0,
   variants: [{ id: "v1", size: "M", stock: 2 }],
 };
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { CART_MAX_LINES, CART_MAX_QUANTITY, cartCount, parseCheckoutLines, sanitizeCart } from "@/lib/cart";
+import { CART_MAX_LINES, CART_MAX_QUANTITY, cartCount, lineKey, parseCheckoutLines, sanitizeCart } from "@/lib/cart";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -53,5 +53,91 @@ describe("cartCount", () => {
   it("compte les pièces, pas les lignes", () => {
     expect(cartCount([{ variantId: id(1), quantity: 2 }, { variantId: id(2), quantity: 3 }])).toBe(5);
     expect(cartCount([])).toBe(0);
+  });
+});
+
+describe("articles personnalisés (nom / numéro)", () => {
+  const martin = { name: "MARTIN", number: "10" };
+
+  it("lineKey : la taille seule, ou la taille et son texte", () => {
+    expect(lineKey({ variantId: id(1) })).toBe(id(1));
+    expect(lineKey({ variantId: id(1), print: martin })).not.toBe(lineKey({ variantId: id(1) }));
+    expect(lineKey({ variantId: id(1), print: martin })).not.toBe(lineKey({ variantId: id(1), print: { name: "MARTIN" } }));
+    expect(lineKey({ variantId: id(1), print: martin })).not.toBe(lineKey({ variantId: id(2), print: martin }));
+  });
+
+  it("sanitizeCart : une taille, plusieurs textes = plusieurs lignes, texte mis en forme", () => {
+    expect(
+      sanitizeCart([
+        { variantId: id(1), quantity: 1 },
+        { variantId: id(1), quantity: 1, print: { name: "martin", number: "07" } },
+        { variantId: id(1), quantity: 2, print: { name: "dupont" } },
+      ]),
+    ).toEqual([
+      { variantId: id(1), quantity: 1 },
+      { variantId: id(1), quantity: 1, print: { name: "MARTIN", number: "7" } },
+      { variantId: id(1), quantity: 2, print: { name: "DUPONT" } },
+    ]);
+  });
+
+  it("sanitizeCart : même texte = même ligne (quantités additionnées)", () => {
+    expect(
+      sanitizeCart([
+        { variantId: id(1), quantity: 2, print: martin },
+        { variantId: id(1), quantity: 3, print: { name: " martin ", number: "10" } },
+      ]),
+    ).toEqual([{ variantId: id(1), quantity: 5, print: martin }]);
+  });
+
+  it("sanitizeCart : une personnalisation illisible écarte la ligne (jamais vendue sans son texte)", () => {
+    expect(sanitizeCart([{ variantId: id(1), quantity: 1, print: { name: "M4RTIN" } }, { variantId: id(2), quantity: 1 }])).toEqual([
+      { variantId: id(2), quantity: 1 },
+    ]);
+    expect(sanitizeCart([{ variantId: id(1), quantity: 1, print: "MARTIN" }])).toEqual([]);
+  });
+
+  it("sanitizeCart : une personnalisation vide = article ordinaire", () => {
+    expect(sanitizeCart([{ variantId: id(1), quantity: 1, print: {} }])).toEqual([{ variantId: id(1), quantity: 1 }]);
+  });
+
+  it("sanitizeCart : 10 pièces au plus PAR TAILLE, personnalisations confondues (les dernières lignes sont rognées)", () => {
+    expect(
+      sanitizeCart([
+        { variantId: id(1), quantity: 8 },
+        { variantId: id(1), quantity: 5, print: martin },
+        { variantId: id(1), quantity: 1, print: { number: "7" } },
+      ]),
+    ).toEqual([
+      { variantId: id(1), quantity: 8 },
+      { variantId: id(1), quantity: 2, print: martin },
+    ]);
+  });
+
+  it("parseCheckoutLines : accepte, met en forme, et garde l'ordre", () => {
+    expect(
+      parseCheckoutLines([
+        { variantId: id(1), quantity: 1, print: { name: "martin", number: "07" } },
+        { variantId: id(1), quantity: 1 },
+      ]),
+    ).toEqual([
+      { variantId: id(1), quantity: 1, print: { name: "MARTIN", number: "7" } },
+      { variantId: id(1), quantity: 1 },
+    ]);
+  });
+
+  it.each([
+    ["nom avec chiffres", [{ variantId: id(1), quantity: 1, print: { name: "M4RTIN" } }]],
+    ["nom trop long", [{ variantId: id(1), quantity: 1, print: { name: "ABCDEFGHIJKLM" } }]],
+    ["numéro hors bornes", [{ variantId: id(1), quantity: 1, print: { number: "100" } }]],
+    ["personnalisation pas un objet", [{ variantId: id(1), quantity: 1, print: "MARTIN" }]],
+    ["même texte deux fois", [{ variantId: id(1), quantity: 1, print: { name: "A" } }, { variantId: id(1), quantity: 1, print: { name: "a" } }]],
+    ["somme de la taille > 10", [{ variantId: id(1), quantity: 6 }, { variantId: id(1), quantity: 5, print: { name: "A" } }]],
+  ])("parseCheckoutLines refuse : %s", (_label, lines) => {
+    expect(parseCheckoutLines(lines)).toBeNull();
+  });
+
+  it("parseCheckoutLines : personnalisation vide = article ordinaire, mais doublon d'un article ordinaire refusé", () => {
+    expect(parseCheckoutLines([{ variantId: id(1), quantity: 1, print: {} }])).toEqual([{ variantId: id(1), quantity: 1 }]);
+    expect(parseCheckoutLines([{ variantId: id(1), quantity: 1 }, { variantId: id(1), quantity: 1, print: {} }])).toBeNull();
   });
 });

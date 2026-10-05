@@ -1,10 +1,11 @@
 import AdminForm from "@/components/AdminForm";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formatEuros } from "@/lib/money";
-import { orderNumber } from "@/lib/shop";
+import { orderNumber, type OrderItem } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import type { MatchKind, WithdrawalRow } from "@/lib/withdrawal";
 import { deleteWithdrawal, linkWithdrawalToOrder, resendWithdrawalAck, setWithdrawalProcessed } from "./actions";
+import PersonalizedNotice from "./PersonalizedNotice";
 
 // Onglet « Rétractations » du back-office : les déclarations faites avec la fonction
 // « Renoncer au contrat ici », à traiter une par une. Composant SERVEUR : les données
@@ -21,7 +22,14 @@ const MATCH_HINT: Record<MatchKind, string> = {
   none: "Non rapprochée : aucune commande payée pour cet e-mail. Vérifie l’orthographe ou une autre adresse.",
 };
 
-export type LinkedOrder = { id: string; status: string; stripe_payment_intent: string | null; amount_total: number | string | null };
+export type LinkedOrder = {
+  id: string;
+  status: string;
+  stripe_payment_intent: string | null;
+  amount_total: number | string | null;
+  /** Articles (dont ceux personnalisés, exclus du droit de rétractation). */
+  items?: OrderItem[] | null;
+};
 
 const btn =
   "rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:cursor-pointer";
@@ -64,7 +72,8 @@ export default function Withdrawals({
       <p className="text-sm leading-relaxed text-neutral-400">
         Quand un client se rétracte : il renvoie les produits sous 14 jours (frais de retour à sa charge) ; tu le
         rembourses de tous ses paiements, livraison initiale comprise, au plus tard 14 jours après sa déclaration (tu peux
-        attendre le retour du colis). Le remboursement se fait dans Stripe ; coche ensuite « Traitée ».
+        attendre le retour du colis) — sauf les articles personnalisés, exclus du droit de rétractation (un encadré le
+        signale sur la commande concernée). Le remboursement se fait dans Stripe ; coche ensuite « Traitée ».
       </p>
 
       <ul className="flex flex-col gap-4">
@@ -104,28 +113,31 @@ export default function Withdrawals({
                   </p>
                 )}
                 {w.order_id ? (
-                  <p>
-                    <span className="font-semibold text-white">{orderNumber(w.order_id)}</span>
-                    {order && order.amount_total !== null && ` · ${formatEuros(Number(order.amount_total), "fr")}`}
-                    {order?.status === "refunded" && <span className="font-semibold text-red-300"> · déjà remboursée</span>}
-                    {order?.status === "fulfilled" && " · expédiée"}
-                    <span className="text-neutral-400"> — {MATCH_HINT[w.match]}</span>
-                    {w.order_number && <span className="text-neutral-400"> Saisi par le client : « {w.order_number} ».</span>}
-                    {order?.stripe_payment_intent && (
-                      <>
-                        {" "}
-                        <a
-                          href={stripeDashboardUrl(order.stripe_payment_intent)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold text-xbz-cyan hover:underline"
-                        >
-                          Rembourser dans Stripe
-                          <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
-                        </a>
-                      </>
-                    )}
-                  </p>
+                  <div>
+                    <p>
+                      <span className="font-semibold text-white">{orderNumber(w.order_id)}</span>
+                      {order && order.amount_total !== null && ` · ${formatEuros(Number(order.amount_total), "fr")}`}
+                      {order?.status === "refunded" && <span className="font-semibold text-red-300"> · déjà remboursée</span>}
+                      {order?.status === "fulfilled" && " · expédiée"}
+                      <span className="text-neutral-400"> — {MATCH_HINT[w.match]}</span>
+                      {w.order_number && <span className="text-neutral-400"> Saisi par le client : « {w.order_number} ».</span>}
+                      {order?.stripe_payment_intent && (
+                        <>
+                          {" "}
+                          <a
+                            href={stripeDashboardUrl(order.stripe_payment_intent)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-xbz-cyan hover:underline"
+                          >
+                            Rembourser dans Stripe
+                            <span className="sr-only"> (ouvre dans un nouvel onglet)</span>
+                          </a>
+                        </>
+                      )}
+                    </p>
+                    <PersonalizedNotice items={order?.items} />
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     <p className="font-semibold text-xbz-cyan">

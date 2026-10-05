@@ -17,6 +17,7 @@
 // Données personnelles (RGPD) : nom, e-mail et adresse ne sortent que sur
 // demande explicite (`perso=1`). Une comptabilité n'en a pas besoin.
 
+import { printText } from "@/lib/personalization";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 
 export type ExportDetail = "commandes" | "articles";
@@ -232,6 +233,9 @@ export function orderAmounts(o: Order) {
 
 const itemsOf = (o: Order) => (Array.isArray(o.items) ? o.items : []);
 
+/** « personnalisé : MARTIN · n° 10 », ou vide : ce que l'atelier doit imprimer. */
+const printOf = (i: Order["items"][number]) => (i.print ? `personnalisé : ${printText(i.print, "n°")}` : "");
+
 const addressOf = (o: Order) => o.shipping_address ?? {};
 
 /** En-têtes, selon le détail et les données personnelles demandées. */
@@ -247,6 +251,7 @@ export function exportHeaders({ detail, personal }: Pick<ExportParams, "detail" 
       "Quantité",
       "Prix unitaire (€)",
       "Total ligne (€)",
+      "Personnalisation",
     ];
   }
   return [
@@ -277,7 +282,9 @@ export function exportRows(orders: Order[], opts: Pick<ExportParams, "detail" | 
 function orderRow(o: Order, personal: boolean): string[] {
   const a = orderAmounts(o);
   const items = itemsOf(o);
-  const articles = items.map((i) => `${i.quantity} × ${i.name}${i.size ? ` (${i.size})` : ""}`).join(" ; ");
+  const articles = items
+    .map((i) => `${i.quantity} × ${i.name}${i.size ? ` (${i.size})` : ""}${i.print ? ` [${printOf(i)}]` : ""}`)
+    .join(" ; ");
   const address = addressOf(o);
   return [
     csvText(orderNumber(o.id)),
@@ -320,10 +327,20 @@ function articleRows(o: Order): string[][] {
     csvInt(i.quantity),
     csvEuros(i.unit_amount / 100),
     csvEuros((i.quantity * i.unit_amount) / 100),
+    csvText(printOf(i)),
   ]);
   const shipping = euros(o.shipping);
   if (shipping > 0) {
-    lines.push([...head, csvText("Port"), csvText("Frais de port"), csvText(""), csvInt(1), csvEuros(shipping), csvEuros(shipping)]);
+    lines.push([
+      ...head,
+      csvText("Port"),
+      csvText("Frais de port"),
+      csvText(""),
+      csvInt(1),
+      csvEuros(shipping),
+      csvEuros(shipping),
+      csvText(""),
+    ]);
   }
   return lines;
 }

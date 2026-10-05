@@ -206,6 +206,18 @@ describe("buildAck — accusé de réception (contenu de la déclaration + date 
     }
   });
 
+  it("l'accusé rappelle que les articles personnalisés sont exclus de la rétractation (texte et HTML)", () => {
+    for (const locale of ["fr", "en"] as const) {
+      const mail = buildAck(translator(locale), input({ locale }));
+      const expected =
+        locale === "fr"
+          ? /le droit de rétractation ne s’applique pas aux articles personnalisés à ta demande \(article L\.221-28, 3°/
+          : /the right of withdrawal does not apply to items personalised at your request \(Article L\.221-28, 3°/;
+      expect(mail.text).toMatch(expected);
+      expect(mail.html).toMatch(expected);
+    }
+  });
+
   it("le texte brut est lisible seul (aucune balise)", () => {
     const mail = buildAck(translator("en"), input({ locale: "en" }));
     expect(mail.text).not.toMatch(/<[a-z]/i);

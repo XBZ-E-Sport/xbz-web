@@ -195,6 +195,12 @@ correspondant :
 - `migration_retractation_05102026.sql` — `order_withdrawals` (déclarations de rétractation
   en ligne). **À passer AVANT de déployer** : sans elle, la fonction « Renoncer au contrat
   ici » répond « envoi impossible ».
+- `migration_personnalisation_05102026.sql` — personnalisation nom et numéro d'un article
+  (`products.personalizable`, `products.personalization_price`) et nouvelle version des
+  fonctions de réservation / restitution du stock. **À passer AVANT de déployer** ; sans elle
+  le site fonctionne, la personnalisation reste simplement invisible. **Ne jamais rejouer
+  `migration_boutique_stripe_01102026.sql` après elle** (elle remettrait les anciennes
+  fonctions) ; au besoin, rejouer `migration_personnalisation_05102026.sql`, qui est rejouable.
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
@@ -258,6 +264,17 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
 > officiel du décret n° 2022-946, annexe I-A : ne jamais le reformuler. Un test en
 > verrouille l'empreinte ; ne la recalculer qu'après avoir recopié un nouveau modèle.
 
+- **Personnalisation nom et numéro** (ex. maillot) : un **interrupteur par produit**, éteint
+  par défaut — Back-office → Boutique → Modifier → « Personnalisation nom et numéro » (case
+  + supplément en € TTC par pièce personnalisée). Éteint, rien n'est proposé ni accepté :
+  les articles déjà au panier avec un texte sont signalés « indisponibles ». Allumé, la
+  fiche produit propose nom (12 lettres au plus, majuscules) et/ou numéro (0 à 99), avec
+  l'accord du client sur l'exclusion de la rétractation (article L.221-28, 3° du Code de la
+  consommation). Le texte voyage dans le panier, est **revalidé et prix recalculé en base**
+  (supplément compris dans le prix unitaire payé), imprimé en description sur la page
+  Stripe, affiché en évidence dans les commandes du back-office et dans l'export.
+  Une taille, plusieurs textes = plusieurs lignes ; le stock se compte **par taille**.
+  Règles dans `src/lib/personalization.ts`, mêmes bornes dans la base.
 - **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
   (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
   autorité côté base. Détail du parcours : `src/lib/shop.ts`.

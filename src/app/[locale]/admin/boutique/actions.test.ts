@@ -115,3 +115,44 @@ describe("stock vidé", () => {
     expect(calls.productUpdates).toHaveLength(0);
   });
 });
+
+describe("personnalisation (interrupteur et supplément)", () => {
+  it("case cochée : activée, supplément en euros arrondi au centime", async () => {
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "5,5" }));
+    expect(calls.productUpdates[0]).toMatchObject({ personalizable: true, personalization_price: 5.5 });
+  });
+
+  it("case décochée (absente du formulaire) : éteinte — l'interrupteur se coupe d'un clic", async () => {
+    await updateProduct(form({ id: PRODUCT, personalization_price: "5" }));
+    expect(calls.productUpdates[0]).toMatchObject({ personalizable: false, personalization_price: 5 });
+  });
+
+  it("« 5 € » et « 7,50 » acceptés ; champ vide = pas de supplément", async () => {
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "5 €" }));
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "7,50" }));
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "" }));
+    expect(calls.productUpdates.map((u) => u.personalization_price)).toEqual([5, 7.5, 0]);
+  });
+
+  it.each([
+    ["trop élevé", "150", /100 € au plus/],
+    ["négatif", "-4", /illisible/],
+    ["illisible", "beaucoup", /illisible/],
+  ])("supplément %s : refusé avec un message, rien n'est écrit", async (_label, value, message) => {
+    const result = await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: value }));
+    expect(result).toEqual({ error: expect.stringMatching(message) });
+    expect(calls.productUpdates).toHaveLength(0);
+  });
+
+  it("formulaire sans le réglage (migration pas passée) : colonnes jamais écrites", async () => {
+    await updateProduct(form({ id: PRODUCT }));
+    expect(calls.productUpdates[0]).not.toHaveProperty("personalizable");
+    expect(calls.productUpdates[0]).not.toHaveProperty("personalization_price");
+  });
+
+  it("création : le réglage est écrit comme pour une modification", async () => {
+    await createProduct(form({ personalizable: "on", personalization_price: "8" }));
+    expect(calls.productInserts[0]).toMatchObject({ personalizable: true, personalization_price: 8 });
+  });
+});
+

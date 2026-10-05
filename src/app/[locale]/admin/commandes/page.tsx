@@ -5,11 +5,13 @@ import { Link } from "@/i18n/navigation";
 import { requireStaff } from "@/lib/adminguard";
 import { formatEuros } from "@/lib/money";
 import { parisDay } from "@/lib/orders-export";
+import { printText } from "@/lib/personalization";
 import { localizedPath } from "@/lib/site";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import type { WithdrawalRow } from "@/lib/withdrawal";
 import { markOrderShipped } from "./actions";
+import PersonalizedNotice from "./PersonalizedNotice";
 import Withdrawals, { type LinkedOrder } from "./Withdrawals";
 
 export const metadata = { title: "Commandes — Back-office XBZ" };
@@ -91,7 +93,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       if (ids.length) {
         const { data: linked } = await admin
           .from("orders")
-          .select("id, status, stripe_payment_intent, amount_total")
+          .select("id, status, stripe_payment_intent, amount_total, items")
           .in("id", ids);
         linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
       }
@@ -240,18 +242,31 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                       ? " (traitée)"
                       : " — non vérifiée : contrôle-la avant d’expédier ou de rembourser"}
                     .{" "}
+
                     <Link href="/admin/commandes?vue=retractations" className="underline">
                       Voir la rétractation
                     </Link>
                   </p>
                 )}
+                {withdrawalsByOrder.has(o.id) && <PersonalizedNotice items={o.items} />}
 
                 <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-200">
-                  {o.items.map((i) => (
-                    <li key={i.variant_id}>
+                  {o.items.map((i, n) => (
+                    <li key={`${i.variant_id}-${n}`}>
                       <span className="font-bold">{i.quantity} ×</span> {i.name}
                       {i.size && <span className="font-bold"> — taille {i.size}</span>}
                       <span className="text-neutral-400"> · {formatEuros(i.unit_amount / 100, "fr")} pièce</span>
+                      {i.print && (
+                        <span className="mt-1 block rounded-md border border-xbz-cyan/30 bg-xbz-cyan/10 px-2 py-1 font-semibold text-xbz-cyan">
+                          ✏️ À personnaliser : {printText(i.print, "n°")}
+                          {i.print.extra > 0 && (
+                            <span className="font-normal text-neutral-300">
+                              {" "}
+                              (supplément {formatEuros(i.print.extra / 100, "fr")} compris)
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </li>
                   ))}
                   <li className="text-neutral-400">+ port {formatEuros(Number(o.shipping), "fr")}</li>

@@ -89,7 +89,12 @@ const order: Order = {
   cancelled_at: null,
   refunded_at: null,
 };
-const texts = { size: (s: string) => `taille ${s}`, shipping: "Livraison standard", submit: "Commande avec obligation de paiement." };
+const texts = {
+  size: (s: string) => `taille ${s}`,
+  print: (p: { name?: string; number?: string; extra: number }) => `perso ${p.name ?? ""} ${p.number ?? ""} +${p.extra}`.replace(/ +/g, " ").trim(),
+  shipping: "Livraison standard",
+  submit: "Commande avec obligation de paiement.",
+};
 
 beforeEach(() => {
   stripeMock.checkout.sessions.expire.mockReset();
@@ -162,6 +167,20 @@ describe("buildCheckoutParams", () => {
     const q = buildCheckoutParams({ ...order, items: [{ ...order.items[0], image: "http://x.test/a.png" }] }, texts);
     expect(q.line_items?.[0]?.price_data?.product_data).not.toHaveProperty("images");
   });
+
+  it("article personnalisé : prix unitaire PAYÉ (supplément compris) et texte imprimé en description", () => {
+    const printed = { ...order.items[0], quantity: 1, unit_amount: 5499, print: { name: "MARTIN", number: "10", extra: 500 } };
+    const q = buildCheckoutParams({ ...order, items: [order.items[0], printed] }, texts);
+    expect(q.line_items?.[1]?.price_data?.unit_amount).toBe(5499);
+    expect(q.line_items?.[1]?.price_data?.product_data).toMatchObject({
+      name: "Maillot officiel XBZ — taille M",
+      description: "perso MARTIN 10 +500",
+      metadata: { variant_id: "v-m" },
+    });
+    // L'article ordinaire de la même taille garde son prix et n'a pas de description.
+    expect(q.line_items?.[0]?.price_data?.unit_amount).toBe(4999);
+    expect(q.line_items?.[0]?.price_data?.product_data).not.toHaveProperty("description");
+  });
 });
 
 describe("reserveOrder", () => {
@@ -175,6 +194,47 @@ describe("reserveOrder", () => {
       op: "rpc:shop_reserve_order",
       args: { p_items: [{ variant_id: lines[0].variantId, quantity: 2 }], p_locale: "fr", p_ttl_minutes: 32 },
     });
+  });
+
+  it("transmet le nom et le numéro à imprimer (null pour l'absent) et laisse intacte une ligne ordinaire", async () => {
+    const printed = { ...order, items: [{ ...order.items[0], print: { name: "MARTIN", number: "10", extra: 500 } }] };
+    const admin = fakeAdmin({ rpc: () => ({ data: printed, error: null }) });
+    const v = lines[0].variantId;
+    const r = await reserveOrder(
+      admin as unknown as Admin,
+      [{ variantId: v, quantity: 1, print: { name: "MARTIN", number: "10" } }],
+      "fr",
+    );
+    expect(r.ok).toBe(true);
+    expect((admin.calls[0].args as { p_items: unknown[] }).p_items).toEqual([
+      { variant_id: v, quantity: 1, print_name: "MARTIN", print_number: "10" },
+    ]);
+    const onlyNumber = fakeAdmin({ rpc: () => ({ data: { ...order, items: [{ ...order.items[0], print: { number: "7", extra: 0 } }] }, error: null }) });
+    await reserveOrder(onlyNumber as unknown as Admin, [{ variantId: v, quantity: 1, print: { number: "7" } }], "fr");
+    expect((onlyNumber.calls[0].args as { p_items: unknown[] }).p_items).toEqual([
+      { variant_id: v, quantity: 1, print_name: null, print_number: "7" },
+    ]);
+  });
+
+  it("garde-fou : une personnalisation absente de la commande réservée la fait annuler (base sans migration)", async () => {
+    // L'ancienne fonction SQL ignore print_name / print_number : elle renverrait un article ordinaire.
+    const admin = fakeAdmin({ rpc: (name) => (name === "shop_reserve_order" ? { data: order, error: null } : { data: true, error: null }) });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await reserveOrder(
+      admin as unknown as Admin,
+      [{ variantId: lines[0].variantId, quantity: 1, print: { name: "MARTIN" } }],
+      "fr",
+    );
+    expect(r).toEqual({ ok: false, reason: "personalization" });
+    expect(admin.calls.map((c) => c.op)).toEqual(["rpc:shop_reserve_order", "rpc:shop_release_order"]);
+    expect(admin.calls[1].args).toEqual({ p_order: ORDER_ID });
+  });
+
+  it("refus de la base (produit qui ne propose pas la personnalisation, texte invalide)", async () => {
+    const admin = fakeAdmin({ rpc: () => ({ data: null, error: { message: "shop:personalization" } }) });
+    expect(
+      await reserveOrder(admin as unknown as Admin, [{ variantId: lines[0].variantId, quantity: 1, print: { name: "A" } }], "fr"),
+    ).toEqual({ ok: false, reason: "personalization" });
   });
 
   it("stock insuffisant : liste des tailles concernées", async () => {

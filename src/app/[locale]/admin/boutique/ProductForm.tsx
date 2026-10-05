@@ -29,6 +29,9 @@ export type ProductRow = {
   images: string[];
   size_guide: string | null;
   size_guide_en: string | null;
+  /** Personnalisation nom / numéro proposée (absent tant que la migration n'est pas passée). */
+  personalizable?: boolean;
+  personalization_price?: number | string | null;
 };
 
 export default function ProductForm({
@@ -36,12 +39,15 @@ export default function ProductForm({
   product,
   submitLabel,
   sizeGuide = false,
+  personalization = false,
 }: {
   action: AdminAction;
   product?: ProductRow;
   submitLabel: string;
   /** Champs « guide des tailles » (colonnes présentes en base). */
   sizeGuide?: boolean;
+  /** Réglage « personnalisation » (colonnes présentes en base). */
+  personalization?: boolean;
 }) {
   // Préfixe d'id unique par instance (une même page affiche plusieurs formulaires).
   const uid = product ? `product-${product.id}` : "product-new";
@@ -182,6 +188,43 @@ export default function ProductForm({
             className={inputCls}
           />
         </div>
+      )}
+
+      {personalization && (
+        <fieldset className="rounded-lg border border-white/10 p-3 sm:col-span-2">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            Personnalisation nom et numéro
+          </legend>
+          <div className="flex items-center gap-2 text-sm text-neutral-300">
+            <input
+              id={`${uid}-personalizable`}
+              type="checkbox"
+              name="personalizable"
+              defaultChecked={product?.personalizable ?? false}
+              className="h-4 w-4"
+            />
+            <label htmlFor={`${uid}-personalizable`}>Proposer la personnalisation sur ce produit</label>
+          </div>
+          <p className="mt-2 text-xs text-neutral-400">
+            Interrupteur : à décocher pour retirer la personnalisation du site sans rien supprimer (les articles déjà
+            commandés ne changent pas). À activer seulement quand l’atelier peut la produire. Le client est prévenu qu’un
+            article personnalisé est exclu du droit de rétractation.
+          </p>
+          <div className="mt-3 max-w-xs">
+            <label htmlFor={`${uid}-personalization-price`} className={labelCls}>
+              Supplément par pièce personnalisée (€ TTC)
+            </label>
+            <input
+              id={`${uid}-personalization-price`}
+              name="personalization_price"
+              type="text"
+              inputMode="decimal"
+              defaultValue={String(Number(product?.personalization_price ?? 0)).replace(".", ",")}
+              placeholder="ex. 5"
+              className={inputCls}
+            />
+          </div>
+        </fieldset>
       )}
 
       <div className="block">
