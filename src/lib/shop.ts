@@ -6,6 +6,8 @@ import type Stripe from "stripe";
 
 import type { CartLine } from "@/lib/cart";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
+import { orderNumber } from "@/lib/order-number";
+import { sendOrderConfirmationAfterResponse } from "@/lib/order-confirmation";
 import { stripe } from "@/lib/stripe";
 import { formatEuros } from "@/lib/money";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -56,7 +58,7 @@ export type OrderItem = {
   unit_amount: number;
   image: string | null;
   /** Personnalisation (nom / numéro) ; `extra` : supplément déjà compris dans `unit_amount`, en centimes. */
-  print?: { name?: string; number?: string; extra: number };
+  print?: { name?: string; number?: string; extra: number; validated_at?: string };
 };
 
 export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
@@ -84,12 +86,12 @@ export type Order = {
   refunded_at: string | null;
   /** Montant remboursé (€), total ou partiel. Absent tant que la migration d'export n'est pas passée. */
   refunded_amount?: number | string | null;
+  /** E-mail de confirmation de commande : envoyé le… / dernière erreur. Absents tant que la migration n'est pas passée. */
+  confirmation_sent_at?: string | null;
+  confirmation_error?: string | null;
 };
 
-/** Numéro de commande lisible (reçu, back-office, formulaire de rétractation). */
-export function orderNumber(id: string): string {
-  return `XBZ-${id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
-}
+export { orderNumber };
 
 const cents = (euros: number | string) => Math.round(Number(euros) * 100);
 
@@ -297,6 +299,8 @@ export async function recordPayment(
     if (result === "paid_late") stockChanged();
     revalidateLocalizedPath("/admin/commandes");
     notifyStaff(admin, orderId, result === "paid_late");
+    // Confirmation de commande au client (en plus du reçu de Stripe) : après la réponse, sans jamais faire échouer le webhook.
+    sendOrderConfirmationAfterResponse(admin, orderId);
   }
   return result;
 }
@@ -425,7 +429,7 @@ function notifyStaff(admin: Admin, orderId: string, late: boolean): void {
                 late ? "\n⚠️ Payée après la fin de la réservation : vérifier le stock avant d'expédier." : ""
               }${
                 (order.items as OrderItem[]).some((i) => i.print)
-                  ? "\n✏️ Article personnalisé : nom et numéro dans le back-office (pas de rétractation possible sur cet article)."
+                  ? "\n✏️ Article personnalisé : texte à relire et valider dans le back-office avant l'envoi à l'atelier (pas de rétractation possible sur cet article)."
                   : ""
               }`,
               url: `${siteConfig.url}${localizedPath("/admin/commandes", "fr")}`,

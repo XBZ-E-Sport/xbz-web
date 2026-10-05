@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCronAuthorized } from "@/lib/cron-auth";
+import { retryPendingConfirmations } from "@/lib/order-confirmation";
 import { sweepStaleReservations } from "@/lib/shop";
 import { isStripeConfigured } from "@/lib/stripe";
 import { retryPendingAcks } from "@/lib/withdrawal-server";
@@ -17,7 +18,8 @@ import { retryPendingAcks } from "@/lib/withdrawal-server";
 //  - une réservation de stock dont le webhook Stripe se serait perdu est rendue
 //    (après vérification chez Stripe) ;
 //  - un accusé de réception de rétractation qui n'a pas pu partir (fournisseur
-//    d'e-mails en panne) est renvoyé.
+//    d'e-mails en panne) est renvoyé ; de même une confirmation de commande dont le
+//    premier envoi a échoué.
 //
 // Déclenchement : le Cron de Vercel (voir vercel.json) appelle cette route selon
 // la planification. Vercel joint l'en-tête `Authorization: Bearer $CRON_SECRET`
@@ -95,6 +97,7 @@ async function purge() {
 
   const reservationsReleased = isStripeConfigured() ? await sweepStaleReservations(admin, 50) : 0;
   const withdrawalAcksSent = await retryPendingAcks(admin, 10);
+  const orderConfirmationsSent = await retryPendingConfirmations(admin, 10);
 
   return {
     cutoff: iso,
@@ -107,6 +110,7 @@ async function purge() {
     },
     reservationsReleased,
     withdrawalAcksSent,
+    orderConfirmationsSent,
   };
 }
 

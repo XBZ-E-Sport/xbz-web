@@ -2,16 +2,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Table → lignes supprimées (pilotées par test).
-const { deleted, deleteCalls, errorFor, errorCode, retryAcks } = vi.hoisted(() => ({
+const { deleted, deleteCalls, errorFor, errorCode, retryAcks, retryConfirmations } = vi.hoisted(() => ({
   deleted: { value: {} as Record<string, unknown[]> },
   deleteCalls: { value: [] as { table: string; cutoff: string; eq: [string, unknown][] }[] },
   errorFor: { value: null as string | null },
   errorCode: { value: undefined as string | undefined },
   retryAcks: vi.fn(async () => 0),
+  retryConfirmations: vi.fn(async () => 0),
 }));
 
 // Filet des accusés de rétractation : testé dans src/lib/withdrawal-server.test.ts.
 vi.mock("@/lib/withdrawal-server", () => ({ retryPendingAcks: retryAcks }));
+// Filet des confirmations de commande : testé dans src/lib/order-confirmation.test.ts.
+vi.mock("@/lib/order-confirmation", () => ({ retryPendingConfirmations: retryConfirmations }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -60,6 +63,7 @@ describe("GET /api/cron/purge", () => {
     errorFor.value = null;
     errorCode.value = undefined;
     retryAcks.mockClear();
+    retryConfirmations.mockClear();
   });
 
   it("refuse l'appel quand CRON_SECRET n'est pas configuré (fail-safe)", async () => {
@@ -165,5 +169,13 @@ describe("GET /api/cron/purge", () => {
     const body = await (await call("Bearer s3cret")).json();
     expect(retryAcks).toHaveBeenCalledTimes(1);
     expect(body.withdrawalAcksSent).toBe(2);
+  });
+
+  it("relance aussi les confirmations de commande dont le premier envoi a échoué, et le dit dans le bilan", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    retryConfirmations.mockResolvedValueOnce(3);
+    const body = await (await call("Bearer s3cret")).json();
+    expect(retryConfirmations).toHaveBeenCalledTimes(1);
+    expect(body.orderConfirmationsSent).toBe(3);
   });
 });

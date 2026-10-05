@@ -201,6 +201,9 @@ correspondant :
   le site fonctionne, la personnalisation reste simplement invisible. **Ne jamais rejouer
   `migration_boutique_stripe_01102026.sql` après elle** (elle remettrait les anciennes
   fonctions) ; au besoin, rejouer `migration_personnalisation_05102026.sql`, qui est rejouable.
+- `migration_confirmation_commande_05102026.sql` — `orders.confirmation_sent_at` et
+  `orders.confirmation_error` (suivi de l'e-mail de confirmation de commande). Le code
+  fonctionne avant cette migration : la confirmation part alors une seule fois, sans reprise.
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
@@ -275,6 +278,18 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   Stripe, affiché en évidence dans les commandes du back-office et dans l'export.
   Une taille, plusieurs textes = plusieurs lignes ; le stock se compte **par taille**.
   Règles dans `src/lib/personalization.ts`, mêmes bornes dans la base.
+- **Confirmation de commande** : après chaque paiement, un e-mail part au client (Brevo, en plus
+  du reçu de Stripe) : articles et texte imprimé, montants, délai, droit de rétractation et lien
+  « Renoncer au contrat ici », exclusion pour les articles personnalisés, garanties légales
+  (`src/lib/order-mail.ts`, textes `orderMail` dans `messages/*.json`). Il part **après** la
+  réponse à Stripe : une panne du fournisseur ne fait jamais échouer le webhook. Un premier
+  envoi raté est noté (`confirmation_error`) et repris par le cron quotidien ; le back-office
+  affiche l'état et permet de renvoyer (Commandes → « Renvoyer la confirmation »).
+- **Validation des textes à imprimer** : une commande avec un article personnalisé affiche, dans
+  Back-office → Commandes, « Textes à valider avant l'envoi à l'atelier ». Le staff relit
+  (orthographe, texte injurieux, marque, droits de tiers) puis clique « Textes relus et validés » :
+  la date est gardée sur l'article. **« Marquer expédiée » est refusé tant qu'un texte n'est pas
+  validé.** Discord signale « texte à relire et valider » (sans le texte lui-même).
 - **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
   (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
   autorité côté base. Détail du parcours : `src/lib/shop.ts`.
