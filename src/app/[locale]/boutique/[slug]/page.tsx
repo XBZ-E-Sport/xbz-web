@@ -12,6 +12,7 @@ import { jsonLdString } from "@/lib/jsonld";
 import { LEGAL } from "@/lib/legal";
 import { formatEuros } from "@/lib/money";
 import { bannerVersion, productBanner } from "@/lib/og-banners";
+import { isPersonalizable } from "@/lib/personalization";
 import { productJsonLd } from "@/lib/product-seo";
 import { breadcrumbJsonLd, pageDescription } from "@/lib/seo";
 import { SHIPPING_COUNTRIES, shippingEuros } from "@/lib/shop";
@@ -189,6 +190,7 @@ export default async function ProductPage({ params }: PageProps) {
                   ),
                 })}
               </p>
+              {isPersonalizable(product.slug) && <p className="mt-2">{t("returnsPersonalized")}</p>}
               {open && <p className="mt-2 text-neutral-400">{t("securePayment")}</p>}
             </section>
           </div>
