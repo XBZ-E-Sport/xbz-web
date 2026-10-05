@@ -48,14 +48,14 @@ describe("CartView", () => {
     expect(screen.getByText(/Taille M/)).toBeTruthy();
     // 2 × 49,99 + 14,99 = 114,97 ; + 4,90 de port = 119,87
     expect(screen.getByText("114,97 €")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Payer 119,87/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /obligation de paiement · 119,87/ })).toBeTruthy();
   });
 
   it("taille épuisée ou supprimée : signalée, exclue du total et du paiement", () => {
     setCart([{ variantId: id(2), quantity: 1 }, { variantId: id(9), quantity: 1 }, { variantId: id(3), quantity: 1 }]);
     render();
     expect(screen.getAllByText(fr.cart.unavailable)).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /Payer 19,89/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /obligation de paiement · 19,89/ })).toBeTruthy();
   });
 
   it("quantité au-delà du stock : ramenée au disponible", async () => {
@@ -67,7 +67,7 @@ describe("CartView", () => {
   it("CGV obligatoires avant de payer", async () => {
     setCart([{ variantId: id(3), quantity: 1 }]);
     render();
-    fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+    fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
     expect(await screen.findByText(fr.cart.errTerms)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -79,7 +79,7 @@ describe("CartView", () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_1" }) });
     render();
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+    fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_1"));
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/boutique/checkout");
@@ -91,7 +91,7 @@ describe("CartView", () => {
     fetchMock.mockResolvedValue({ ok: false, json: async () => ({ ok: false, code: "stock", unavailable: [id(1)] }) });
     render();
     fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: /Payer/ }));
+    fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
     expect(await screen.findByText(fr.cart.errStock)).toBeTruthy();
     expect(screen.getAllByText(fr.cart.unavailable)).toHaveLength(1);
     expect(refresh).toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe("CartView", () => {
   it("boutique fermée : pas de bouton de paiement", () => {
     setCart([{ variantId: id(3), quantity: 1 }]);
     render(false);
-    expect(screen.queryByRole("button", { name: /Payer/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /obligation de paiement/ })).toBeNull();
     expect(screen.getByText(fr.cart.errClosed)).toBeTruthy();
   });
 
@@ -114,13 +114,13 @@ describe("CartView", () => {
     });
     // Tant que la réservation n'est pas rendue, le panier attend (pas de « plus disponible » fantôme).
     expect(screen.getByText(fr.cart.loading)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Payer/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /obligation de paiement/ })).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith("/api/boutique/cancel", { method: "POST" });
     await act(async () => release({ ok: true, json: async () => ({ ok: true, released: true }) }));
     expect(screen.getByText(fr.cart.cancelled)).toBeTruthy();
     expect(replace).toHaveBeenCalledWith("/fr/boutique/panier", { scroll: false });
     expect(refresh).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: /Payer/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy();
   });
 
   it("retour arrière depuis Stripe (cookie) : réservation rendue sans bandeau, quantités jamais rognées entre-temps", async () => {
@@ -143,7 +143,7 @@ describe("CartView", () => {
     expect(replace).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem(CART_STORAGE_KEY)!)).toEqual([{ variantId: id(1), quantity: 2 }]);
     expect(screen.queryByText(fr.cart.cancelled)).toBeNull();
-    expect(screen.getByRole("button", { name: /Payer 104,88/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /obligation de paiement · 104,88/ })).toBeTruthy();
   });
 
   it("route d'annulation injoignable : le panier s'affiche quand même", async () => {
@@ -153,7 +153,7 @@ describe("CartView", () => {
     await act(async () => {
       render();
     });
-    await waitFor(() => expect(screen.getByRole("button", { name: /Payer/ })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy());
     expect(refresh).not.toHaveBeenCalled();
   });
 });
