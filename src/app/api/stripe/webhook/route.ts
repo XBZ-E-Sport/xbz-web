@@ -21,6 +21,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// L'e-mail de confirmation part après la réponse (`after`) : lui laisser le temps de finir.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;

@@ -8,6 +8,8 @@ const stripeMock = vi.hoisted(() => ({
 vi.mock("@/lib/stripe", () => ({ stripe: () => stripeMock }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn() }));
+const confirmation = vi.hoisted(() => ({ send: vi.fn() }));
+vi.mock("@/lib/order-confirmation", () => ({ sendOrderConfirmationAfterResponse: confirmation.send }));
 
 import {
   abandonOrder,
@@ -320,6 +322,22 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
       args: { p_order: ORDER_ID, p_session: "cs_9", p_payment_intent: "pi_9", p_amount: 119.87, p_email: "a@b.fr", p_name: "Alice", p_address: { city: "Lyon", country: "FR" } },
     });
     expect(await recordPayment(admin as unknown as Admin, { ...session, payment_status: "unpaid" } as never)).toBe("unpaid");
+  });
+
+  it("confirmation de commande : envoyée au premier enregistrement du paiement (et pour un paiement tardif), jamais à un rejeu du webhook", async () => {
+    const session = { id: "cs_9", payment_status: "paid", metadata: { order_id: ORDER_ID }, amount_total: 11987, payment_intent: "pi_9", customer_details: { email: "a@b.fr" } };
+    for (const [result, expected] of [["paid", 1], ["paid_late", 1], ["already", 0], ["missing", 0]] as const) {
+      confirmation.send.mockClear();
+      const admin = fakeAdmin({ rpc: () => ({ data: result, error: null }), select: () => ({ data: null }) });
+      expect(await recordPayment(admin as unknown as Admin, session as never)).toBe(result);
+      expect(confirmation.send, result).toHaveBeenCalledTimes(expected);
+      if (expected) expect(confirmation.send).toHaveBeenCalledWith(admin, ORDER_ID);
+    }
+    // Session non payée : rien à confirmer.
+    confirmation.send.mockClear();
+    const admin = fakeAdmin({ rpc: () => ({ data: "paid", error: null }) });
+    await recordPayment(admin as unknown as Admin, { ...session, payment_status: "unpaid" } as never);
+    expect(confirmation.send).not.toHaveBeenCalled();
   });
 
   it("session expirée → stock rendu pour SA commande", async () => {

@@ -4,7 +4,8 @@ import { assertStaff } from "@/lib/adminguard";
 import { adminAction, dbError } from "@/lib/admin-action";
 import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { revalidateLocalizedPath } from "@/lib/cache";
-import { orderNumber } from "@/lib/shop";
+import { sendOrderConfirmation } from "@/lib/order-confirmation";
+import { orderNumber, type OrderItem } from "@/lib/shop";
 import { normalizeOrderNumber } from "@/lib/withdrawal";
 import { sendAck } from "@/lib/withdrawal-server";
 
@@ -24,6 +25,21 @@ export async function markOrderShipped(formData: FormData): Promise<AdminResult>
     const id = String(formData.get("id") ?? "").trim();
     if (!/^[0-9a-f-]{36}$/i.test(id)) throw new AdminError("Identifiant de commande invalide.");
 
+    // Un article personnalisé ne part qu'avec un texte RELU : on ne marque pas « expédiée »
+    // une commande dont le nom ou le numéro à imprimer n'a pas été validé.
+    const { data: current, error: readError } = await admin
+      .from("orders")
+      .select("items")
+      .eq("id", id)
+      .eq("status", "paid")
+      .maybeSingle();
+    if (readError) throw dbError(readError);
+    if (hasUnvalidatedPrint((current as { items: OrderItem[] | null } | null)?.items)) {
+      throw new AdminError(
+        "Cette commande contient un article personnalisé dont le texte n'est pas validé : relis-le et clique « Textes relus et validés » avant de l'expédier.",
+      );
+    }
+
     const { data, error } = await admin
       .from("orders")
       .update({ status: "fulfilled", fulfilled_at: new Date().toISOString() })
@@ -33,6 +49,59 @@ export async function markOrderShipped(formData: FormData): Promise<AdminResult>
     if (error) throw dbError(error);
     if (!data?.length) throw new AdminError("Cette commande n'est plus « payée » (déjà expédiée ou remboursée).");
 
+    revalidateLocalizedPath("/admin/commandes");
+  });
+}
+
+/** Au moins un article personnalisé dont le texte n'a pas encore été relu ? */
+function hasUnvalidatedPrint(items: readonly OrderItem[] | null | undefined): boolean {
+  return (Array.isArray(items) ? items : []).some((i) => i.print && !i.print.validated_at);
+}
+
+/**
+ * Valide les textes à imprimer d'une commande payée : le staff a RELU le nom et le numéro
+ * (orthographe, texte injurieux, marque, droits de tiers) avant l'envoi à l'atelier. La date
+ * est gardée sur chaque article ; l'expédition est refusée tant qu'elle manque.
+ */
+export async function validateOrderPrints(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = String(formData.get("id") ?? "").trim();
+    if (!UUID.test(id)) throw new AdminError("Identifiant de commande invalide.");
+
+    const { data, error } = await admin.from("orders").select("status, items").eq("id", id).maybeSingle();
+    if (error) throw dbError(error);
+    const order = data as { status: string; items: OrderItem[] | null } | null;
+    if (!order) throw new AdminError("Cette commande n'existe plus.");
+    if (order.status !== "paid") throw new AdminError("Seule une commande payée et non expédiée peut être validée.");
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.some((i) => i.print)) throw new AdminError("Cette commande ne contient aucun article personnalisé.");
+
+    const now = new Date().toISOString();
+    const validated = items.map((i) => (i.print && !i.print.validated_at ? { ...i, print: { ...i.print, validated_at: now } } : i));
+    const { data: written, error: writeError } = await admin
+      .from("orders")
+      .update({ items: validated })
+      .eq("id", id)
+      .eq("status", "paid")
+      .select("id");
+    if (writeError) throw dbError(writeError);
+    if (!written?.length) throw new AdminError("Cette commande n'est plus « payée » : recharge la page.");
+    revalidateLocalizedPath("/admin/commandes");
+  });
+}
+
+/**
+ * Renvoie l'e-mail de confirmation d'une commande (panne du fournisseur d'e-mails, adresse
+ * corrigée chez le client…). `force` : le staff décide, même si elle est déjà partie.
+ */
+export async function resendOrderConfirmation(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = String(formData.get("id") ?? "").trim();
+    if (!UUID.test(id)) throw new AdminError("Identifiant de commande invalide.");
+    const result = await sendOrderConfirmation(admin, id, { force: true });
+    if (!result.sent) throw new AdminError(`Confirmation non envoyée : ${result.error ?? "raison inconnue"}.`);
     revalidateLocalizedPath("/admin/commandes");
   });
 }
