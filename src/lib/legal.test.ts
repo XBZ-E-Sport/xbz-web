@@ -295,6 +295,14 @@ describe("textes légaux rendus (vrais messages, vraies valeurs)", () => {
     expect(body).toMatch(locale === "fr" ? /même moyen de paiement/ : /same means of payment/);
   });
 
+  it.each(["fr", "en"] as const)("CGV et page de rétractation (%s) : la livraison initiale n'est remboursée qu'en cas de rétractation TOTALE", (locale) => {
+    const body = translator(locale, "cgv")("retractationBody", legalValues(locale));
+    expect(body).toMatch(locale === "fr" ? /porte sur la totalité de la commande[^.]*frais de livraison initiaux/ : /covers the whole order[^.]*initial delivery costs/);
+    expect(body).toMatch(locale === "fr" ? /partie des articles[^.]*les frais de livraison initiaux ne sont pas remboursés/ : /only some of the items[^.]*initial delivery costs are not refunded/);
+    const refund = Object.values(MESSAGES[locale]).map((ns) => (ns as Record<string, unknown>)?.refund).find((v) => typeof v === "string") as string;
+    expect(refund).toMatch(locale === "fr" ? /ne porte que sur une partie[^.;]*frais de livraison initiaux restent dus/ : /only some of the items[^.;]*initial delivery costs remain due/);
+  });
+
   it.each(["fr", "en"] as const)("CGV (%s) : le litige passe d'abord par l'association, puis le médiateur", (locale) => {
     const t = translator(locale, "cgv");
     const v = legalValues(locale);
