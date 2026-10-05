@@ -29,6 +29,7 @@ export const CLIENT_NAMESPACES = {
   MediaGallery: ["galerie", "mediaCategories"],
   RecrutementForm: ["recrutementForm", "formErrors", "fieldLabels", "recrutementCategories", "playerRoles"],
   SupportForm: ["supportForm", "formErrors", "fieldLabels", "supportSubjects"],
+  WithdrawalForm: ["withdrawal", "formErrors", "fieldLabels"],
 } as const satisfies Record<string, readonly string[]>;
 
 export type ClientComponent = keyof typeof CLIENT_NAMESPACES;

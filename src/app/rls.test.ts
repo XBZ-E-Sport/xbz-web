@@ -44,7 +44,14 @@ describe("RLS versionnée", () => {
   });
 
   it("aucune policy n'ouvre les tables de données personnelles ou d'accès staff", () => {
-    for (const table of ["candidatures", "support_messages", "allow_staff_list", "rate_limit_hits"]) {
+    for (const table of [
+      "candidatures",
+      "support_messages",
+      "allow_staff_list",
+      "rate_limit_hits",
+      "orders",
+      "order_withdrawals",
+    ]) {
       const re = new RegExp(`create\\s+policy[^;]*\\bon\\s+(?:public\\.)?${table}\\b`, "i");
       expect(migrations, table).not.toMatch(re);
     }

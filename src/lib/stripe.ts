@@ -2,7 +2,7 @@ import "server-only";
 
 import Stripe from "stripe";
 
-import { legalReady } from "@/lib/legal";
+import { liveBlockers } from "@/lib/go-live";
 
 // Client Stripe, CÔTÉ SERVEUR UNIQUEMENT.
 //
@@ -62,12 +62,13 @@ export function isStripeConfigured(): boolean {
 
 /**
  * La boutique accepte-t-elle des commandes ? Stripe branché ET, si c'est une
- * clé LIVE, les obligations légales en place (voir `legalMissing`). Les pages
+ * clé LIVE, les obligations légales et l'envoi d'e-mails en place (voir
+ * `liveBlockers`). Les pages
  * (fiche produit, panier) s'appuient dessus pour ne pas proposer d'acheter ce
  * que la route de paiement refuserait ensuite.
  */
 export function isShopOpen(): boolean {
-  return isStripeConfigured() && (!isLiveStripeKey() || legalReady());
+  return isStripeConfigured() && (!isLiveStripeKey() || liveBlockers().length === 0);
 }
 
 /** Lien vers un paiement dans le tableau de bord Stripe (mode test compris). */

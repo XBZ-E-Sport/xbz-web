@@ -11,6 +11,8 @@ const m = vi.hoisted(() => ({
   update: vi.fn(),
   jar: new Map<string, string>(),
   setCookie: vi.fn(),
+  // Sonde de la table des rétractations (migration passée ou non).
+  tableError: null as { message: string } | null,
 }));
 
 vi.mock("next/server", async (orig) => ({ ...(await orig<typeof import("next/server")>()), after: vi.fn() }));
@@ -33,7 +35,12 @@ vi.mock("@/lib/ratelimit", () => ({
   checkRateLimit: async () => m.rate,
 }));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ from: () => ({ update: (v: unknown) => ({ eq: (...a: unknown[]) => m.update(v, ...a) }) }) }),
+  createAdminClient: () => ({
+    from: () => ({
+      update: (v: unknown) => ({ eq: (...a: unknown[]) => m.update(v, ...a) }),
+      select: () => ({ limit: async () => ({ data: [], error: m.tableError }) }),
+    }),
+  }),
 }));
 vi.mock("@/lib/shop", async (orig) => ({
   ...(await orig<typeof import("@/lib/shop")>()),
@@ -61,6 +68,7 @@ const call = (body: unknown = good, headers: Record<string, string> = {}) =>
 beforeEach(() => {
   m.configured = true;
   m.live = false;
+  m.tableError = null;
   m.rate = { allowed: true, retryAfter: 0 };
   m.jar.clear();
   for (const f of [m.reserve, m.abandon, m.create, m.update, m.setCookie]) f.mockReset();
@@ -152,6 +160,7 @@ describe("POST /api/boutique/checkout — vrais paiements et informations légal
   afterEach(() => {
     Object.assign(LEGAL, saved);
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("clé LIVE sans médiateur de la consommation : paiement refusé, rien n'est réservé", async () => {
@@ -188,9 +197,36 @@ describe("POST /api/boutique/checkout — vrais paiements et informations légal
     expect(log.mock.calls.some((c) => /téléphone/.test(String(c[0])))).toBe(true);
   });
 
-  it("clé LIVE avec médiateur, téléphone ET rétractation en ligne : le paiement s'ouvre", async () => {
+  it("clé LIVE sans envoi d'e-mails configuré : paiement refusé (l'accusé de rétractation ne pourrait pas partir)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
     m.live = true;
     Object.assign(LEGAL, ready);
+    vi.stubEnv("BREVO_API_KEY", "");
+    vi.stubEnv("MAIL_FROM_EMAIL", "");
+    expect((await call()).status).toBe(503);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /e-mail/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE, tout est configuré MAIS la migration des rétractations n'est pas passée : paiement refusé", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
+    m.live = true;
+    m.tableError = { message: "relation does not exist" };
+    Object.assign(LEGAL, ready);
+    vi.stubEnv("BREVO_API_KEY", "xkeysib-test");
+    vi.stubEnv("MAIL_FROM_EMAIL", "support@xbz.test");
+    expect((await call()).status).toBe(503);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /order_withdrawals/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE avec médiateur, téléphone, rétractation en ligne ET e-mails : le paiement s'ouvre", async () => {
+    m.live = true;
+    Object.assign(LEGAL, ready);
+    vi.stubEnv("BREVO_API_KEY", "xkeysib-test");
+    vi.stubEnv("MAIL_FROM_EMAIL", "support@xbz.test");
     const res = await call();
     expect(res.status).toBe(200);
     expect(m.reserve).toHaveBeenCalledTimes(1);

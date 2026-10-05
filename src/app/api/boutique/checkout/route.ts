@@ -12,7 +12,8 @@ import {
   reserveOrder,
   sweepStaleReservations,
 } from "@/lib/shop";
-import { legalMissing } from "@/lib/legal";
+import { liveBlockers } from "@/lib/go-live";
+import { withdrawalTableReady } from "@/lib/withdrawal-server";
 import { isLiveStripeKey, isStripeConfigured, stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { absoluteUrl, localizedPath } from "@/lib/site";
@@ -48,12 +49,16 @@ export async function POST(request: Request) {
 
   if (!isStripeConfigured()) return fail(503, "unavailable");
   // Vrais paiements : pas sans les obligations légales du e-commerce (médiateur
-  // de la consommation, téléphone, rétractation en ligne : voir `legalMissing`).
-  // La clé de test, elle, n'est pas concernée.
+  // de la consommation, téléphone, rétractation en ligne, envoi des accusés de
+  // réception : voir `liveBlockers`). La clé de test, elle, n'est pas concernée.
   if (isLiveStripeKey()) {
-    const missing = legalMissing();
+    const missing = liveBlockers();
+    // La fonction de rétractation ne peut rien enregistrer si la migration n'est pas passée.
+    if (missing.length === 0 && !(await withdrawalTableReady(createAdminClient()))) {
+      missing.push("table order_withdrawals absente (migration supabase/migration_retractation_05102026.sql non passée)");
+    }
     if (missing.length > 0) {
-      console.error(`[boutique] paiement live refusé : ${missing.join(" ; ")} (src/lib/legal.ts).`);
+      console.error(`[boutique] paiement live refusé : ${missing.join(" ; ")}.`);
       return fail(503, "unavailable");
     }
   }

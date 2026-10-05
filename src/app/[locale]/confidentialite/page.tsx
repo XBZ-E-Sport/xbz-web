@@ -71,7 +71,7 @@ const contactTags = {
   b: (chunks: ReactNode) => <strong>{chunks}</strong>,
 };
 
-const COLLECTED_KEYS = ["recruitment", "support", "orders", "members", "antispam", "staff", "logs"] as const;
+const COLLECTED_KEYS = ["recruitment", "support", "orders", "withdrawals", "members", "antispam", "staff", "logs"] as const;
 const PURPOSE_KEYS = [
   "purposeText1",
   "purposeText2",
@@ -81,7 +81,7 @@ const PURPOSE_KEYS = [
   "purposeText6",
   "purposeText7",
 ] as const;
-const PROCESSOR_KEYS = ["supabase", "vercel", "render", "stripe", "discord"] as const;
+const PROCESSOR_KEYS = ["supabase", "vercel", "render", "brevo", "stripe", "discord"] as const;
 
 export default async function ConfidentialitePage({ params }: PageProps) {
   const { locale } = await params;
@@ -161,6 +161,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           </h2>
           <p>{t.rich("retentionText", { ...contactTags, months: RETENTION_MONTHS })}</p>
           <p className="mt-2">{t.rich("retentionOrdersText", contactTags)}</p>
+          <p className="mt-2">{t.rich("retentionWithdrawalsText", contactTags)}</p>
           <p className="mt-2">{t.rich("retentionStaffText", contactTags)}</p>
         </section>
 

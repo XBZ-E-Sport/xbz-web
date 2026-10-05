@@ -38,7 +38,7 @@ export const LEGAL = {
    * Date d'entrée en vigueur de cette version des CGV (AAAA-MM-JJ) : le jour
    * où elle est publiée. À changer à chaque modification des CGV.
    */
-  cgvEffective: "2026-10-04",
+  cgvEffective: "2026-10-05",
   /**
    * Médiateur de la consommation auquel l'association adhère (obligatoire pour
    * vendre à des particuliers : garantir au client un recours effectif, article
@@ -46,26 +46,35 @@ export const LEGAL = {
    * article L.616-1). `null` tant qu'aucune adhésion n'est faite : la boutique
    * REFUSE alors les paiements réels (voir `legalMissing`).
    *
-   * Adhésion à CM2C (Centre de la Médiation de la Consommation de Conciliateurs
-   * de Justice) payée le 5 octobre 2026. Siège : 49 rue de Ponthieu, 75008 Paris
-   * (l'ancienne adresse, 14 rue Saint-Jean 75017, est fermée depuis mars 2023).
-   * À comparer à l'attestation d'adhésion reçue de CM2C si elle indique autre chose.
+   * CM2C — Centre de la Médiation de la Consommation de Conciliateurs de Justice,
+   * médiateur validé par la CECMC. Coordonnées recopiées de l'attestation
+   * d'affiliation et de la convention signées le 5 octobre 2026 (siège : 49 rue de
+   * Ponthieu, 75008 Paris ; l'ancienne adresse du 17e est fermée depuis 2023).
+   * La convention (article 3-2) impose d'informer le consommateur des modalités de
+   * saisine : téléphone, site ET adresse e-mail, en plus de l'adresse postale.
+   *
+   * Adhésion de 3 ans, jusqu'au 5 octobre 2029, reconduite tacitement par périodes
+   * de 3 ans : pour y mettre fin, lettre recommandée AU PLUS TARD le 5 juillet 2029.
    */
   mediator: {
     name: "CM2C — Centre de la Médiation de la Consommation de Conciliateurs de Justice",
     address: "49 rue de Ponthieu, 75008 Paris",
     website: "https://www.cm2c.net",
-  } as null | { name: string; address: string; website: string },
+    email: "contact@cm2c.net",
+    phone: "01 89 47 00 14",
+  } as null | { name: string; address: string; website: string; email?: string; phone?: string },
   /**
    * Le client peut-il se rétracter EN LIGNE ? Depuis le 19 juin 2026, un site
    * qui vend à des consommateurs doit offrir une fonction de rétractation
    * accessible dans son interface (bouton « Renoncer au contrat ici », avec
    * accusé de réception sur support durable) — directive (UE) 2023/2673,
-   * art. 11a de la directive 2011/83. Cette fonction n'est PAS encore
-   * construite : on ne passe ce drapeau à `true` qu'une fois qu'elle l'est, et
-   * la boutique refuse d'ici là les paiements réels.
+   * art. 11a de la directive 2011/83. Elle existe : page
+   * `/boutique/retractation` (lien dans le pied de chaque page), route
+   * `api/boutique/retractation`, accusé par e-mail (`src/lib/mailer.ts`). Remettre
+   * ce drapeau à `false` ferme les paiements réels, comme tout prérequis manquant.
+   * L'envoi d'e-mails, lui, se vérifie à part : voir `liveBlockers` (go-live.ts).
    */
-  onlineWithdrawal: false as boolean,
+  onlineWithdrawal: true as boolean,
 };
 
 /** Marqueur visible tant que le médiateur n'est pas renseigné. */
@@ -92,10 +101,10 @@ export function legalReady(): boolean {
   return legalMissing().length === 0;
 }
 
-/** « Nom, adresse, site » du médiateur, ou le marqueur s'il manque. */
+/** « Nom, adresse, site, e-mail, téléphone » du médiateur, ou le marqueur s'il manque. */
 export function mediatorText(locale = "fr"): string {
   const m = LEGAL.mediator;
-  if (m) return `${m.name}, ${m.address}, ${m.website}`;
+  if (m) return [m.name, m.address, m.website, m.email, m.phone].filter(Boolean).join(", ");
   return locale === "en" ? MEDIATOR_PLACEHOLDER_EN : MEDIATOR_PLACEHOLDER;
 }
 

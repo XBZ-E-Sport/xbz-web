@@ -8,7 +8,9 @@ import { parisDay } from "@/lib/orders-export";
 import { localizedPath } from "@/lib/site";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
+import type { WithdrawalRow } from "@/lib/withdrawal";
 import { markOrderShipped } from "./actions";
+import Withdrawals, { type LinkedOrder } from "./Withdrawals";
 
 export const metadata = { title: "Commandes — Back-office XBZ" };
 export const dynamic = "force-dynamic";
@@ -45,17 +47,66 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const { vue } = await searchParams;
   const today = parisDay(new Date());
   const exportAction = localizedPath("/admin/commandes/export", await getLocale());
+  // Onglet à part : les déclarations faites avec « Renoncer au contrat ici ».
+  const showWithdrawals = vue === "retractations";
   const key: FilterKey = vue && vue in FILTERS ? (vue as FilterKey) : "a-expedier";
 
-  const { data, error } = await admin
-    .from("orders")
-    .select("*")
-    .in("status", [...FILTERS[key].statuses])
-    .order("created_at", { ascending: key === "a-expedier" })
-    .limit(200);
+  let orders: Order[] = [];
+  if (!showWithdrawals) {
+    const { data, error } = await admin
+      .from("orders")
+      .select("*")
+      .in("status", [...FILTERS[key].statuses])
+      .order("created_at", { ascending: key === "a-expedier" })
+      .limit(200);
+    if (error) return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
+    orders = (data ?? []) as Order[];
+  }
 
-  if (error) return <p className="text-red-400">Erreur de chargement : {error.message}</p>;
-  const orders = (data ?? []) as Order[];
+  // Rétractations à traiter (pastille de l'onglet). Table absente = migration pas
+  // encore passée : le code ne casse pas, l'onglet l'explique.
+  // Lecture réelle (pas un comptage « HEAD », qui ne distingue pas une table absente d'une
+  // table vide) : 42P01 / PGRST205 = migration pas passée ; toute autre erreur est montrée.
+  const pending = await admin.from("order_withdrawals").select("id").is("processed_at", null).limit(100);
+  const tableMissing = pending.error?.code === "42P01" || pending.error?.code === "PGRST205";
+  const withdrawalsError = pending.error && !tableMissing ? pending.error.message : null;
+  const pendingWithdrawals = pending.error ? 0 : (pending.data?.length ?? 0);
+
+  let withdrawalRows: WithdrawalRow[] = [];
+  let linkedOrders = new Map<string, LinkedOrder>();
+  const withdrawalsByOrder = new Map<string, WithdrawalRow>();
+  if (!pending.error) {
+    if (showWithdrawals) {
+      // À traiter d'abord (`processed_at` nul en tête), les plus récentes en premier dans chaque
+      // groupe — trié par la base AVANT la limite : une déclaration en attente ne tombe jamais
+      // hors de la page parce que 200 plus récentes ont déjà été traitées.
+      const { data } = await admin
+        .from("order_withdrawals")
+        .select("*")
+        .order("processed_at", { ascending: false, nullsFirst: true })
+        .order("received_at", { ascending: false })
+        .limit(200);
+      withdrawalRows = (data ?? []) as WithdrawalRow[];
+      const ids = [...new Set(withdrawalRows.flatMap((w) => (w.order_id ? [w.order_id] : [])))];
+      if (ids.length) {
+        const { data: linked } = await admin
+          .from("orders")
+          .select("id, status, stripe_payment_intent, amount_total")
+          .in("id", ids);
+        linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
+      }
+    } else if (orders.length) {
+      // Pastille « rétractation reçue » sur les commandes concernées.
+      const { data } = await admin
+        .from("order_withdrawals")
+        .select("*")
+        .in("order_id", orders.map((o) => o.id))
+        .order("received_at", { ascending: false });
+      for (const w of (data ?? []) as WithdrawalRow[]) {
+        if (w.order_id && !withdrawalsByOrder.has(w.order_id)) withdrawalsByOrder.set(w.order_id, w);
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -126,17 +177,32 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           <Link
             key={k}
             href={`/admin/commandes?vue=${k}`}
-            aria-current={k === key ? "page" : undefined}
+            aria-current={k === key && !showWithdrawals ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-              k === key ? "bg-xbz-blue text-white" : "bg-white/5 text-neutral-300 hover:bg-white/10"
+              k === key && !showWithdrawals ? "bg-xbz-blue text-white" : "bg-white/5 text-neutral-300 hover:bg-white/10"
             }`}
           >
             {FILTERS[k].label}
           </Link>
         ))}
+        <Link
+          href="/admin/commandes?vue=retractations"
+          aria-current={showWithdrawals ? "page" : undefined}
+          className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+            showWithdrawals
+              ? "bg-xbz-blue text-white"
+              : pendingWithdrawals > 0
+                ? "bg-red-500/20 text-red-200 hover:bg-red-500/30"
+                : "bg-white/5 text-neutral-300 hover:bg-white/10"
+          }`}
+        >
+          ↩️ Rétractations{pendingWithdrawals > 0 ? ` (${pendingWithdrawals})` : ""}
+        </Link>
       </nav>
 
-      {orders.length === 0 ? (
+      {showWithdrawals ? (
+        <Withdrawals rows={withdrawalRows} orders={linkedOrders} tableMissing={tableMissing} loadError={withdrawalsError} />
+      ) : orders.length === 0 ? (
         <p className="text-neutral-400">Aucune commande ici pour le moment.</p>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -163,6 +229,20 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 {o.note && (
                   <p className="mt-3 rounded-lg border border-xbz-cyan/30 bg-xbz-cyan/10 px-3 py-2 text-sm font-semibold text-xbz-cyan">
                     ⚠️ {o.note}
+                  </p>
+                )}
+
+                {withdrawalsByOrder.has(o.id) && (
+                  <p className="mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200">
+                    ↩️ Une rétractation a été déclarée le{" "}
+                    {dateTime.format(new Date((withdrawalsByOrder.get(o.id) as WithdrawalRow).received_at))}
+                    {(withdrawalsByOrder.get(o.id) as WithdrawalRow).processed_at
+                      ? " (traitée)"
+                      : " — non vérifiée : contrôle-la avant d’expédier ou de rembourser"}
+                    .{" "}
+                    <Link href="/admin/commandes?vue=retractations" className="underline">
+                      Voir la rétractation
+                    </Link>
                   </p>
                 )}
 

@@ -21,6 +21,9 @@ export const FIELD_MAX = {
   email: 120,
   sujet: 60,
   message: 4000,
+  // Rétractation en ligne
+  commande: 40,
+  details: 500,
 } as const;
 
 export type FieldName = keyof typeof FIELD_MAX;
@@ -39,6 +42,8 @@ export const FIELD_LABEL: Record<FieldName, string> = {
   email: "Email",
   sujet: "Sujet",
   message: "Message",
+  commande: "Numéro de commande",
+  details: "Précisions",
 };
 
 /**
