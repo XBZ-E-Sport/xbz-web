@@ -115,3 +115,36 @@ describe("stock vidé", () => {
     expect(calls.productUpdates).toHaveLength(0);
   });
 });
+
+describe("personnalisation (interrupteur et supplément)", () => {
+  it("case cochée : activée, supplément en euros arrondi au centime", async () => {
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "5,5" }));
+    expect(calls.productUpdates[0]).toMatchObject({ personalizable: true, personalization_price: 5.5 });
+  });
+
+  it("case décochée (absente du formulaire) : éteinte — l'interrupteur se coupe d'un clic", async () => {
+    await updateProduct(form({ id: PRODUCT, personalization_price: "5" }));
+    expect(calls.productUpdates[0]).toMatchObject({ personalizable: false, personalization_price: 5 });
+  });
+
+  it("supplément plafonné à 100 €, jamais négatif ni illisible", async () => {
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "9999" }));
+    expect(calls.productUpdates[0]).toMatchObject({ personalization_price: 100 });
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "-4" }));
+    expect(calls.productUpdates[1]).toMatchObject({ personalization_price: 0 });
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "beaucoup" }));
+    expect(calls.productUpdates[2]).toMatchObject({ personalization_price: 0 });
+  });
+
+  it("formulaire sans le réglage (migration pas passée) : colonnes jamais écrites", async () => {
+    await updateProduct(form({ id: PRODUCT }));
+    expect(calls.productUpdates[0]).not.toHaveProperty("personalizable");
+    expect(calls.productUpdates[0]).not.toHaveProperty("personalization_price");
+  });
+
+  it("création : le réglage est écrit comme pour une modification", async () => {
+    await createProduct(form({ personalizable: "on", personalization_price: "8" }));
+    expect(calls.productInserts[0]).toMatchObject({ personalizable: true, personalization_price: 8 });
+  });
+});
+

@@ -314,6 +314,58 @@ describe("export par article", () => {
   });
 });
 
+describe("export : articles personnalisés", () => {
+  const printed = (over: Partial<Order> = {}) =>
+    order({
+      items: [
+        { variant_id: "v1", product_id: "p1", slug: "maillot", name: "Maillot officiel XBZ", size: "M", quantity: 1, unit_amount: 4999, image: null },
+        {
+          variant_id: "v1",
+          product_id: "p1",
+          slug: "maillot",
+          name: "Maillot officiel XBZ",
+          size: "M",
+          quantity: 1,
+          unit_amount: 5499,
+          image: null,
+          print: { name: "MARTIN", number: "10", extra: 500 },
+        },
+      ],
+      subtotal: "104.98",
+      amount_total: "109.88",
+      ...over,
+    });
+
+  it("par commande : le texte à imprimer figure dans la désignation, entre crochets", () => {
+    const h = exportHeaders({ detail: "commandes", personal: false });
+    const [, line] = parseCsv(toCsv(h, exportRows([printed()], { detail: "commandes", personal: false })));
+    expect(line[h.indexOf("Articles")]).toBe("1 × Maillot officiel XBZ (M) ; 1 × Maillot officiel XBZ (M) [personnalisé : MARTIN · n° 10]");
+  });
+
+  it("par article : colonne « Personnalisation », vide pour l'article ordinaire et pour le port", () => {
+    const detail = { detail: "articles", personal: false } as const;
+    const h = exportHeaders(detail);
+    expect(h[h.length - 1]).toBe("Personnalisation");
+    const [, ...lines] = parseCsv(toCsv(h, exportRows([printed()], detail)));
+    expect(lines.map((l) => l[h.indexOf("Personnalisation")])).toEqual(["", "personnalisé : MARTIN · n° 10", ""]);
+    // Chaque ligne a autant de cellules que d'en-têtes (le port aussi).
+    for (const l of lines) expect(l).toHaveLength(h.length);
+    // Le prix de la ligne personnalisée est le prix PAYÉ : la somme retombe sur le total encaissé.
+    const sum = lines.reduce((n, l) => n + Number(l[h.indexOf("Total ligne (€)")].replace(",", ".")), 0);
+    expect(sum).toBeCloseTo(109.88, 2);
+  });
+
+  it("un texte imprimé n'ouvre jamais de formule dans Excel", () => {
+    // La mise en forme du nom l'interdit déjà ; l'export se protège quand même.
+    const o = printed();
+    o.items[1].print = { name: "=2+2", extra: 0 };
+    const detail = { detail: "articles", personal: false } as const;
+    const h = exportHeaders(detail);
+    const csv = toCsv(h, exportRows([o], detail));
+    expect(csv).toContain('"personnalisé : =2+2"');
+  });
+});
+
 describe("fichier", () => {
   it("BOM UTF-8, séparateur « ; », fins de ligne CRLF, ligne finale terminée", () => {
     const csv = toCsv(["A", "B"], [['"x"', "1,50"]]);

@@ -52,8 +52,11 @@ export type OrderItem = {
   name: string;
   size: string;
   quantity: number;
-  unit_amount: number; // centimes
+  /** Prix unitaire PAYÉ, en centimes, supplément de personnalisation compris. */
+  unit_amount: number;
   image: string | null;
+  /** Personnalisation (nom / numéro) ; `extra` : supplément déjà compris dans `unit_amount`, en centimes. */
+  print?: { name?: string; number?: string; extra: number };
 };
 
 export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled" | "refunded";
@@ -109,19 +112,34 @@ function stockChanged(): void {
 export type ReserveResult =
   | { ok: true; order: Order }
   | { ok: false; reason: "stock"; unavailable: string[] }
-  | { ok: false; reason: "invalid" | "error" };
+  | { ok: false; reason: "invalid" | "personalization" | "error" };
 
 /** Réserve le stock et crée la commande « pending » (tout ou rien). */
 export async function reserveOrder(admin: Admin, lines: CartLine[], locale: string): Promise<ReserveResult> {
   const { data, error } = await admin.rpc("shop_reserve_order", {
-    p_items: lines.map((l) => ({ variant_id: l.variantId, quantity: l.quantity })),
+    p_items: lines.map((l) => ({
+      variant_id: l.variantId,
+      quantity: l.quantity,
+      ...(l.print ? { print_name: l.print.name ?? null, print_number: l.print.number ?? null } : {}),
+    })),
     p_shipping: shippingEuros(),
     p_locale: locale,
     p_ttl_minutes: RESERVATION_MINUTES,
   });
   if (!error && data) {
     stockChanged();
-    return { ok: true, order: data as Order };
+    const order = data as Order;
+    // Garde-fou : chaque article personnalisé demandé doit figurer PERSONNALISÉ sur la
+    // commande. Si la base n'a pas la migration de personnalisation, elle ignorerait le
+    // texte et ferait payer un article ordinaire : on rend le stock et on refuse.
+    const wanted = lines.filter((l) => l.print).length;
+    const got = (Array.isArray(order.items) ? order.items : []).filter((i) => i.print).length;
+    if (got !== wanted) {
+      await release(admin, order.id);
+      console.error("[shop] personnalisation absente de la commande réservée (migration de personnalisation non passée ?)");
+      return { ok: false, reason: "personalization" };
+    }
+    return { ok: true, order };
   }
   if (error?.message === "shop:stock") {
     let unavailable: string[] = [];
@@ -134,6 +152,7 @@ export async function reserveOrder(admin: Admin, lines: CartLine[], locale: stri
     return { ok: false, reason: "stock", unavailable };
   }
   if (error?.message === "shop:quantity" || error?.message === "shop:empty") return { ok: false, reason: "invalid" };
+  if (error?.message === "shop:personalization") return { ok: false, reason: "personalization" };
   console.error("[shop] réservation:", error?.message ?? "aucune donnée");
   return { ok: false, reason: "error" };
 }
@@ -143,6 +162,8 @@ export async function reserveOrder(admin: Admin, lines: CartLine[], locale: stri
 export type CheckoutTexts = {
   /** « Taille {size} » */
   size: (size: string) => string;
+  /** « Personnalisation : MARTIN · n° 10 (supplément de 5,00 € compris) » */
+  print: (print: NonNullable<OrderItem["print"]>) => string;
   shipping: string;
   submit: string;
 };
@@ -170,6 +191,7 @@ export function buildCheckoutParams(order: Order, texts: CheckoutTexts): Stripe.
         unit_amount: item.unit_amount,
         product_data: {
           name: item.size ? `${item.name} — ${texts.size(item.size)}` : item.name,
+          ...(item.print ? { description: texts.print(item.print) } : {}),
           ...(item.image && /^https:\/\//.test(item.image) ? { images: [item.image] } : {}),
           metadata: { variant_id: item.variant_id },
         },
@@ -386,7 +408,7 @@ function notifyStaff(admin: Admin, orderId: string, late: boolean): void {
         .maybeSingle();
       if (!order) return;
       const items = (order.items as OrderItem[])
-        .map((i) => `• ${i.quantity} × ${i.name}${i.size ? ` (${i.size})` : ""}`)
+        .map((i) => `• ${i.quantity} × ${i.name}${i.size ? ` (${i.size})` : ""}${i.print ? " ✏️ personnalisé" : ""}`)
         .join("\n");
       const country = (order.shipping_address as Record<string, string | null> | null)?.country ?? "?";
       const total = formatEuros(Number(order.amount_total ?? 0), "fr");
@@ -401,6 +423,10 @@ function notifyStaff(admin: Admin, orderId: string, late: boolean): void {
               title: `🛒 Nouvelle commande ${orderNumber(order.id)}`,
               description: `${items}\n\n**Total : ${total}** · livraison ${country}${
                 late ? "\n⚠️ Payée après la fin de la réservation : vérifier le stock avant d'expédier." : ""
+              }${
+                (order.items as OrderItem[]).some((i) => i.print)
+                  ? "\n✏️ Article personnalisé : nom et numéro dans le back-office (pas de rétractation possible sur cet article)."
+                  : ""
               }`,
               url: `${siteConfig.url}${localizedPath("/admin/commandes", "fr")}`,
               color: late ? 0xfccd05 : 0xdc2515,

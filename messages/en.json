@@ -253,6 +253,19 @@
     "lowStock": "{count, plural, one {Only one left!} other {Only # left!}}",
     "maxInCart": "All available stock for this size is already in your cart.",
     "cartFull": "Your cart is full (20 different items at most).",
+    "personalize": "Personalise (name and number)",
+    "personalizePrice": "+ {price} per personalised item",
+    "printNameLabel": "Printed name",
+    "printNameHint": "Up to 12 characters, letters only. Printed in capitals.",
+    "printNumberLabel": "Number",
+    "printNumberHint": "From 0 to 99.",
+    "printNumberShort": "No.",
+    "printPreview": "Preview: {text}",
+    "personalizeAck": "I understand that a personalised item cannot be returned or refunded, except for a lack of conformity (article L.221-28 of the French Consumer Code).",
+    "errPrintEmpty": "Enter a name, a number, or both.",
+    "errPrintName": "The name may only contain letters, up to 12 characters.",
+    "errPrintNumber": "The number must be between 0 and 99.",
+    "errPrintAck": "Tick the box to confirm the personalisation.",
     "ctaOpenTitle": "Never miss a drop",
     "ctaOpenText": "Join the Discord to hear about new items and restocks."
   },
@@ -270,7 +283,7 @@
     "delivery": "Shipping and returns",
     "deliveryText": "Shipping costs {price} per order, delivered within {days} working days after payment is confirmed, to France and other European countries (Belgium, Switzerland, Luxembourg, Germany, Spain, Italy, the Netherlands, Portugal, Monaco). Switzerland is outside the European Union: any customs duties and import taxes are at your expense.",
     "returnsText": "You have 14 days after delivery to withdraw, online (<withdraw>“Withdraw from contract here”</withdraw>, also at the bottom of every page) or by email; return shipping is at your expense (see the <cgv>terms of sale</cgv>).",
-    "returnsPersonalized": "Exception: if you have this jersey personalised (name, number), the item personalised at your request cannot be withdrawn from (article L.221-28 of the French Consumer Code).",
+    "returnsPersonalized": "Exception: an item personalised at your request (name, number) cannot be withdrawn from, returned or refunded, except for a lack of conformity (article L.221-28 of the French Consumer Code).",
     "securePayment": "Card payment on a secure Stripe page.",
     "related": "Also in the shop"
   },
@@ -306,12 +319,21 @@
     "errTerms": "Tick the box to accept the terms and conditions of sale.",
     "errStock": "Some items just sold out: they are flagged above. Remove them to continue.",
     "errPayment": "Payment couldn’t start. Try again in a moment.",
-    "errNetwork": "Couldn’t connect. Check your connection and try again."
+    "errNetwork": "Couldn’t connect. Check your connection and try again.",
+    "printLine": "Personalisation: {text}",
+    "printIncluded": "({price} surcharge included in the price)",
+    "personalizedNotice": "Your basket contains a personalised item: it cannot be returned or refunded, except for a lack of conformity (article L.221-28 of the French Consumer Code).",
+    "personalizationOff": "Personalisation unavailable — remove this item.",
+    "errPersonalization": "Personalisation is no longer offered for an item in your basket. Remove it, then add it again without personalisation.",
+    "printNumberShort": "No."
   },
   "checkout": {
     "size": "size {size}",
     "shipping": "Standard shipping",
-    "submit": "Order with obligation to pay. By paying, you accept our terms and conditions of sale: {url}"
+    "submit": "Order with obligation to pay. By paying, you accept our terms and conditions of sale: {url}",
+    "print": "Personalisation: {text} ({extra} surcharge included in the price)",
+    "printFree": "Personalisation: {text}",
+    "printNumber": "No."
   },
   "orderConfirm": {
     "metaTitle": "Order confirmed — XBZ Esport",

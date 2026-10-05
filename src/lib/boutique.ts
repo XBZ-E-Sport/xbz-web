@@ -19,6 +19,8 @@ export const productCategories: ProductCategory[] = ["Textile", "Accessoire", "G
 
 /** Photos supplémentaires au plus par produit (même borne que la contrainte en base). */
 export const MAX_EXTRA_PHOTOS = 8;
+/** Supplément de personnalisation maximal, en euros (même borne qu'en base). */
+export const MAX_PERSONALIZATION_PRICE = 100;
 /** Longueur maximale du guide des tailles, par langue (même borne qu'en base). */
 export const SIZE_GUIDE_MAX = 4000;
 
@@ -42,6 +44,13 @@ export type Product = {
   /** Guide des tailles (texte libre), ou null s'il n'est pas renseigné. */
   sizeGuide: string | null;
   available: boolean; // true → en vente (sinon « bientôt disponible »)
+  /**
+   * Personnalisation nom / numéro proposée (interrupteur du back-office, éteint par
+   * défaut ; toujours faux tant que la migration de personnalisation n'est pas passée).
+   */
+  personalizable: boolean;
+  /** Supplément par pièce personnalisée, en euros TTC. */
+  personalizationPrice: number;
   variants: ProductVariant[]; // tailles, dans l'ordre du back-office
 };
 
@@ -57,6 +66,7 @@ export function isSingleSize(product: Pick<Product, "variants">): boolean {
 
 const BASE_COLS = "slug, name, name_en, description, description_en, price, category, icon, image, available";
 const PAGE_COLS = "images, size_guide, size_guide_en"; // migration_pages_produit_02102026.sql
+const PERSO_COLS = "personalizable, personalization_price"; // migration_personnalisation_05102026.sql
 const VARIANT_COLS = "variants:product_variants(id, size, stock, position)"; // migration boutique
 
 /**
@@ -66,7 +76,9 @@ const VARIANT_COLS = "variants:product_variants(id, size, stock, position)"; // 
  * le catalogue.
  */
 const COLUMN_SETS = [
+  `${BASE_COLS}, ${PERSO_COLS}, ${PAGE_COLS}, ${VARIANT_COLS}`,
   `${BASE_COLS}, ${PAGE_COLS}, ${VARIANT_COLS}`,
+  `${BASE_COLS}, ${PERSO_COLS}, ${VARIANT_COLS}`,
   `${BASE_COLS}, ${VARIANT_COLS}`,
   BASE_COLS,
 ];
@@ -94,6 +106,8 @@ type ProductRow = {
   size_guide?: string | null;
   size_guide_en?: string | null;
   available: boolean | null;
+  personalizable?: boolean | null;
+  personalization_price?: number | string | null;
   variants?: { id: string; size: string | null; stock: number | null; position: number | null }[] | null;
 };
 
@@ -110,6 +124,8 @@ function toProduct(row: ProductRow, locale: string): Product {
     images: [...new Set([row.image, ...(row.images ?? [])].filter((u): u is string => Boolean(u)))],
     sizeGuide: localizedText(row.size_guide, row.size_guide_en, locale)?.trim() || null,
     available: Boolean(row.available),
+    personalizable: row.personalizable === true,
+    personalizationPrice: Math.max(0, Number(row.personalization_price ?? 0)) || 0,
     variants: (row.variants ?? [])
       .slice()
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))

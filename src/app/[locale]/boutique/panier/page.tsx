@@ -43,6 +43,8 @@ export default async function CartPage({ params }: PageProps) {
     image: p.image,
     icon: p.icon,
     available: p.available,
+    personalizable: p.personalizable,
+    personalizationPrice: p.personalizationPrice,
     variants: p.variants,
   }));
 

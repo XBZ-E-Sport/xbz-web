@@ -22,13 +22,32 @@ export default async function AdminBoutiquePage() {
   const select = (cols: string) =>
     admin.from("products").select(cols).order("position", { ascending: true }).order("created_at", { ascending: true });
 
-  // Photos supplémentaires et guide des tailles : seulement une fois la
-  // migration des pages produit passée. Avant, la page reste utilisable.
-  let pageColumns = true;
-  let { data, error } = await select(`${base}, images, size_guide, size_guide_en`);
-  if (error?.code === "42703") {
-    pageColumns = false;
-    ({ data, error } = await select(base));
+  // Photos supplémentaires, guide des tailles (migration des pages produit) et
+  // personnalisation (migration de personnalisation) : seulement une fois ces
+  // migrations passées. Avant, la page reste utilisable avec ce qui existe.
+  const PAGE = "images, size_guide, size_guide_en";
+  const PERSO = "personalizable, personalization_price";
+  const attempts = [
+    { page: true, perso: true, cols: `${base}, ${PERSO}, ${PAGE}` },
+    { page: true, perso: false, cols: `${base}, ${PAGE}` },
+    { page: false, perso: true, cols: `${base}, ${PERSO}` },
+    { page: false, perso: false, cols: base },
+  ];
+  let pageColumns = false;
+  let persoColumns = false;
+  let data: unknown[] | null = null;
+  let error: { code?: string; message: string } | null = null;
+  for (const a of attempts) {
+    const res = await select(a.cols);
+    data = res.data as unknown[] | null;
+    error = res.error;
+    if (!error) {
+      pageColumns = a.page;
+      persoColumns = a.perso;
+      break;
+    }
+    // Seule une colonne absente justifie de redemander moins ; toute autre erreur s'affiche.
+    if (error.code !== "42703") break;
   }
 
   if (error) {
@@ -56,7 +75,12 @@ export default async function AdminBoutiquePage() {
       {/* Ajouter un produit */}
       <section className="card-xbz p-6">
         <h2 className="mb-4 font-display text-lg text-white">➕ Nouveau produit</h2>
-        <ProductForm action={createProduct} submitLabel="Ajouter le produit" sizeGuide={pageColumns} />
+        <ProductForm
+          action={createProduct}
+          submitLabel="Ajouter le produit"
+          sizeGuide={pageColumns}
+          personalization={persoColumns}
+        />
       </section>
 
       {/* Liste */}
@@ -117,7 +141,19 @@ export default async function AdminBoutiquePage() {
                         « migration_pages_produit_02102026.sql » dans Supabase pour les activer.
                       </p>
                     )}
-                    <ProductForm action={updateProduct} product={p} submitLabel="Enregistrer" sizeGuide={pageColumns} />
+                    <ProductForm
+                      action={updateProduct}
+                      product={p}
+                      submitLabel="Enregistrer"
+                      sizeGuide={pageColumns}
+                      personalization={persoColumns}
+                    />
+                    {!persoColumns && (
+                      <p className="mt-3 rounded-lg bg-white/5 p-3 text-sm text-neutral-400">
+                        Personnalisation nom et numéro : exécute la migration
+                        « migration_personnalisation_05102026.sql » dans Supabase pour l’activer.
+                      </p>
+                    )}
                     <AdminForm
                       action={deleteProduct}
                       className="mt-3"

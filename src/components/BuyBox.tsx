@@ -1,26 +1,52 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 // Type seulement : lib/boutique tire le client Supabase serveur.
 import type { Product } from "@/lib/boutique";
 import { CART_MAX_QUANTITY } from "@/lib/cart";
 import { addToCart, useCart } from "@/lib/cart-store";
+import { formatEuros } from "@/lib/money";
+import { PRINT_NAME_MAX, normalizePrintName, normalizePrintNumber, parsePrint, printText } from "@/lib/personalization";
 
 /** Seuil sous lequel on prévient qu'il reste peu de pièces. */
 const LOW_STOCK = 3;
 
-type AddStatus = "added" | "chooseSize" | "max" | "full";
+type AddStatus =
+  | "added"
+  | "chooseSize"
+  | "max"
+  | "full"
+  | "printEmpty"
+  | "printName"
+  | "printNumber"
+  | "printAck";
+
+const inputCls =
+  "w-full rounded-md border border-white/20 bg-[#111] px-3 py-2 text-sm text-white placeholder:text-neutral-500 outline-none focus-visible:border-xbz-cyan";
 
 /**
  * Achat d'un produit : choix de la taille (si plusieurs), puis ajout au panier.
  * Les tailles épuisées restent visibles, barrées et non cliquables : le client
  * voit ce qui existe et ce qui reviendra.
+ *
+ * `personalization` (page produit seulement) propose, si le produit l'autorise
+ * (interrupteur du back-office), le nom et le numéro à imprimer. La personnalisation
+ * est facultative : sans elle, c'est l'article ordinaire au prix ordinaire.
  */
-export default function BuyBox({ product, open }: { product: Product; open: boolean }) {
+export default function BuyBox({
+  product,
+  open,
+  personalization = false,
+}: {
+  product: Product;
+  open: boolean;
+  personalization?: boolean;
+}) {
   const t = useTranslations("boutique");
+  const locale = useLocale();
   const uid = useId();
   const cart = useCart();
   const single = product.variants.length === 1 && product.variants[0].size === "";
@@ -30,6 +56,11 @@ export default function BuyBox({ product, open }: { product: Product; open: bool
     single || inStock.length === 1 ? (inStock[0]?.id ?? null) : null,
   );
   const [status, setStatus] = useState<AddStatus | null>(null);
+  const canPersonalize = personalization && product.personalizable;
+  const [personalize, setPersonalize] = useState(false);
+  const [printName, setPrintName] = useState("");
+  const [printNumber, setPrintNumber] = useState("");
+  const [ack, setAck] = useState(false);
 
   if (!open || !product.available) {
     return (
@@ -47,20 +78,38 @@ export default function BuyBox({ product, open }: { product: Product; open: bool
   }
 
   const variant = product.variants.find((v) => v.id === chosen) ?? null;
-  const inCart = variant ? (cart.find((l) => l.variantId === variant.id)?.quantity ?? 0) : 0;
+  // Pièces de cette taille déjà au panier, avec ou sans personnalisation.
+  const inCart = variant ? cart.reduce((n, l) => (l.variantId === variant.id ? n + l.quantity : n), 0) : 0;
 
   function add() {
     if (!variant) {
       setStatus("chooseSize");
       return;
     }
+    let print;
+    if (canPersonalize && personalize) {
+      print = parsePrint({ name: printName, number: printNumber });
+      if (print === undefined) return setStatus("printEmpty");
+      if (print === null) {
+        // Dire QUEL champ est refusé.
+        const nameBad = printName.trim() !== "" && normalizePrintName(printName) === null;
+        const numberBad = printNumber.trim() !== "" && normalizePrintNumber(printNumber) === null;
+        return setStatus(nameBad || !numberBad ? "printName" : "printNumber");
+      }
+      if (!ack) return setStatus("printAck");
+    }
     const max = Math.min(CART_MAX_QUANTITY, variant.stock);
     if (inCart >= max) {
       setStatus("max");
       return;
     }
-    setStatus(addToCart(variant.id, 1, max) > 0 ? "added" : "full");
+    setStatus(addToCart(variant.id, 1, max, print) > 0 ? "added" : "full");
   }
+
+  const preview = (() => {
+    const p = parsePrint({ name: printName, number: printNumber });
+    return p ? printText(p, t("printNumberShort")) : "";
+  })();
 
   return (
     <div className="flex flex-col gap-3">
@@ -103,6 +152,102 @@ export default function BuyBox({ product, open }: { product: Product; open: bool
         </fieldset>
       )}
 
+      {canPersonalize && (
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-white/15 p-3">
+          <legend className="sr-only">{t("personalize")}</legend>
+          <div className="flex items-start gap-2 text-sm text-neutral-200">
+            <input
+              id={`${uid}-perso`}
+              type="checkbox"
+              checked={personalize}
+              onChange={(e) => {
+                setPersonalize(e.target.checked);
+                setStatus(null);
+              }}
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            <label htmlFor={`${uid}-perso`} className="font-semibold">
+              {t("personalize")}
+              {product.personalizationPrice > 0 && (
+                <span className="block text-xs font-normal text-neutral-400">
+                  {t("personalizePrice", { price: formatEuros(product.personalizationPrice, locale) })}
+                </span>
+              )}
+            </label>
+          </div>
+
+          {personalize && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-[1fr_6rem]">
+                <div>
+                  <label htmlFor={`${uid}-print-name`} className="mb-1 block text-xs font-semibold text-neutral-300">
+                    {t("printNameLabel")}
+                  </label>
+                  <input
+                    id={`${uid}-print-name`}
+                    type="text"
+                    value={printName}
+                    onChange={(e) => {
+                      setPrintName(e.target.value);
+                      setStatus(null);
+                    }}
+                    maxLength={PRINT_NAME_MAX}
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    aria-describedby={`${uid}-print-name-hint`}
+                    className={`${inputCls} uppercase`}
+                  />
+                  <p id={`${uid}-print-name-hint`} className="mt-1 text-xs text-neutral-400">
+                    {t("printNameHint")}
+                  </p>
+                </div>
+                <div>
+                  <label htmlFor={`${uid}-print-number`} className="mb-1 block text-xs font-semibold text-neutral-300">
+                    {t("printNumberLabel")}
+                  </label>
+                  <input
+                    id={`${uid}-print-number`}
+                    type="text"
+                    inputMode="numeric"
+                    value={printNumber}
+                    onChange={(e) => {
+                      setPrintNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 2));
+                      setStatus(null);
+                    }}
+                    maxLength={2}
+                    autoComplete="off"
+                    aria-describedby={`${uid}-print-number-hint`}
+                    className={inputCls}
+                  />
+                  <p id={`${uid}-print-number-hint`} className="mt-1 text-xs text-neutral-400">
+                    {t("printNumberHint")}
+                  </p>
+                </div>
+              </div>
+              {preview && (
+                <p className="rounded-md bg-white/5 px-3 py-2 text-center font-display text-sm tracking-wide text-white">
+                  {t("printPreview", { text: preview })}
+                </p>
+              )}
+              <div className="flex items-start gap-2 text-xs text-neutral-300">
+                <input
+                  id={`${uid}-print-ack`}
+                  type="checkbox"
+                  checked={ack}
+                  onChange={(e) => {
+                    setAck(e.target.checked);
+                    setStatus(null);
+                  }}
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                />
+                <label htmlFor={`${uid}-print-ack`}>{t("personalizeAck")}</label>
+              </div>
+            </>
+          )}
+        </fieldset>
+      )}
+
       {variant && variant.stock <= LOW_STOCK && (
         <p className="text-xs font-semibold text-xbz-cyan">{t("lowStock", { count: variant.stock })}</p>
       )}
@@ -128,6 +273,10 @@ export default function BuyBox({ product, open }: { product: Product; open: bool
         {status === "chooseSize" && <span className="text-xbz-red-light">{t("chooseSize")}</span>}
         {status === "max" && <span className="text-neutral-300">{t("maxInCart")}</span>}
         {status === "full" && <span className="text-xbz-red-light">{t("cartFull")}</span>}
+        {status === "printEmpty" && <span className="text-xbz-red-light">{t("errPrintEmpty")}</span>}
+        {status === "printName" && <span className="text-xbz-red-light">{t("errPrintName")}</span>}
+        {status === "printNumber" && <span className="text-xbz-red-light">{t("errPrintNumber")}</span>}
+        {status === "printAck" && <span className="text-xbz-red-light">{t("errPrintAck")}</span>}
       </p>
     </div>
   );

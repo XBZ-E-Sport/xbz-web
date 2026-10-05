@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
+import { lineKey } from "@/lib/cart";
 import { CART_STORAGE_KEY, addToCart, clearCart, getCart, removeFromCart, setCartQuantity, useCart } from "@/lib/cart-store";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -68,5 +69,60 @@ describe("panier du navigateur", () => {
   it("renvoie la même référence tant que rien ne change (sinon React boucle)", () => {
     addToCart(id(1));
     expect(getCart()).toBe(getCart());
+  });
+});
+
+describe("panier du navigateur : articles personnalisés", () => {
+  const martin = { name: "MARTIN", number: "10" };
+
+  it("même taille, texte différent : deux lignes ; même texte : une ligne cumulée", () => {
+    addToCart(id(1), 1, 5);
+    addToCart(id(1), 1, 5, martin);
+    addToCart(id(1), 1, 5, martin);
+    expect(getCart()).toEqual([
+      { variantId: id(1), quantity: 1 },
+      { variantId: id(1), quantity: 2, print: martin },
+    ]);
+    expect(stored()).toEqual(getCart());
+  });
+
+  it("le stock se compte PAR TAILLE, toutes lignes confondues", () => {
+    expect(addToCart(id(1), 2, 3)).toBe(2);
+    expect(addToCart(id(1), 2, 3, martin)).toBe(1);
+    expect(addToCart(id(1), 1, 3, { name: "AUTRE" })).toBe(0);
+    expect(getCart().reduce((n, l) => n + l.quantity, 0)).toBe(3);
+  });
+
+  it("le plafond de 20 lignes compte aussi les lignes personnalisées", () => {
+    for (let i = 1; i <= 19; i += 1) addToCart(id(i));
+    expect(addToCart(id(1), 1, 10, martin)).toBe(1);
+    expect(addToCart(id(1), 1, 10, { name: "AUTRE" })).toBe(0);
+    expect(getCart()).toHaveLength(20);
+  });
+
+  it("modifier / retirer une ligne par sa clé, sans toucher aux autres lignes de la taille", () => {
+    addToCart(id(1), 2, 10);
+    addToCart(id(1), 3, 10, martin);
+    const key = lineKey({ variantId: id(1), print: martin });
+    setCartQuantity(key, 1);
+    expect(getCart()).toEqual([
+      { variantId: id(1), quantity: 2 },
+      { variantId: id(1), quantity: 1, print: martin },
+    ]);
+    removeFromCart(key);
+    expect(getCart()).toEqual([{ variantId: id(1), quantity: 2 }]);
+  });
+
+  it("augmenter une ligne ne dépasse jamais 10 pièces pour la taille", () => {
+    addToCart(id(1), 7, 10);
+    addToCart(id(1), 2, 10, martin);
+    setCartQuantity(lineKey({ variantId: id(1), print: martin }), 9);
+    expect(getCart()[1].quantity).toBe(3);
+  });
+
+  it("une clé inconnue ne change rien", () => {
+    addToCart(id(1), 1);
+    setCartQuantity("inconnue", 5);
+    expect(getCart()).toEqual([{ variantId: id(1), quantity: 1 }]);
   });
 });

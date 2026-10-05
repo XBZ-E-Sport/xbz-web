@@ -13,6 +13,8 @@ import {
   sweepStaleReservations,
 } from "@/lib/shop";
 import { liveBlockers } from "@/lib/go-live";
+import { formatEuros } from "@/lib/money";
+import { printText } from "@/lib/personalization";
 import { withdrawalTableReady } from "@/lib/withdrawal-server";
 import { isLiveStripeKey, isStripeConfigured, stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,6 +31,7 @@ import { absoluteUrl, localizedPath } from "@/lib/site";
 //   invalid     400  panier mal formé
 //   terms       422  CGV non acceptées
 //   stock       409  une ou plusieurs tailles plus disponibles (`unavailable`)
+//   personalization 422  personnalisation refusée (produit qui ne la propose plus, texte invalide)
 //   payment     502  Stripe n'a pas pu ouvrir la page de paiement
 
 export const runtime = "nodejs";
@@ -101,6 +104,7 @@ export async function POST(request: Request) {
   if (!reserved.ok) {
     if (reserved.reason === "stock") return fail(409, "stock", { unavailable: reserved.unavailable });
     if (reserved.reason === "invalid") return fail(400, "invalid");
+    if (reserved.reason === "personalization") return fail(422, "personalization");
     return fail(502, "payment");
   }
   const { order } = reserved;
@@ -111,6 +115,12 @@ export async function POST(request: Request) {
     const session = await stripe().checkout.sessions.create(
       buildCheckoutParams(order, {
         size: (size) => t("size", { size }),
+        print: (p) => {
+          const text = printText(p, t("printNumber"));
+          return p.extra > 0
+            ? t("print", { text, extra: formatEuros(p.extra / 100, locale) })
+            : t("printFree", { text });
+        },
         shipping: t("shipping"),
         submit: t("submit", { url: absoluteUrl(localizedPath("/cgv", locale)) }),
       }),

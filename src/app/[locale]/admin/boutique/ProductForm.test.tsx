@@ -38,7 +38,7 @@ const product: ProductRow = {
 
 describe("ProductForm — exemples", () => {
   it("chaque exemple de saisie est annoncé par « ex. » (ce n'est pas une vraie valeur)", () => {
-    const { container } = render(<ProductForm action={vi.fn()} submitLabel="Ajouter" sizeGuide />);
+    const { container } = render(<ProductForm action={vi.fn()} submitLabel="Ajouter" sizeGuide personalization />);
     const placeholders = [...container.querySelectorAll<HTMLElement>("input[placeholder], textarea[placeholder]")]
       .map((el) => el.getAttribute("placeholder")!)
       // Consignes, pas des exemples de valeur.
@@ -97,8 +97,41 @@ describe("page Boutique du back-office", () => {
   it("les photos passent AVANT le formulaire du produit (elles étaient sous « Enregistrer », inaperçues)", () => {
     const src = readFileSync("src/app/[locale]/admin/boutique/page.tsx", "utf8");
     const photos = src.indexOf("<ProductPhotos product={p}");
-    const form = src.indexOf("<ProductForm action={updateProduct}");
+    const form = src.indexOf("action={updateProduct}");
     expect(photos).toBeGreaterThan(-1);
     expect(photos).toBeLessThan(form);
   });
 });
+
+describe("ProductForm — personnalisation", () => {
+  it("absente tant que la migration n'est pas passée (aucun champ envoyé)", () => {
+    const { container } = render(<ProductForm action={vi.fn()} product={product} submitLabel="Enregistrer" />);
+    expect(container.querySelector('input[name="personalizable"]')).toBeNull();
+    expect(container.querySelector('input[name="personalization_price"]')).toBeNull();
+  });
+
+  it("éteinte par défaut sur un nouveau produit, avec un supplément à 0", () => {
+    const { container } = render(<ProductForm action={vi.fn()} submitLabel="Ajouter" personalization />);
+    expect(container.querySelector<HTMLInputElement>('input[name="personalizable"]')!.checked).toBe(false);
+    expect(container.querySelector<HTMLInputElement>('input[name="personalization_price"]')!.value).toBe("0");
+  });
+
+  it("reflète l'état du produit : case cochée et supplément à virgule française", () => {
+    const { container } = render(
+      <ProductForm
+        action={vi.fn()}
+        product={{ ...product, personalizable: true, personalization_price: "5.50" }}
+        submitLabel="Enregistrer"
+        personalization
+      />,
+    );
+    expect(container.querySelector<HTMLInputElement>('input[name="personalizable"]')!.checked).toBe(true);
+    expect(container.querySelector<HTMLInputElement>('input[name="personalization_price"]')!.value).toBe("5,5");
+  });
+
+  it("explique l'interrupteur et l'exclusion de la rétractation", () => {
+    render(<ProductForm action={vi.fn()} submitLabel="Ajouter" personalization />);
+    expect(screen.getByText(/exclu du droit de rétractation/)).toBeTruthy();
+  });
+});
+

@@ -253,6 +253,19 @@
     "lowStock": "{count, plural, one {Plus qu’une pièce !} other {Plus que # pièces !}}",
     "maxInCart": "Tout le stock disponible de cette taille est déjà dans ton panier.",
     "cartFull": "Ton panier est plein (20 articles différents au plus).",
+    "personalize": "Personnaliser (nom et numéro)",
+    "personalizePrice": "+ {price} par pièce personnalisée",
+    "printNameLabel": "Nom imprimé",
+    "printNameHint": "12 caractères au plus, lettres seulement. Imprimé en majuscules.",
+    "printNumberLabel": "Numéro",
+    "printNumberHint": "De 0 à 99.",
+    "printNumberShort": "n°",
+    "printPreview": "Aperçu : {text}",
+    "personalizeAck": "J’ai compris qu’un article personnalisé n’est ni repris ni remboursé, sauf défaut de conformité (article L.221-28 du Code de la consommation).",
+    "errPrintEmpty": "Indique un nom, un numéro, ou les deux.",
+    "errPrintName": "Le nom ne doit contenir que des lettres, 12 caractères au plus.",
+    "errPrintNumber": "Le numéro doit être compris entre 0 et 99.",
+    "errPrintAck": "Coche la case pour confirmer la personnalisation.",
     "ctaOpenTitle": "Ne rate aucun drop",
     "ctaOpenText": "Rejoins le Discord pour être prévenu des nouveautés et des réassorts."
   },
@@ -270,7 +283,7 @@
     "delivery": "Livraison et retours",
     "deliveryText": "Livraison à {price} par commande, sous {days} jours ouvrés après confirmation du paiement, en France et dans d'autres pays d'Europe (Belgique, Suisse, Luxembourg, Allemagne, Espagne, Italie, Pays-Bas, Portugal, Monaco). Hors Union européenne (Suisse) : droits de douane et taxes d'importation éventuels à ta charge.",
     "returnsText": "Tu disposes de 14 jours après réception pour te rétracter, en ligne (<withdraw>« Renoncer au contrat ici »</withdraw>, aussi en bas de chaque page) ou par e-mail ; les frais de retour sont à ta charge (voir les <cgv>conditions générales de vente</cgv>).",
-    "returnsPersonalized": "Exception : si tu fais personnaliser ce maillot (nom, numéro), l’article personnalisé à ta demande ne peut pas être rétracté (article L.221-28 du Code de la consommation).",
+    "returnsPersonalized": "Exception : un article personnalisé à ta demande (nom, numéro) ne peut pas être rétracté, ni repris ni remboursé sauf défaut de conformité (article L.221-28 du Code de la consommation).",
     "securePayment": "Paiement par carte sur une page sécurisée Stripe.",
     "related": "Dans la boutique aussi"
   },
@@ -306,12 +319,21 @@
     "errTerms": "Coche la case pour accepter les conditions générales de vente.",
     "errStock": "Certains articles viennent d’être épuisés : ils sont signalés ci-dessus. Retire-les pour continuer.",
     "errPayment": "Le paiement n’a pas pu démarrer. Réessaie dans un instant.",
-    "errNetwork": "Connexion impossible. Vérifie ton réseau et réessaie."
+    "errNetwork": "Connexion impossible. Vérifie ton réseau et réessaie.",
+    "printLine": "Personnalisation : {text}",
+    "printIncluded": "(supplément de {price} compris dans le prix)",
+    "personalizedNotice": "Ton panier contient un article personnalisé : il n’est ni repris ni remboursé, sauf défaut de conformité (article L.221-28 du Code de la consommation).",
+    "personalizationOff": "Personnalisation indisponible — retire cet article.",
+    "errPersonalization": "La personnalisation n’est plus proposée pour un article de ton panier. Retire-le, puis ajoute-le de nouveau sans personnalisation.",
+    "printNumberShort": "n°"
   },
   "checkout": {
     "size": "taille {size}",
     "shipping": "Livraison standard",
-    "submit": "Commande avec obligation de paiement. En payant, tu acceptes nos conditions générales de vente : {url}"
+    "submit": "Commande avec obligation de paiement. En payant, tu acceptes nos conditions générales de vente : {url}",
+    "print": "Personnalisation : {text} (supplément de {extra} compris dans le prix)",
+    "printFree": "Personnalisation : {text}",
+    "printNumber": "n°"
   },
   "orderConfirm": {
     "metaTitle": "Commande confirmée — XBZ Esport",

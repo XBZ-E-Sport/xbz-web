@@ -9,7 +9,8 @@
 
 import { useSyncExternalStore } from "react";
 
-import { CART_MAX_LINES, CART_MAX_QUANTITY, sanitizeCart, type CartLine } from "@/lib/cart";
+import { CART_MAX_LINES, CART_MAX_QUANTITY, lineKey, sanitizeCart, type CartLine } from "@/lib/cart";
+import type { Print } from "@/lib/personalization";
 
 export const CART_STORAGE_KEY = "xbz-cart-v1";
 
@@ -88,31 +89,49 @@ export function getCart(): CartLine[] {
   return read();
 }
 
+/** Pièces d'une taille déjà au panier, toutes personnalisations confondues. */
+function inCartFor(lines: readonly CartLine[], variantId: string): number {
+  return lines.reduce((n, l) => (l.variantId === variantId ? n + l.quantity : n), 0);
+}
+
 /**
- * Ajoute des pièces d'une taille. Renvoie la quantité réellement ajoutée :
- * moins que demandé si la ligne atteint `max` (le stock affiché, 10 au plus),
- * 0 si le panier a déjà 20 tailles différentes.
+ * Ajoute des pièces d'une taille (avec, le cas échéant, son texte à imprimer).
+ * Renvoie la quantité réellement ajoutée : moins que demandé si la TAILLE atteint
+ * `max` (le stock affiché, 10 au plus, toutes personnalisations confondues),
+ * 0 si le panier a déjà 20 lignes.
  */
-export function addToCart(variantId: string, quantity = 1, max = CART_MAX_QUANTITY): number {
+export function addToCart(variantId: string, quantity = 1, max = CART_MAX_QUANTITY, print?: Print): number {
   const lines = read();
-  const existing = lines.find((l) => l.variantId === variantId);
+  const key = lineKey({ variantId, print });
+  const existing = lines.find((l) => lineKey(l) === key);
   if (!existing && lines.length >= CART_MAX_LINES) return 0;
-  const before = existing?.quantity ?? 0;
-  const after = Math.max(before, Math.min(CART_MAX_QUANTITY, max, before + quantity));
-  if (after === before) return 0;
-  write(existing ? lines.map((l) => (l.variantId === variantId ? { ...l, quantity: after } : l)) : [...lines, { variantId, quantity: after }]);
-  return after - before;
+  const room = Math.min(CART_MAX_QUANTITY, max) - inCartFor(lines, variantId);
+  const added = Math.min(quantity, room);
+  if (added < 1) return 0;
+  write(
+    existing
+      ? lines.map((l) => (lineKey(l) === key ? { ...l, quantity: l.quantity + added } : l))
+      : [...lines, print ? { variantId, quantity: added, print } : { variantId, quantity: added }],
+  );
+  return added;
 }
 
-/** Fixe la quantité d'une ligne (0 la retire). */
-export function setCartQuantity(variantId: string, quantity: number): void {
-  const q = Math.max(0, Math.min(CART_MAX_QUANTITY, Math.floor(quantity)));
+/**
+ * Fixe la quantité d'une ligne (0 la retire). `key` est `lineKey(ligne)` : pour
+ * une ligne sans personnalisation, c'est simplement l'identifiant de la taille.
+ * Jamais plus de 10 pièces par taille, toutes lignes confondues.
+ */
+export function setCartQuantity(key: string, quantity: number): void {
   const lines = read();
-  write(q === 0 ? lines.filter((l) => l.variantId !== variantId) : lines.map((l) => (l.variantId === variantId ? { ...l, quantity: q } : l)));
+  const target = lines.find((l) => lineKey(l) === key);
+  if (!target) return;
+  const others = inCartFor(lines, target.variantId) - target.quantity;
+  const q = Math.max(0, Math.min(CART_MAX_QUANTITY - others, Math.floor(quantity)));
+  write(q === 0 ? lines.filter((l) => lineKey(l) !== key) : lines.map((l) => (lineKey(l) === key ? { ...l, quantity: q } : l)));
 }
 
-export function removeFromCart(variantId: string): void {
-  setCartQuantity(variantId, 0);
+export function removeFromCart(key: string): void {
+  setCartQuantity(key, 0);
 }
 
 export function clearCart(): void {

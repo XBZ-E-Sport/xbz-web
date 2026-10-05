@@ -83,15 +83,50 @@ describe("catalogue", () => {
     const old = Object.fromEntries(Object.entries(row).filter(([k]) => !k.startsWith("size_guide") && k !== "images"));
     db.replies = [
       { data: null, error: { code: "42703", message: "column products.images does not exist" } },
+      { data: null, error: { code: "42703", message: "column products.images does not exist" } },
       { data: [old], error: null },
     ];
     const [p] = await getProducts("fr");
-    expect(db.selects).toHaveLength(2);
-    expect(db.selects[1]).not.toContain("images");
-    expect(db.selects[1]).toContain("variants:product_variants");
+    expect(db.selects).toHaveLength(3);
+    expect(db.selects[2]).not.toContain("images");
+    expect(db.selects[2]).toContain("variants:product_variants");
     expect(p.images).toEqual([row.image]);
     expect(p.sizeGuide).toBeNull();
     expect(p.variants).toHaveLength(2);
+  });
+
+  it("personnalisation : interrupteur et supplément lus (numeric en chaîne)", async () => {
+    db.replies = [{ data: [{ ...row, personalizable: true, personalization_price: "5.00" }], error: null }];
+    const [p] = await getProducts("fr");
+    expect(db.selects[0]).toContain("personalizable, personalization_price");
+    expect(p.personalizable).toBe(true);
+    expect(p.personalizationPrice).toBe(5);
+  });
+
+  it("personnalisation éteinte par défaut : colonne absente, null ou valeur étrangère", async () => {
+    db.replies = [{ data: [row], error: null }, { data: [{ ...row, personalizable: null, personalization_price: null }], error: null }];
+    expect((await getProducts("fr"))[0]).toMatchObject({ personalizable: false, personalizationPrice: 0 });
+    expect((await getProducts("fr"))[0]).toMatchObject({ personalizable: false, personalizationPrice: 0 });
+  });
+
+  it("supplément négatif ou illisible : 0", async () => {
+    db.replies = [{ data: [{ ...row, personalizable: true, personalization_price: "-3" }], error: null }];
+    expect((await getProducts("fr"))[0].personalizationPrice).toBe(0);
+    db.replies = [{ data: [{ ...row, personalizable: true, personalization_price: "abc" }], error: null }];
+    expect((await getProducts("fr"))[0].personalizationPrice).toBe(0);
+  });
+
+  it("migration de personnalisation pas encore passée : pages produit conservées, personnalisation éteinte", async () => {
+    db.replies = [
+      { data: null, error: { code: "42703", message: "column products.personalizable does not exist" } },
+      { data: [row], error: null },
+    ];
+    const [p] = await getProducts("fr");
+    expect(db.selects).toHaveLength(2);
+    expect(db.selects[1]).not.toContain("personalizable");
+    expect(db.selects[1]).toContain("images, size_guide, size_guide_en");
+    expect(p.personalizable).toBe(false);
+    expect(p.images).toHaveLength(2);
   });
 
   it("table des tailles absente aussi : produits affichés, rien en vente", async () => {

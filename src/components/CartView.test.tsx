@@ -7,16 +7,17 @@ const router = { refresh, replace };
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => router }));
 
 import CartView, { type CartProduct } from "@/components/CartView";
+import type { CartLine } from "@/lib/cart";
 import { CART_STORAGE_KEY, clearCart } from "@/lib/cart-store";
 import { renderIntl, messages } from "../../test/intl";
 
 const fr = messages("fr");
 const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
 const products: CartProduct[] = [
-  { slug: "maillot", name: "Maillot officiel XBZ", price: 49.99, image: null, icon: "👕", available: true, variants: [{ id: id(1), size: "M", stock: 2 }, { id: id(2), size: "L", stock: 0 }] },
-  { slug: "mug", name: "Mug XBZ", price: 14.99, image: null, icon: "☕", available: true, variants: [{ id: id(3), size: "", stock: 5 }] },
+  { slug: "maillot", name: "Maillot officiel XBZ", price: 49.99, image: null, icon: "👕", available: true, personalizable: true, personalizationPrice: 5, variants: [{ id: id(1), size: "M", stock: 2 }, { id: id(2), size: "L", stock: 0 }] },
+  { slug: "mug", name: "Mug XBZ", price: 14.99, image: null, icon: "☕", available: true, personalizable: false, personalizationPrice: 0, variants: [{ id: id(3), size: "", stock: 5 }] },
 ];
-const setCart = (lines: { variantId: string; quantity: number }[]) => localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines));
+const setCart = (lines: CartLine[]) => localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(lines));
 const render = (open = true) => renderIntl(<CartView products={products} shipping={4.9} open={open} />);
 const fetchMock = vi.fn();
 
@@ -157,3 +158,90 @@ describe("CartView", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("CartView : articles personnalisés", () => {
+  const martin = { name: "MARTIN", number: "10" };
+  // Maillot M : stock 2, supplément 5 €.
+
+  it("affiche le texte imprimé, le prix unitaire AVEC supplément et l'avertissement de rétractation", () => {
+    setCart([{ variantId: id(1), quantity: 1, print: martin }]);
+    render();
+    expect(screen.getByText(/MARTIN · n° 10/)).toBeTruthy();
+    // 49,99 + 5 = 54,99 ; + 4,90 de port = 59,89
+    expect(screen.getAllByText("54,99 €").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /obligation de paiement · 59,89/ })).toBeTruthy();
+    expect(screen.getByText(fr.cart.personalizedNotice)).toBeTruthy();
+  });
+
+  it("sans article personnalisé : pas d'avertissement", () => {
+    setCart([{ variantId: id(1), quantity: 1 }]);
+    render();
+    expect(screen.queryByText(fr.cart.personalizedNotice)).toBeNull();
+  });
+
+  it("même taille, texte différent : deux lignes distinctes, chacune avec son prix", () => {
+    setCart([{ variantId: id(1), quantity: 1 }, { variantId: id(1), quantity: 1, print: martin }]);
+    render();
+    expect(screen.getAllByRole("listitem").filter((li) => li.textContent?.includes("Maillot officiel XBZ"))).toHaveLength(2);
+    // 49,99 + 54,99 = 104,98 ; + 4,90 de port = 109,88
+    expect(screen.getByRole("button", { name: /obligation de paiement · 109,88/ })).toBeTruthy();
+  });
+
+  it("le stock de la taille est PARTAGÉ entre les lignes : « + » bloqué quand la taille est au maximum", () => {
+    setCart([{ variantId: id(1), quantity: 1 }, { variantId: id(1), quantity: 1, print: martin }]);
+    render();
+    for (const plus of screen.getAllByRole("button", { name: /Ajouter une pièce/ })) {
+      expect((plus as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  it("stock réduit depuis l'ajout : les DERNIÈRES lignes de la taille sont ramenées au disponible", async () => {
+    setCart([{ variantId: id(1), quantity: 2 }, { variantId: id(1), quantity: 2, print: martin }]);
+    render();
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(CART_STORAGE_KEY)!)).toEqual([{ variantId: id(1), quantity: 2 }]));
+  });
+
+  it("modifier une ligne personnalisée ne touche pas la ligne ordinaire de la même taille", () => {
+    setCart([{ variantId: id(3), quantity: 1 }, { variantId: id(1), quantity: 1, print: martin }]);
+    render();
+    // Deux lignes : le mug, puis le maillot personnalisé. On retire le maillot.
+    const [, retirerMaillot] = screen.getAllByRole("button", { name: /du panier/ });
+    fireEvent.click(retirerMaillot);
+    expect(JSON.parse(localStorage.getItem(CART_STORAGE_KEY)!)).toEqual([{ variantId: id(3), quantity: 1 }]);
+  });
+
+  it("le paiement envoie le texte à imprimer, jamais un prix ni un supplément", async () => {
+    setCart([{ variantId: id(1), quantity: 1, print: martin }]);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "", pathname: "/fr/boutique/panier" });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_1" }) });
+    render();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
+    await waitFor(() => expect(assign).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      lines: [{ variantId: id(1), quantity: 1, print: martin }],
+      locale: "fr",
+      terms: true,
+    });
+  });
+
+  it("personnalisation retirée de la boutique depuis l'ajout : ligne signalée, exclue du total et du paiement", () => {
+    const off = products.map((p) => (p.slug === "maillot" ? { ...p, personalizable: false } : p));
+    setCart([{ variantId: id(1), quantity: 1, print: martin }, { variantId: id(3), quantity: 1 }]);
+    renderIntl(<CartView products={off} shipping={4.9} open />);
+    expect(screen.getByText(fr.cart.personalizationOff)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /obligation de paiement · 19,89/ })).toBeTruthy();
+    expect(screen.queryByText(fr.cart.personalizedNotice)).toBeNull();
+  });
+
+  it("refus de la base (personnalisation) : message dédié", async () => {
+    setCart([{ variantId: id(1), quantity: 1, print: martin }]);
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ ok: false, code: "personalization" }) });
+    render();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
+    expect(await screen.findByText(fr.cart.errPersonalization)).toBeTruthy();
+  });
+});
+

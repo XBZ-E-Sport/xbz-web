@@ -6,7 +6,7 @@ import { assertStaff } from "@/lib/adminguard";
 import { adminAction, dbError } from "@/lib/admin-action";
 import { AdminError, type AdminResult } from "@/lib/admin-result";
 import { processAndUploadImage } from "@/lib/storage-image";
-import { MAX_EXTRA_PHOTOS, SIZE_GUIDE_MAX, productCategories } from "@/lib/boutique";
+import { MAX_EXTRA_PHOTOS, MAX_PERSONALIZATION_PRICE, SIZE_GUIDE_MAX, productCategories } from "@/lib/boutique";
 import { CACHE_TAGS, revalidateLocalizedPath } from "@/lib/cache";
 import { parseVariants } from "@/lib/variants-form";
 
@@ -113,6 +113,13 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     available: formData.get("available") === "on",
     position: intField(formData, "position", 0),
     active: formData.get("active") === "on",
+    // Personnalisation : seulement si le formulaire la propose (il ne la propose
+    // pas tant que la migration de personnalisation n'est pas passée). Le champ du
+    // supplément est toujours envoyé avec elle : la case décochée, elle, est absente.
+    ...(formData.has("personalization_price") && {
+      personalizable: formData.get("personalizable") === "on",
+      personalization_price: Math.min(MAX_PERSONALIZATION_PRICE, priceField(formData, "personalization_price")),
+    }),
     // Guide des tailles : seulement si le formulaire le propose (il ne le
     // propose pas tant que la migration des pages produit n'est pas passée).
     ...(formData.has("size_guide") && {

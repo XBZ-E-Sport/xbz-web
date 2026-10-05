@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { requireStaff } from "@/lib/adminguard";
 import { formatEuros } from "@/lib/money";
 import { parisDay } from "@/lib/orders-export";
+import { printText } from "@/lib/personalization";
 import { localizedPath } from "@/lib/site";
 import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
@@ -240,6 +241,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                       ? " (traitée)"
                       : " — non vérifiée : contrôle-la avant d’expédier ou de rembourser"}
                     .{" "}
+                    {o.items.some((i) => i.print) && (
+                      <>
+                        Cette commande contient un article personnalisé : il est exclu du droit de rétractation
+                        (article L.221-28, 3° du Code de la consommation), sauf défaut de conformité.{" "}
+                      </>
+                    )}
                     <Link href="/admin/commandes?vue=retractations" className="underline">
                       Voir la rétractation
                     </Link>
@@ -247,11 +254,22 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                 )}
 
                 <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-200">
-                  {o.items.map((i) => (
-                    <li key={i.variant_id}>
+                  {o.items.map((i, n) => (
+                    <li key={`${i.variant_id}-${n}`}>
                       <span className="font-bold">{i.quantity} ×</span> {i.name}
                       {i.size && <span className="font-bold"> — taille {i.size}</span>}
                       <span className="text-neutral-400"> · {formatEuros(i.unit_amount / 100, "fr")} pièce</span>
+                      {i.print && (
+                        <span className="mt-1 block rounded-md border border-xbz-cyan/30 bg-xbz-cyan/10 px-2 py-1 font-semibold text-xbz-cyan">
+                          ✏️ À personnaliser : {printText(i.print, "n°")}
+                          {i.print.extra > 0 && (
+                            <span className="font-normal text-neutral-300">
+                              {" "}
+                              (supplément {formatEuros(i.print.extra / 100, "fr")} compris)
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </li>
                   ))}
                   <li className="text-neutral-400">+ port {formatEuros(Number(o.shipping), "fr")}</li>

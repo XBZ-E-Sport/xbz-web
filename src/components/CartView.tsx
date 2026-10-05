@@ -8,13 +8,17 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 // Types seulement : lib/boutique tire le client Supabase serveur.
 import type { Product, ProductVariant } from "@/lib/boutique";
-import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, type CartLine } from "@/lib/cart";
+import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, lineKey, type CartLine } from "@/lib/cart";
 import { LEGAL } from "@/lib/legal";
 import { removeFromCart, setCartQuantity, useCart } from "@/lib/cart-store";
 import { formatEuros } from "@/lib/money";
+import { printText } from "@/lib/personalization";
 
 /** Ce dont le panier a besoin du catalogue (rien de plus ne part au navigateur). */
-export type CartProduct = Pick<Product, "slug" | "name" | "price" | "image" | "icon" | "available"> & {
+export type CartProduct = Pick<
+  Product,
+  "slug" | "name" | "price" | "image" | "icon" | "available" | "personalizable" | "personalizationPrice"
+> & {
   variants: ProductVariant[];
 };
 
@@ -24,7 +28,14 @@ type Row = {
   variant: ProductVariant | null;
   /** Hors vente, épuisée, supprimée, ou refusée par le serveur au paiement. */
   unavailable: boolean;
+  /** Personnalisation que le produit ne propose plus (interrupteur éteint depuis l'ajout). */
+  printOff: boolean;
+  /** Pièces que cette ligne peut encore atteindre : stock de la taille, autres lignes de la taille déduites. */
   max: number;
+  /** Pièces disponibles pour TOUTE la taille (stock affiché, 10 au plus). */
+  cap: number;
+  /** Prix unitaire, supplément de personnalisation compris. */
+  unit: number;
 };
 
 // Codes d'erreur de /api/boutique/checkout → clés de traduction.
@@ -36,6 +47,7 @@ const ERRORS: Record<string, string> = {
   stock: "errStock",
   payment: "errPayment",
   forbidden: "errInvalid",
+  personalization: "errPersonalization",
 };
 
 const noop = () => () => {};
@@ -96,21 +108,36 @@ export default function CartView({
     () =>
       lines.map((line) => {
         const hit = index.get(line.variantId) ?? null;
-        const max = hit ? Math.min(CART_MAX_QUANTITY, hit.variant.stock) : 0;
-        const unavailable = !hit || !open || !hit.product.available || max <= 0 || refused.has(line.variantId);
-        return { line, product: hit?.product ?? null, variant: hit?.variant ?? null, unavailable, max };
+        const cap = hit ? Math.min(CART_MAX_QUANTITY, hit.variant.stock) : 0;
+        // Les autres lignes de la même taille (autre texte imprimé) partagent le même stock.
+        const others = lines.reduce((n, l) => (l.variantId === line.variantId && l !== line ? n + l.quantity : n), 0);
+        const max = Math.max(0, cap - others);
+        const printOff = Boolean(line.print && hit && !hit.product.personalizable);
+        const unavailable =
+          !hit || !open || !hit.product.available || cap <= 0 || refused.has(line.variantId) || printOff;
+        const unit = hit ? hit.product.price + (line.print ? hit.product.personalizationPrice : 0) : 0;
+        return { line, product: hit?.product ?? null, variant: hit?.variant ?? null, unavailable, printOff, max, cap, unit };
       }),
     [lines, index, open, refused],
   );
   const payable = rows.filter((r) => !r.unavailable);
-  const subtotal = payable.reduce((sum, r) => sum + (r.product?.price ?? 0) * r.line.quantity, 0);
+  const subtotal = payable.reduce((sum, r) => sum + r.unit * r.line.quantity, 0);
+  const hasPrint = payable.some((r) => r.line.print);
   const total = payable.length ? subtotal + shipping : 0;
 
   // Quantité au-delà du stock affiché (pièces vendues depuis l'ajout) : on la
   // ramène au disponible plutôt que de faire payer autre chose que ce qu'on voit.
   useEffect(() => {
     if (settling) return;
-    for (const r of rows) if (!r.unavailable && r.line.quantity > r.max) setCartQuantity(r.line.variantId, r.max);
+    // Le stock d'une taille se partage entre ses lignes, dans l'ordre du panier :
+    // les premières gardent leurs pièces, les DERNIÈRES sont ramenées au reste.
+    const left = new Map<string, number>();
+    for (const r of rows) {
+      if (r.unavailable) continue;
+      const remaining = left.get(r.line.variantId) ?? r.cap;
+      if (r.line.quantity > remaining) setCartQuantity(lineKey(r.line), remaining);
+      left.set(r.line.variantId, Math.max(0, remaining - r.line.quantity));
+    }
   }, [rows, settling]);
 
   // Retour depuis une page de paiement — « Annuler » sur Stripe (?annule=1) ou
@@ -154,7 +181,11 @@ export default function CartView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lines: payable.map((r) => ({ variantId: r.line.variantId, quantity: r.line.quantity })),
+          lines: payable.map((r) => ({
+            variantId: r.line.variantId,
+            quantity: r.line.quantity,
+            ...(r.line.print ? { print: r.line.print } : {}),
+          })),
           locale,
           terms: true,
         }),
@@ -213,7 +244,7 @@ export default function CartView({
           {rows.map((r) => {
             const name = r.product?.name ?? t("unknownItem");
             return (
-              <li key={r.line.variantId} className="card-xbz flex gap-4 p-4">
+              <li key={lineKey(r.line)} className="card-xbz flex gap-4 p-4">
                 <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
                   {r.product?.image ? (
                     <Image src={r.product.image} alt="" fill sizes="80px" className="object-cover" />
@@ -236,24 +267,36 @@ export default function CartView({
                       )}
                     </h2>
                     {!r.unavailable && r.product && (
-                      <span className="font-bold text-white">
-                        {formatEuros(r.product.price * r.line.quantity, locale)}
-                      </span>
+                      <span className="font-bold text-white">{formatEuros(r.unit * r.line.quantity, locale)}</span>
                     )}
                   </div>
                   <p className="text-sm text-neutral-400">
                     {r.variant?.size ? `${t("size", { size: r.variant.size })} · ` : ""}
-                    {r.product ? t("unitPrice", { price: formatEuros(r.product.price, locale) }) : ""}
+                    {r.product ? t("unitPrice", { price: formatEuros(r.unit, locale) }) : ""}
                   </p>
+                  {r.line.print && (
+                    <p className="text-sm text-neutral-200">
+                      <span aria-hidden="true">✏️ </span>
+                      {t("printLine", { text: printText(r.line.print, t("printNumberShort")) })}
+                      {r.product && r.product.personalizationPrice > 0 && (
+                        <span className="text-neutral-400">
+                          {" "}
+                          {t("printIncluded", { price: formatEuros(r.product.personalizationPrice, locale) })}
+                        </span>
+                      )}
+                    </p>
+                  )}
 
                   {r.unavailable ? (
-                    <p className="text-sm font-semibold text-xbz-red-light">{t("unavailable")}</p>
+                    <p className="text-sm font-semibold text-xbz-red-light">
+                      {r.printOff ? t("personalizationOff") : t("unavailable")}
+                    </p>
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="sr-only">{t("quantity")}</span>
                       <button
                         type="button"
-                        onClick={() => setCartQuantity(r.line.variantId, r.line.quantity - 1)}
+                        onClick={() => setCartQuantity(lineKey(r.line), r.line.quantity - 1)}
                         aria-label={t("decrease", { name })}
                         className="h-8 w-8 rounded-md border border-white/20 font-bold text-white transition hover:border-white/50 hover:cursor-pointer"
                       >
@@ -264,7 +307,7 @@ export default function CartView({
                       </span>
                       <button
                         type="button"
-                        onClick={() => setCartQuantity(r.line.variantId, r.line.quantity + 1)}
+                        onClick={() => setCartQuantity(lineKey(r.line), r.line.quantity + 1)}
                         disabled={r.line.quantity >= r.max}
                         aria-label={t("increase", { name })}
                         className="h-8 w-8 rounded-md border border-white/20 font-bold text-white transition hover:border-white/50 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
@@ -277,7 +320,7 @@ export default function CartView({
 
                 <button
                   type="button"
-                  onClick={() => removeFromCart(r.line.variantId)}
+                  onClick={() => removeFromCart(lineKey(r.line))}
                   aria-label={t("remove", { name })}
                   className="self-start rounded-md px-2 py-1 text-sm text-neutral-400 transition hover:bg-white/5 hover:text-white hover:cursor-pointer"
                 >
@@ -311,6 +354,11 @@ export default function CartView({
           </div>
         </dl>
         <p className="text-xs text-neutral-400">{t("shippingNote", { days: LEGAL.deliveryDays })}</p>
+        {hasPrint && (
+          <p role="note" className="rounded-lg border border-xbz-cyan/30 bg-white/5 px-3 py-2 text-xs text-xbz-cyan">
+            {t("personalizedNotice")}
+          </p>
+        )}
 
         {open ? (
           <>
