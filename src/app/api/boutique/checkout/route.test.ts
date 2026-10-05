@@ -152,6 +152,7 @@ describe("POST /api/boutique/checkout — vrais paiements et informations légal
   afterEach(() => {
     Object.assign(LEGAL, saved);
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("clé LIVE sans médiateur de la consommation : paiement refusé, rien n'est réservé", async () => {
@@ -188,9 +189,23 @@ describe("POST /api/boutique/checkout — vrais paiements et informations légal
     expect(log.mock.calls.some((c) => /téléphone/.test(String(c[0])))).toBe(true);
   });
 
-  it("clé LIVE avec médiateur, téléphone ET rétractation en ligne : le paiement s'ouvre", async () => {
+  it("clé LIVE sans envoi d'e-mails configuré : paiement refusé (l'accusé de rétractation ne pourrait pas partir)", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    log.mockClear();
     m.live = true;
     Object.assign(LEGAL, ready);
+    vi.stubEnv("BREVO_API_KEY", "");
+    vi.stubEnv("MAIL_FROM_EMAIL", "");
+    expect((await call()).status).toBe(503);
+    expect(m.reserve).not.toHaveBeenCalled();
+    expect(log.mock.calls.some((c) => /e-mail/.test(String(c[0])))).toBe(true);
+  });
+
+  it("clé LIVE avec médiateur, téléphone, rétractation en ligne ET e-mails : le paiement s'ouvre", async () => {
+    m.live = true;
+    Object.assign(LEGAL, ready);
+    vi.stubEnv("BREVO_API_KEY", "xkeysib-test");
+    vi.stubEnv("MAIL_FROM_EMAIL", "support@xbz.test");
     const res = await call();
     expect(res.status).toBe(200);
     expect(m.reserve).toHaveBeenCalledTimes(1);

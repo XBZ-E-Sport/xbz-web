@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isCronAuthorized } from "@/lib/cron-auth";
 import { sweepStaleReservations } from "@/lib/shop";
 import { isStripeConfigured } from "@/lib/stripe";
+import { retryPendingAcks } from "@/lib/withdrawal-server";
 
 // Purge RGPD (minimisation / limitation de conservation).
 // Supprime les candidatures et messages support plus vieux que RETENTION_MONTHS.
@@ -12,8 +13,11 @@ import { isStripeConfigured } from "@/lib/stripe";
 // suppression (ou anonymisation de nom, e-mail et adresse), avec un an de marge
 // (le délai court souvent à partir de la clôture de l'exercice, pas de la vente).
 //
-// Au passage, filet de la boutique : une réservation de stock dont le webhook
-// Stripe se serait perdu est rendue (après vérification chez Stripe).
+// Au passage, filets de la boutique :
+//  - une réservation de stock dont le webhook Stripe se serait perdu est rendue
+//    (après vérification chez Stripe) ;
+//  - un accusé de réception de rétractation qui n'a pas pu partir (fournisseur
+//    d'e-mails en panne) est renvoyé.
 //
 // Déclenchement : le Cron de Vercel (voir vercel.json) appelle cette route selon
 // la planification. Vercel joint l'en-tête `Authorization: Bearer $CRON_SECRET`
@@ -62,6 +66,7 @@ async function purge() {
   if (hits.error) throw new Error(`rate_limit_hits: ${hits.error.message}`);
 
   const reservationsReleased = isStripeConfigured() ? await sweepStaleReservations(admin, 50) : 0;
+  const withdrawalAcksSent = await retryPendingAcks(admin, 20);
 
   return {
     cutoff: iso,
@@ -72,6 +77,7 @@ async function purge() {
       rate_limit_hits: hits.data?.length ?? 0,
     },
     reservationsReleased,
+    withdrawalAcksSent,
   };
 }
 

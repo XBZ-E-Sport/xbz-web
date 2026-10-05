@@ -2,11 +2,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Table → lignes supprimées (pilotées par test).
-const { deleted, deleteCalls, errorFor } = vi.hoisted(() => ({
+const { deleted, deleteCalls, errorFor, retryAcks } = vi.hoisted(() => ({
   deleted: { value: {} as Record<string, unknown[]> },
   deleteCalls: { value: [] as { table: string; cutoff: string }[] },
   errorFor: { value: null as string | null },
+  retryAcks: vi.fn(async () => 0),
 }));
+
+// Filet des accusés de rétractation : testé dans src/lib/withdrawal-server.test.ts.
+vi.mock("@/lib/withdrawal-server", () => ({ retryPendingAcks: retryAcks }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -45,6 +49,7 @@ describe("GET /api/cron/purge", () => {
     deleted.value = {};
     deleteCalls.value = [];
     errorFor.value = null;
+    retryAcks.mockClear();
   });
 
   it("refuse l'appel quand CRON_SECRET n'est pas configuré (fail-safe)", async () => {
@@ -109,5 +114,13 @@ describe("GET /api/cron/purge", () => {
     const res = await call("Bearer s3cret");
     expect(res.status).toBe(500);
     expect((await res.json()).error).toContain("support_messages");
+  });
+
+  it("relance au passage les accusés de rétractation restés sans réponse, et le dit dans le bilan", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    retryAcks.mockResolvedValueOnce(2);
+    const body = await (await call("Bearer s3cret")).json();
+    expect(retryAcks).toHaveBeenCalledTimes(1);
+    expect(body.withdrawalAcksSent).toBe(2);
   });
 });

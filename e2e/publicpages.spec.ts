@@ -41,6 +41,38 @@ test.describe("Pages publiques", () => {
     await expect(en).toContainText("The French text prevails");
   });
 
+  test("Rétractation : lien dans le pied de page, deux étapes, rien n'est envoyé avant « Confirmer la rétractation »", async ({ page }) => {
+    // Fonction « Renoncer au contrat ici » (obligatoire depuis le 19 juin 2026) : visible en
+    // permanence — ici depuis une page sans lien avec la boutique.
+    await page.goto("/fr/le-club");
+    await page.getByRole("contentinfo").getByRole("link", { name: "Renoncer au contrat ici" }).click();
+    await expect(page).toHaveURL(/\/fr\/boutique\/retractation$/);
+    await expect(page.getByRole("heading", { level: 1, name: /Droit de rétractation/i })).toBeVisible();
+
+    // Aucun appel au serveur tant que le client n'a pas confirmé.
+    const posts: string[] = [];
+    page.on("request", (req) => {
+      if (req.method() === "POST" && req.url().includes("/api/boutique/retractation")) posts.push(req.url());
+    });
+
+    await page.getByLabel("Nom et prénom").fill("Jeanne Martin");
+    await page.getByLabel(/E-mail utilisé pour la commande/).fill("jeanne@exemple.fr");
+    await page.getByRole("button", { name: "Renoncer au contrat ici" }).click();
+
+    await expect(page.getByRole("heading", { name: "Vérifie ta déclaration" })).toBeVisible();
+    await expect(page.getByText("Jeanne Martin")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmer la rétractation" })).toBeVisible();
+    expect(posts).toHaveLength(0);
+
+    // « Modifier » ramène au formulaire, valeurs conservées.
+    await page.getByRole("button", { name: "Modifier" }).click();
+    await expect(page.getByLabel("Nom et prénom")).toHaveValue("Jeanne Martin");
+
+    await page.goto("/en/boutique/retractation");
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Withdraw from contract here" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Withdraw from contract here" })).toBeVisible();
+  });
+
   test("Support : la FAQ s'ouvre au clic (accordéon <details>)", async ({ page }) => {
     await page.goto("/fr/support");
 

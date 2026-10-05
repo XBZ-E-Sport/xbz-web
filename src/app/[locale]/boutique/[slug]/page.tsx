@@ -173,6 +173,15 @@ export default async function ProductPage({ params }: PageProps) {
               <p className="mt-2">{t("deliveryText", { price: formatEuros(shipping, locale), days: LEGAL.deliveryDays })}</p>
               <p className="mt-2">
                 {t.rich("returnsText", {
+                  withdraw: (chunks) => (
+                    <Link
+                      href="/boutique/retractation"
+                      locale={locale}
+                      className="font-semibold text-xbz-cyan underline underline-offset-2"
+                    >
+                      {chunks}
+                    </Link>
+                  ),
                   cgv: (chunks) => (
                     <Link href="/cgv" locale={locale} className="font-semibold text-xbz-cyan underline underline-offset-2">
                       {chunks}

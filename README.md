@@ -59,6 +59,8 @@ et **ce qui se passe quand elle est absente** (plusieurs ont un repli silencieux
 | `BOT_SHARED_SECRET` | En-tête `x-xbz-secret` envoyé au bot | le bot n'exige rien |
 | `CRON_SECRET` | Protège `/api/cron/purge` | **la purge refuse tout appel** |
 | `DISCORD_ERROR_WEBHOOK_URL` | Salon d'alertes (erreurs serveur + navigateur) | erreurs seulement dans les logs |
+| `BREVO_API_KEY` / `MAIL_FROM_EMAIL` | E-mail des accusés de réception de rétractation (Brevo) | accusé non envoyé ; **paiement live refusé** |
+| `MAIL_FROM_NAME` | Nom affiché de l'expéditeur | « XBZ Esport » |
 | `E2E_STAFF_EMAIL` / `E2E_STAFF_PASSWORD` | Compte staff pour les E2E | parcours BDD ignorés |
 
 > ⚠️ Toute variable `NEXT_PUBLIC_*` part dans le **bundle navigateur** : jamais de secret.
@@ -190,6 +192,9 @@ correspondant :
 - `migration_pages_produit_02102026.sql` — photos supplémentaires et guide des tailles.
 - `migration_export_commandes_03102026.sql` — `orders.refunded_amount` (montant remboursé,
   pour l'export comptable). Le code fonctionne avant cette migration.
+- `migration_retractation_05102026.sql` — `order_withdrawals` (déclarations de rétractation
+  en ligne). **À passer AVANT de déployer** : sans elle, la fonction « Renoncer au contrat
+  ici » répond « envoi impossible ».
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
@@ -262,6 +267,27 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
 - **Remboursements** : faits depuis Stripe, la commande passe seule en « Remboursée »
   (total) ou reçoit une note (partiel) ; le montant est gardé. Le stock n'est pas remis
   automatiquement : un colis remboursé n'est pas forcément revenu.
+- **Rétractation en ligne** (obligatoire depuis le 19 juin 2026, directive 2023/2673 et
+  art. L.221-21 du Code de la consommation) — lien « Renoncer au contrat ici » dans le pied
+  de **chaque** page, sur la page de confirmation de commande et dans les CGV. Parcours :
+  page `/boutique/retractation` → le client donne nom, e-mail de la commande (numéro de
+  commande facultatif) → relit → « Confirmer la rétractation » → route
+  `api/boutique/retractation`. Toute déclaration valide est **enregistrée** (même si la
+  commande n'est pas retrouvée : `match` = `exact` / `single` / `ambiguous` / `none`),
+  horodatée par le serveur, puis l'**accusé de réception** part par e-mail (contenu de la
+  déclaration + date et heure). Un échec d'envoi est noté (`ack_error`) et le cron
+  quotidien réessaie ; le staff est prévenu sur Discord (sans donnée personnelle) et
+  traite l'onglet **Commandes › Rétractations** (rattacher une commande, renvoyer
+  l'accusé, marquer traitée). Plafond : 3 accusés par adresse et par jour (anti-spam
+  par e-mail) — au-delà, la déclaration est gardée, seul l'envoi automatique est suspendu.
+  Code : `src/lib/withdrawal.ts` (logique pure), `withdrawal-server.ts` (envoi, alerte,
+  filet), `mailer.ts` (Brevo).
+- **E-mails (Brevo)** — compte gratuit (300 e-mails/jour), puis : (1) Brevo › Domaines :
+  ajouter `xbz-esport.com` et créer chez l'hébergeur DNS les enregistrements demandés
+  (code Brevo, DKIM, DMARC, et SPF si besoin) ; (2) créer une clé d'API ; (3) renseigner
+  `BREVO_API_KEY` et `MAIL_FROM_EMAIL` dans Vercel ; (4) faire une déclaration de test et
+  vérifier l'arrivée de l'accusé (et qu'il n'est pas en spam). Un compte Brevo neuf peut
+  devoir être activé par leur support avant l'envoi d'e-mails transactionnels.
 - **Back-office › Commandes** : « à expédier » avec l'adresse, lien vers le paiement dans
   Stripe, « Marquer expédiée ».
 - **Export comptable (CSV)** — encart « Export comptable » de la page Commandes, route

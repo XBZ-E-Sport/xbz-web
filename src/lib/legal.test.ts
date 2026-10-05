@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createTranslator } from "next-intl";
 
 vi.mock("@/lib/stripe", () => ({ stripe: () => ({}) }));
@@ -95,10 +96,12 @@ describe("médiateur de la consommation et rétractation en ligne", () => {
     expect(legalValues("en").mediator).not.toMatch(/MÉDIATEUR|AVANT/);
   });
 
-  it("une fois renseigné : ses coordonnées complètes remplacent le marqueur", () => {
+  it("une fois renseigné : ses coordonnées complètes remplacent le marqueur (e-mail et téléphone s'ils existent)", () => {
     LEGAL.mediator = mediator;
     expect(mediatorText()).toBe("Médiateur X, 1 rue Y, 75000 Paris, https://x.test");
     expect(mediatorText("en")).toBe("Médiateur X, 1 rue Y, 75000 Paris, https://x.test");
+    LEGAL.mediator = { ...mediator, email: "m@x.test", phone: "01 00 00 00 00" };
+    expect(mediatorText()).toBe("Médiateur X, 1 rue Y, 75000 Paris, https://x.test, m@x.test, 01 00 00 00 00");
   });
 
   it("sans fonction de rétractation en ligne, la vente live n'est pas prête, même avec un médiateur", () => {
@@ -129,20 +132,23 @@ describe("médiateur de la consommation et rétractation en ligne", () => {
     expect(legalReady()).toBe(true);
   });
 
-  it("état livré : le médiateur CM2C est renseigné ; il ne reste que la rétractation en ligne à construire", () => {
+  it("état livré : médiateur CM2C, téléphone et rétractation en ligne sont en place — rien ne manque côté droit", () => {
     expect(saved.mediator).toEqual({
       name: expect.stringMatching(/CM2C/),
-      address: expect.stringMatching(/75008 Paris/),
+      address: "49 rue de Ponthieu, 75008 Paris",
       website: "https://www.cm2c.net",
+      email: "contact@cm2c.net",
+      phone: "01 89 47 00 14",
     });
-    expect(legalMissing()).toEqual([expect.stringMatching(/rétractation/)]);
+    expect(saved.phone).toBeTruthy();
+    // La fonction « Renoncer au contrat ici » existe (page /boutique/retractation, route
+    // api/boutique/retractation) : le drapeau est à true. Ne le repasser à false que pour
+    // FERMER les paiements réels.
+    expect(saved.onlineWithdrawal).toBe(true);
+    expect(legalMissing()).toEqual([]);
+    expect(legalReady()).toBe(true);
     // Le texte public contient bien les trois informations exigées (nom, adresse postale, site).
-    expect(mediatorText()).toMatch(/CM2C.*75008 Paris.*cm2c\.net/);
-  });
-
-  it("état livré : la rétractation en ligne n'est pas construite, le drapeau reste à false", () => {
-    // Passer à true SEULEMENT avec la fonction « Renoncer au contrat ici » (+ accusé sur support durable).
-    expect(saved.onlineWithdrawal).toBe(false);
+    expect(mediatorText()).toMatch(/CM2C.*75008 Paris.*cm2c\.net.*contact@cm2c\.net.*01 89 47 00 14/);
   });
 });
 
@@ -424,6 +430,30 @@ describe("CGV : points de droit de la consommation", () => {
     expect(en.cgv.garantiesEncadreNote).toMatch(/French text prevails/);
   });
 
+  it.each(["fr", "en"] as const)("(%s) rétractation en ligne : la fonction est annoncée dans les CGV, avec l'accusé daté et horodaté", (locale) => {
+    const body = cgv(locale, "retractationBody");
+    expect(body).toContain(locale === "fr" ? "« Renoncer au contrat ici »" : "“Withdraw from contract here”");
+    expect(body).toMatch(locale === "fr" ? /accusé de réception.*date et l'heure/ : /acknowledgement of receipt.*date and time/);
+    // Les autres voies (courrier, e-mail, formulaire type) restent ouvertes.
+    expect(body).toContain(LEGAL.email);
+    expect(body).toMatch(locale === "fr" ? /formulaire type/ : /model form/);
+  });
+
+  it.each(["fr", "en"] as const)("(%s) libellés de la fonction de rétractation : « Renoncer au contrat ici » puis « Confirmer la rétractation », partout les mêmes", (locale) => {
+    const start = locale === "fr" ? "Renoncer au contrat ici" : "Withdraw from contract here";
+    const msgs = MESSAGES_BY_LOCALE[locale];
+    expect(msgs.withdrawal.start).toBe(start);
+    expect(msgs.footer.withdraw).toBe(start);
+    expect(msgs.orderConfirm.withdraw).toBe(start);
+    // Second bouton : le libellé reste NU (aucun autre texte dedans, exigence de la directive).
+    expect(msgs.withdrawal.confirm).toBe(locale === "fr" ? "Confirmer la rétractation" : "Confirm withdrawal");
+  });
+
+  it("le pied de page (donc CHAQUE page) porte le lien vers la fonction de rétractation", () => {
+    const footer = readFileSync("src/components/Footer.tsx", "utf8");
+    expect(footer).toMatch(/href: "\/boutique\/retractation", key: "withdraw"/);
+  });
+
   it.each(["fr", "en"] as const)("(%s) panier et fiche produit annoncent le délai de livraison (avant la commande)", (locale) => {
     for (const [ns, key] of [["cart", "shippingNote"], ["product", "deliveryText"]] as const) {
       const note = MESSAGES_BY_LOCALE[locale][ns][key as never] as string;
@@ -446,6 +476,11 @@ describe("politique de confidentialité : couverture des traitements", () => {
     // Le bot Discord est hébergé chez Render, à Francfort : il figure parmi les prestataires et les transferts.
     expect(p.processors.render).toMatch(locale === "fr" ? /Render.*Francfort/ : /Render.*Frankfurt/);
     expect(p.transfersText1).toMatch(/Render/);
+    // Rétractation en ligne : données collectées, prestataire d'e-mails (Brevo), conservation avec les commandes.
+    expect(p.collected.withdrawals).toBeTruthy();
+    expect(p.processors.brevo).toMatch(/Brevo/);
+    expect(p.retentionOrdersText).toMatch(locale === "fr" ? /rétractation/ : /withdrawal/);
+    expect(p.purposeText4).toMatch(locale === "fr" ? /accusé de réception/ : /acknowledgement of receipt/);
     // L'adresse IP anti-spam n'est plus décrite comme supprimée « quelques instants » après.
     expect(p.collected.antispam).not.toMatch(/quelques instants|few moments/);
   });

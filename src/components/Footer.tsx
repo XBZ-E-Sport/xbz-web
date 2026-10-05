@@ -26,6 +26,9 @@ const infoLinks = [
   { href: "/mentions-legales", key: "legal" },
   { href: "/confidentialite", key: "privacy" },
   { href: "/cgv", key: "cgv" },
+  // Fonction de rétractation en ligne : visible en permanence (obligatoire depuis
+  // le 19 juin 2026). Libellé : « Renoncer au contrat ici ».
+  { href: "/boutique/retractation", key: "withdraw" },
 ] as const;
 
 const DISCORD_URL = process.env.NEXT_PUBLIC_DISCORD_URL;

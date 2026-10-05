@@ -12,7 +12,7 @@ import {
   reserveOrder,
   sweepStaleReservations,
 } from "@/lib/shop";
-import { legalMissing } from "@/lib/legal";
+import { liveBlockers } from "@/lib/go-live";
 import { isLiveStripeKey, isStripeConfigured, stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { absoluteUrl, localizedPath } from "@/lib/site";
@@ -48,10 +48,10 @@ export async function POST(request: Request) {
 
   if (!isStripeConfigured()) return fail(503, "unavailable");
   // Vrais paiements : pas sans les obligations légales du e-commerce (médiateur
-  // de la consommation, téléphone, rétractation en ligne : voir `legalMissing`).
-  // La clé de test, elle, n'est pas concernée.
+  // de la consommation, téléphone, rétractation en ligne, envoi des accusés de
+  // réception : voir `liveBlockers`). La clé de test, elle, n'est pas concernée.
   if (isLiveStripeKey()) {
-    const missing = legalMissing();
+    const missing = liveBlockers();
     if (missing.length > 0) {
       console.error(`[boutique] paiement live refusé : ${missing.join(" ; ")} (src/lib/legal.ts).`);
       return fail(503, "unavailable");

@@ -38,6 +38,10 @@ describe("isShopOpen", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", key);
     vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_test");
   };
+  const configureMail = () => {
+    vi.stubEnv("BREVO_API_KEY", "xkeysib-test");
+    vi.stubEnv("MAIL_FROM_EMAIL", "support@xbz.test");
+  };
 
   it("Stripe non branché : fermée", () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "");
@@ -65,6 +69,22 @@ describe("isShopOpen", () => {
     }
 
     Object.assign(LEGAL, ready);
+    configureMail();
     expect(isShopOpen()).toBe(true);
+  });
+
+  it("clé live : fermée aussi tant que l'envoi d'e-mails n'est pas configuré (pas d'accusé de rétractation possible)", () => {
+    configure("sk_live_abc");
+    Object.assign(LEGAL, {
+      mediator: { name: "M", address: "1 rue X", website: "https://m.test" },
+      phone: "02 35 00 00 00",
+      onlineWithdrawal: true,
+    });
+    vi.stubEnv("BREVO_API_KEY", "");
+    vi.stubEnv("MAIL_FROM_EMAIL", "support@xbz.test");
+    expect(isShopOpen()).toBe(false);
+    vi.stubEnv("BREVO_API_KEY", "xkeysib-test");
+    vi.stubEnv("MAIL_FROM_EMAIL", "");
+    expect(isShopOpen()).toBe(false);
   });
 });

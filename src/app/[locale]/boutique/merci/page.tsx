@@ -67,6 +67,16 @@ export default async function OrderConfirmPage({ params, searchParams }: PagePro
           <p className="font-semibold text-white">{t("amount", { amount: order.amount })}</p>
           {order.email && <p className="text-sm text-neutral-400">{t("email", { email: order.email })}</p>}
           <p className="text-sm text-neutral-400">{t("next")}</p>
+          <p className="text-sm text-neutral-400">
+            {t("withdrawHint")}{" "}
+            <Link
+              href="/boutique/retractation"
+              locale={locale}
+              className="font-semibold text-xbz-cyan underline underline-offset-2"
+            >
+              {t("withdraw")}
+            </Link>
+          </p>
         </div>
       ) : (
         <p className="text-lg leading-relaxed text-neutral-300">{t("processing")}</p>
