@@ -184,6 +184,18 @@ describe("POST /api/boutique/checkout", () => {
     expect(m.create).not.toHaveBeenCalled();
   });
 
+  it("page de paiement : l'exclusion de la rétractation n'est répétée QUE si la commande contient un article personnalisé", async () => {
+    await call();
+    expect(m.create.mock.calls[0][0].custom_text.submit.message).toBe("submit");
+    m.create.mockClear();
+    m.reserve.mockResolvedValue({
+      ok: true,
+      order: { ...ORDER, items: [{ variant_id: VARIANT, product_id: "p", slug: "m", name: "M", size: "M", quantity: 1, unit_amount: 5499, image: null, print: { name: "A", extra: 500 } }] },
+    });
+    await call({ ...good, lines: [{ variantId: VARIANT, quantity: 1, print: { name: "A" } }] });
+    expect(m.create.mock.calls[0][0].custom_text.submit.message).toBe("submitPrint");
+  });
+
   it("la page Stripe reçoit le texte imprimé et le supplément, en toutes lettres", async () => {
     const printed = {
       ...ORDER,

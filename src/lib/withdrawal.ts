@@ -171,6 +171,7 @@ export function buildAck(t: Translate, input: AckInput): AckMail {
   const after = [
     t("nextSteps", { returnAddress: input.returnAddress }),
     t("refund"),
+    t("personalized"),
     t("keep"),
     t("notYou", { email: input.contactEmail }),
     t("terms", { url: input.termsUrl }),

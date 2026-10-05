@@ -31,6 +31,7 @@ const ARTICLES = [
   "objet",
   "vendeur",
   "produits",
+  "personnalisation",
   "prix",
   "commande",
   "paiement",

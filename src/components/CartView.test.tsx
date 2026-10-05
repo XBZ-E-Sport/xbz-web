@@ -170,10 +170,28 @@ describe("CartView : articles personnalisés", () => {
     // 49,99 + 5 = 54,99 ; + 4,90 de port = 59,89
     expect(screen.getAllByText("54,99 €").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /obligation de paiement · 59,89/ })).toBeTruthy();
-    expect(screen.getByText(fr.cart.personalizedNotice)).toBeTruthy();
+    expect(screen.getByText(/Ton panier contient un article personnalisé : il n’ouvre pas droit à la rétractation/)).toBeTruthy();
+    expect(screen.getByText(/Tes autres articles gardent leur droit de rétractation de 14 jours/)).toBeTruthy();
+    // La case des CGV ne promet plus la rétractation « sans réserve » : elle dit « sauf articles personnalisés ».
+    expect(screen.getByText(/sauf pour les articles personnalisés/)).toBeTruthy();
   });
 
-  it("sans article personnalisé : pas d'avertissement", () => {
+  it("deux pièces personnalisées : l'avertissement passe au pluriel", () => {
+    setCart([{ variantId: id(1), quantity: 2, print: martin }]);
+    render();
+    expect(screen.getByText(/Ton panier contient 2 articles personnalisés : ils n’ouvrent pas droit/)).toBeTruthy();
+  });
+
+  it("deux lignes de la même taille : des boutons au nom accessible distinct (taille et texte imprimé)", () => {
+    setCart([{ variantId: id(1), quantity: 1 }, { variantId: id(1), quantity: 1, print: martin }]);
+    render();
+    const names = screen.getAllByRole("button", { name: /du panier/ }).map((b) => b.getAttribute("aria-label"));
+    expect(new Set(names).size).toBe(2);
+    expect(names.some((n) => n?.includes("MARTIN · n° 10"))).toBe(true);
+    expect(names.every((n) => n?.includes("Taille M"))).toBe(true);
+  });
+
+  it("sans article personnalisé : pas d'avertissement : pas d'avertissement", () => {
     setCart([{ variantId: id(1), quantity: 1 }]);
     render();
     expect(screen.queryByText(fr.cart.personalizedNotice)).toBeNull();
@@ -232,7 +250,7 @@ describe("CartView : articles personnalisés", () => {
     renderIntl(<CartView products={off} shipping={4.9} open />);
     expect(screen.getByText(fr.cart.personalizationOff)).toBeTruthy();
     expect(screen.getByRole("button", { name: /obligation de paiement · 19,89/ })).toBeTruthy();
-    expect(screen.queryByText(fr.cart.personalizedNotice)).toBeNull();
+    expect(screen.queryByText(/Ton panier contient/)).toBeNull();
   });
 
   it("refus de la base (personnalisation) : message dédié", async () => {
@@ -242,6 +260,17 @@ describe("CartView : articles personnalisés", () => {
     fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
     expect(await screen.findByText(fr.cart.errPersonalization)).toBeTruthy();
+    // Le catalogue est relu : une ligne dont la personnalisation n'est plus proposée sera alors signalée.
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("les lignes dont la personnalisation est retirée ne bloquent pas le stock des autres lignes de la taille", () => {
+    const off = products.map((p) => (p.slug === "maillot" ? { ...p, personalizable: false } : p));
+    setCart([{ variantId: id(1), quantity: 1, print: martin }, { variantId: id(1), quantity: 1 }]);
+    renderIntl(<CartView products={off} shipping={4.9} open />);
+    const plus = screen.getByRole("button", { name: /Ajouter une pièce/ }) as HTMLButtonElement;
+    // Stock 2, une pièce ordinaire au panier : la ligne « retirée » ne compte pas, on peut en ajouter une.
+    expect(plus.disabled).toBe(false);
   });
 });
 

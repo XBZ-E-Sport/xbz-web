@@ -10,6 +10,11 @@
 --  Un article personnalisé à la demande du client est exclu du droit de
 --  rétractation (article L.221-28, 3° du Code de la consommation) : la fiche
 --  produit et le panier le disent avant la commande.
+--
+--  ⚠️ NE PAS rejouer migration_boutique_stripe_01102026.sql APRÈS celle-ci : elle
+--  remettrait les anciennes versions des trois fonctions du bas (la personnalisation
+--  cesserait de fonctionner et, avec des commandes en cours, du stock serait perdu).
+--  En cas de doute, rejouer simplement CE fichier : il remet les bonnes versions.
 -- ============================================================
 
 -- 1) Réglage par produit -----------------------------------------------------
@@ -53,6 +58,18 @@ begin
   end if;
   if jsonb_array_length(p_items) > 20 then
     raise exception using errcode = 'P0001', message = 'shop:quantity';
+  end if;
+  -- Chaque ligne est un objet ; le nom et le numéro imprimés sont du TEXTE (ou absents) :
+  -- un nombre, un tableau ou un objet n'est jamais converti en texte en silence.
+  if exists (select 1 from jsonb_array_elements(p_items) e where jsonb_typeof(e) <> 'object') then
+    raise exception using errcode = 'P0001', message = 'shop:quantity';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(p_items) e
+     where jsonb_typeof(e->'print_name') not in ('string', 'null')
+        or jsonb_typeof(e->'print_number') not in ('string', 'null')
+  ) then
+    raise exception using errcode = 'P0001', message = 'shop:personalization';
   end if;
 
   -- Tailles verrouillées dans un ordre FIXE : deux paniers qui se croisent
@@ -119,17 +136,20 @@ begin
         if not v_row.personalizable then
           raise exception using errcode = 'P0001', message = 'shop:personalization';
         end if;
+        -- Mêmes règles que src/lib/personalization.ts : lettres latines (accents compris),
+        -- espace, apostrophe, point, tiret ; une lettre en premier ; 12 caractères au plus.
+        -- Ni chiffres, ni symboles, ni caractères invisibles ou de contrôle.
         if (v_part.print_name is null and v_part.print_number is null)
            or (v_part.print_name is not null
-               and (char_length(btrim(v_part.print_name)) not between 1 and 12
-                    or v_part.print_name ~ '[[:cntrl:]]'))
+               and (char_length(v_part.print_name) > 12
+                    or v_part.print_name !~ '^[A-Za-zÀ-ÖØ-öø-ſ][A-Za-zÀ-ÖØ-öø-ſ ''.-]*$'))
            or (v_part.print_number is not null and v_part.print_number !~ '^([0-9]|[1-9][0-9])$') then
           raise exception using errcode = 'P0001', message = 'shop:personalization';
         end if;
         v_unit := v_unit + v_row.personalization_price;
         v_item := v_item || jsonb_build_object(
           'print', jsonb_strip_nulls(jsonb_build_object(
-            'name',   btrim(v_part.print_name),
+            'name',   upper(v_part.print_name),
             'number', v_part.print_number,
             'extra',  round(v_row.personalization_price * 100)::int
           ))
@@ -183,6 +203,12 @@ begin
   if not found then
     return false;
   end if;
+
+  -- Tailles verrouillées dans le MÊME ordre que la réservation (par identifiant) :
+  -- une restitution et une réservation croisées ne s'interbloquent jamais.
+  perform 1 from public.product_variants
+   where id in (select (e->>'variant_id')::uuid from jsonb_array_elements(v_items) e)
+   order by id for update;
 
   -- Une taille supprimée entre-temps est simplement ignorée.
   update public.product_variants v
@@ -245,6 +271,11 @@ begin
   if not found then
     return 'already';
   end if;
+
+  -- Même ordre de verrouillage que la réservation (voir shop_release_order).
+  perform 1 from public.product_variants
+   where id in (select (e->>'variant_id')::uuid from jsonb_array_elements(v_items) e)
+   order by id for update;
 
   update public.product_variants v
      set stock = greatest(v.stock - i.quantity, 0)

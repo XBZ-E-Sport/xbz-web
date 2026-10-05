@@ -186,6 +186,21 @@ describe("textes légaux rendus (vrais messages, vraies valeurs)", () => {
     }
   });
 
+  it.each(["fr", "en"] as const)("CGV (%s) : l'article « Personnalisation » existe et l'exclusion de la rétractation suit le texte de la loi", (locale) => {
+    const t = translator(locale, "cgv");
+    const values = legalValues(locale);
+    const article = t("personnalisationBody", values);
+    const retractation = t("retractationBody", values);
+    // Règles de saisie, refus d'un texte avec remboursement, garanties légales maintenues.
+    expect(article).toMatch(locale === "fr" ? /12 caractères au plus/ : /up to 12 characters/);
+    expect(article).toMatch(locale === "fr" ? /remboursement intégral, supplément compris/ : /full refund, surcharge included/);
+    expect(article).toMatch(locale === "fr" ? /garanties légales \(conformité, vices cachés\)/ : /statutory guarantees \(conformity, hidden defects\)/);
+    // Exclusion : libellé de l'article L.221-28, 3° (« nettement personnalisés »), commande mixte, renvoi à l'article.
+    expect(retractation).toMatch(locale === "fr" ? /L\.221-28, 3°[\s\S]*nettement personnalisés/ : /L\.221-28, 3°[\s\S]*clearly personalised/);
+    expect(retractation).toMatch(locale === "fr" ? /reste exerçable pour les articles ordinaires/ : /remains exercisable for the ordinary items/);
+    expect(t("personnalisationTitle", values)).toBeTruthy();
+  });
+
   it("le détecteur d'erreurs ICU du test fonctionne (variable manquante = échec, pas une clé renvoyée)", () => {
     expect(() => translator("fr", "cgv")("vendeurBody", {})).toThrow();
     const withoutRna: Record<string, unknown> = { ...legalValues("en") };

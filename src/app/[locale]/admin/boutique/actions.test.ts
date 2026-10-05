@@ -127,13 +127,21 @@ describe("personnalisation (interrupteur et supplément)", () => {
     expect(calls.productUpdates[0]).toMatchObject({ personalizable: false, personalization_price: 5 });
   });
 
-  it("supplément plafonné à 100 €, jamais négatif ni illisible", async () => {
-    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "9999" }));
-    expect(calls.productUpdates[0]).toMatchObject({ personalization_price: 100 });
-    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "-4" }));
-    expect(calls.productUpdates[1]).toMatchObject({ personalization_price: 0 });
-    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "beaucoup" }));
-    expect(calls.productUpdates[2]).toMatchObject({ personalization_price: 0 });
+  it("« 5 € » et « 7,50 » acceptés ; champ vide = pas de supplément", async () => {
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "5 €" }));
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "7,50" }));
+    await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: "" }));
+    expect(calls.productUpdates.map((u) => u.personalization_price)).toEqual([5, 7.5, 0]);
+  });
+
+  it.each([
+    ["trop élevé", "150", /100 € au plus/],
+    ["négatif", "-4", /illisible/],
+    ["illisible", "beaucoup", /illisible/],
+  ])("supplément %s : refusé avec un message, rien n'est écrit", async (_label, value, message) => {
+    const result = await updateProduct(form({ id: PRODUCT, personalizable: "on", personalization_price: value }));
+    expect(result).toEqual({ error: expect.stringMatching(message) });
+    expect(calls.productUpdates).toHaveLength(0);
   });
 
   it("formulaire sans le réglage (migration pas passée) : colonnes jamais écrites", async () => {

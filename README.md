@@ -198,7 +198,9 @@ correspondant :
 - `migration_personnalisation_05102026.sql` — personnalisation nom et numéro d'un article
   (`products.personalizable`, `products.personalization_price`) et nouvelle version des
   fonctions de réservation / restitution du stock. **À passer AVANT de déployer** ; sans elle
-  le site fonctionne, la personnalisation reste simplement invisible.
+  le site fonctionne, la personnalisation reste simplement invisible. **Ne jamais rejouer
+  `migration_boutique_stripe_01102026.sql` après elle** (elle remettrait les anciennes
+  fonctions) ; au besoin, rejouer `migration_personnalisation_05102026.sql`, qui est rejouable.
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le

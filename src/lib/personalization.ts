@@ -15,9 +15,11 @@ export const PRINT_NAME_MAX = 12;
 /** Ce qui est imprimé : un nom, un numéro, ou les deux (au moins l'un des deux). */
 export type Print = { name?: string; number?: string };
 
-// Lettres latines (accents compris), espace, apostrophe, tiret, point : ce que
-// l'atelier sait imprimer. Rien d'autre (pas de chiffres dans le nom, pas de symboles).
-const NAME_CHARS = /^[\p{Script=Latin}][\p{Script=Latin} '.-]*$/u;
+// Lettres latines (accents compris : U+00C0 à U+017F), espace, apostrophe, tiret, point :
+// ce que l'atelier sait imprimer. Rien d'autre (pas de chiffres dans le nom, pas de
+// symboles, pas de caractères invisibles). MÊME alphabet que la base
+// (supabase/migration_personnalisation_05102026.sql) : à modifier ensemble.
+const NAME_CHARS = /^[A-Za-zÀ-ÖØ-öø-ſ][A-Za-zÀ-ÖØ-öø-ſ '.-]*$/;
 
 /**
  * Nom imprimé, mis en forme : majuscules, espaces superflus retirés, apostrophe

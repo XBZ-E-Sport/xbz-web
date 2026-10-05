@@ -122,7 +122,11 @@ export async function POST(request: Request) {
             : t("printFree", { text });
         },
         shipping: t("shipping"),
-        submit: t("submit", { url: absoluteUrl(localizedPath("/cgv", locale)) }),
+        // Dernier écran avant l'engagement : il répète l'exclusion de la rétractation
+        // quand la commande contient un article personnalisé (article L.221-5).
+        submit: t(order.items.some((i) => i.print) ? "submitPrint" : "submit", {
+          url: absoluteUrl(localizedPath("/cgv", locale)),
+        }),
       }),
       // Rejouée par le SDK en cas de coupure : une seule page pour une commande.
       { idempotencyKey: `checkout-${order.id}` },

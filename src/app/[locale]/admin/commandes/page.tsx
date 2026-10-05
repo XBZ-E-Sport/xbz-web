@@ -11,6 +11,7 @@ import { orderNumber, type Order, type OrderStatus } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import type { WithdrawalRow } from "@/lib/withdrawal";
 import { markOrderShipped } from "./actions";
+import PersonalizedNotice from "./PersonalizedNotice";
 import Withdrawals, { type LinkedOrder } from "./Withdrawals";
 
 export const metadata = { title: "Commandes — Back-office XBZ" };
@@ -92,7 +93,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       if (ids.length) {
         const { data: linked } = await admin
           .from("orders")
-          .select("id, status, stripe_payment_intent, amount_total")
+          .select("id, status, stripe_payment_intent, amount_total, items")
           .in("id", ids);
         linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
       }
@@ -241,17 +242,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                       ? " (traitée)"
                       : " — non vérifiée : contrôle-la avant d’expédier ou de rembourser"}
                     .{" "}
-                    {o.items.some((i) => i.print) && (
-                      <>
-                        Cette commande contient un article personnalisé : il est exclu du droit de rétractation
-                        (article L.221-28, 3° du Code de la consommation), sauf défaut de conformité.{" "}
-                      </>
-                    )}
+
                     <Link href="/admin/commandes?vue=retractations" className="underline">
                       Voir la rétractation
                     </Link>
                   </p>
                 )}
+                {withdrawalsByOrder.has(o.id) && <PersonalizedNotice items={o.items} />}
 
                 <ul className="mt-3 flex flex-col gap-1 text-sm text-neutral-200">
                   {o.items.map((i, n) => (

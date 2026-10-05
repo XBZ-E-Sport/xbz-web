@@ -355,14 +355,15 @@ describe("export : articles personnalisés", () => {
     expect(sum).toBeCloseTo(109.88, 2);
   });
 
-  it("un texte imprimé n'ouvre jamais de formule dans Excel", () => {
-    // La mise en forme du nom l'interdit déjà ; l'export se protège quand même.
+  it("la cellule « Personnalisation » commence par « personnalisé » : jamais par le texte du client (aucune formule possible)", () => {
     const o = printed();
     o.items[1].print = { name: "=2+2", extra: 0 };
     const detail = { detail: "articles", personal: false } as const;
     const h = exportHeaders(detail);
-    const csv = toCsv(h, exportRows([o], detail));
-    expect(csv).toContain('"personnalisé : =2+2"');
+    const cells = exportRows([o], detail).map((r) => r[h.indexOf("Personnalisation")]);
+    for (const c of cells) expect(c).not.toMatch(/^"[=+\-@]/);
+    // …et, si jamais une cellule commençait par le texte, csvText l'aurait neutralisée.
+    expect(csvText("=2+2")).toBe(`"'=2+2"`);
   });
 });
 

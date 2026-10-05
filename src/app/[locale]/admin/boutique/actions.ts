@@ -33,6 +33,23 @@ function priceField(fd: FormData, key: string): number {
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
 }
 
+/**
+ * Supplément de personnalisation (€ TTC) : « 5 », « 7,50 » ou « 5 € ». Refusé avec un
+ * message — jamais ramené à 0 ou à 100 en silence, le staff croirait l'avoir réglé.
+ */
+function personalizationPriceField(fd: FormData): number {
+  const raw = field(fd, "personalization_price").replace(",", ".").replace(/\s*€$/, "");
+  if (raw === "") return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new AdminError("Supplément de personnalisation illisible : saisis un montant en euros, par exemple 5 ou 7,50.");
+  }
+  if (n > MAX_PERSONALIZATION_PRICE) {
+    throw new AdminError(`Supplément de personnalisation : ${MAX_PERSONALIZATION_PRICE} € au plus.`);
+  }
+  return Math.round(n * 100) / 100;
+}
+
 /** Normalise un texte en slug URL-safe (ex: "Maillot XBZ !" → "maillot-xbz"). */
 function slugify(input: string): string {
   return input
@@ -118,7 +135,7 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     // supplément est toujours envoyé avec elle : la case décochée, elle, est absente.
     ...(formData.has("personalization_price") && {
       personalizable: formData.get("personalizable") === "on",
-      personalization_price: Math.min(MAX_PERSONALIZATION_PRICE, priceField(formData, "personalization_price")),
+      personalization_price: personalizationPriceField(formData),
     }),
     // Guide des tailles : seulement si le formulaire le propose (il ne le
     // propose pas tant que la migration des pages produit n'est pas passée).

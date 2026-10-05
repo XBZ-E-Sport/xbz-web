@@ -110,7 +110,13 @@ export default function CartView({
         const hit = index.get(line.variantId) ?? null;
         const cap = hit ? Math.min(CART_MAX_QUANTITY, hit.variant.stock) : 0;
         // Les autres lignes de la même taille (autre texte imprimé) partagent le même stock.
-        const others = lines.reduce((n, l) => (l.variantId === line.variantId && l !== line ? n + l.quantity : n), 0);
+        const others = lines.reduce(
+          (n, l) =>
+            l.variantId === line.variantId && l !== line && !(l.print && hit && !hit.product.personalizable)
+              ? n + l.quantity
+              : n,
+          0,
+        );
         const max = Math.max(0, cap - others);
         const printOff = Boolean(line.print && hit && !hit.product.personalizable);
         const unavailable =
@@ -122,7 +128,9 @@ export default function CartView({
   );
   const payable = rows.filter((r) => !r.unavailable);
   const subtotal = payable.reduce((sum, r) => sum + r.unit * r.line.quantity, 0);
-  const hasPrint = payable.some((r) => r.line.print);
+  // Pièces personnalisées payables : accordent « un article » / « N articles » dans l'avertissement.
+  const printCount = payable.reduce((n, r) => (r.line.print ? n + r.line.quantity : n), 0);
+  const hasPrint = printCount > 0;
   const total = payable.length ? subtotal + shipping : 0;
 
   // Quantité au-delà du stock affiché (pièces vendues depuis l'ajout) : on la
@@ -202,6 +210,7 @@ export default function CartView({
         setRefused(new Set(data.unavailable ?? []));
         router.refresh();
       }
+      if (data.code === "personalization") router.refresh();
       setError(t(ERRORS[data.code ?? ""] ?? "errPayment"));
     } catch {
       setError(t("errNetwork"));
@@ -243,6 +252,15 @@ export default function CartView({
         <ul className="flex flex-col gap-3">
           {rows.map((r) => {
             const name = r.product?.name ?? t("unknownItem");
+            // Nom accessible des boutons : produit, taille ET texte imprimé — sans quoi deux lignes
+            // de la même taille (ordinaire / personnalisée) auraient des boutons indiscernables.
+            const label = [
+              name,
+              r.variant?.size ? t("size", { size: r.variant.size }) : "",
+              r.line.print ? printText(r.line.print, t("printNumberShort")) : "",
+            ]
+              .filter(Boolean)
+              .join(", ");
             return (
               <li key={lineKey(r.line)} className="card-xbz flex gap-4 p-4">
                 <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-linear-to-br from-xbz-blue/20 to-xbz-cyan/10">
@@ -297,7 +315,7 @@ export default function CartView({
                       <button
                         type="button"
                         onClick={() => setCartQuantity(lineKey(r.line), r.line.quantity - 1)}
-                        aria-label={t("decrease", { name })}
+                        aria-label={t("decrease", { name: label })}
                         className="h-8 w-8 rounded-md border border-white/20 font-bold text-white transition hover:border-white/50 hover:cursor-pointer"
                       >
                         −
@@ -309,7 +327,7 @@ export default function CartView({
                         type="button"
                         onClick={() => setCartQuantity(lineKey(r.line), r.line.quantity + 1)}
                         disabled={r.line.quantity >= r.max}
-                        aria-label={t("increase", { name })}
+                        aria-label={t("increase", { name: label })}
                         className="h-8 w-8 rounded-md border border-white/20 font-bold text-white transition hover:border-white/50 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         +
@@ -321,7 +339,7 @@ export default function CartView({
                 <button
                   type="button"
                   onClick={() => removeFromCart(lineKey(r.line))}
-                  aria-label={t("remove", { name })}
+                  aria-label={t("remove", { name: label })}
                   className="self-start rounded-md px-2 py-1 text-sm text-neutral-400 transition hover:bg-white/5 hover:text-white hover:cursor-pointer"
                 >
                   ✕
@@ -355,8 +373,8 @@ export default function CartView({
         </dl>
         <p className="text-xs text-neutral-400">{t("shippingNote", { days: LEGAL.deliveryDays })}</p>
         {hasPrint && (
-          <p role="note" className="rounded-lg border border-xbz-cyan/30 bg-white/5 px-3 py-2 text-xs text-xbz-cyan">
-            {t("personalizedNotice")}
+          <p role="note" className="rounded-lg border border-xbz-cyan/40 bg-white/5 px-3 py-2 text-sm text-white">
+            {t("personalizedNotice", { count: printCount })}
           </p>
         )}
 
@@ -374,7 +392,7 @@ export default function CartView({
                 className="mt-1 h-4 w-4 shrink-0"
               />
               <label htmlFor="cart-terms">
-                {t.rich("terms", {
+                {t.rich(hasPrint ? "termsPrint" : "terms", {
                   cgv: (chunks) => (
                     <Link href="/cgv" className="font-semibold text-xbz-cyan underline underline-offset-2">
                       {chunks}
