@@ -200,7 +200,7 @@ describe("textes légaux rendus (vrais messages, vraies valeurs)", () => {
     for (const fact of [LEGAL.name, LEGAL.rna, LEGAL.siren, LEGAL.siret, LEGAL.vat, LEGAL.address, LEGAL.email]) {
       expect(seller).toContain(fact);
     }
-    expect(t("effective", v)).toContain(locale === "fr" ? "4 octobre 2026" : "4 October 2026");
+    expect(t("effective", v)).toContain(locale === "fr" ? "5 octobre 2026" : "5 October 2026");
     expect(t("retractationBody", v)).toContain(LEGAL.returnAddress);
     expect(t("retractationForm", v)).toContain(LEGAL.email);
     expect(t("garantiesBody", v)).toContain(LEGAL.email);
@@ -479,7 +479,7 @@ describe("politique de confidentialité : couverture des traitements", () => {
     // Rétractation en ligne : données collectées, prestataire d'e-mails (Brevo), conservation avec les commandes.
     expect(p.collected.withdrawals).toBeTruthy();
     expect(p.processors.brevo).toMatch(/Brevo/);
-    expect(p.retentionOrdersText).toMatch(locale === "fr" ? /rétractation/ : /withdrawal/);
+    expect(p.retentionWithdrawalsText).toMatch(locale === "fr" ? /5 ans/ : /5 years/);
     expect(p.purposeText4).toMatch(locale === "fr" ? /accusé de réception/ : /acknowledgement of receipt/);
     // L'adresse IP anti-spam n'est plus décrite comme supprimée « quelques instants » après.
     expect(p.collected.antispam).not.toMatch(/quelques instants|few moments/);

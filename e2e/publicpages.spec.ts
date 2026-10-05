@@ -56,7 +56,7 @@ test.describe("Pages publiques", () => {
     });
 
     await page.getByLabel("Nom et prénom").fill("Jeanne Martin");
-    await page.getByLabel(/E-mail utilisé pour la commande/).fill("jeanne@exemple.fr");
+    await page.getByLabel(/Email utilisé pour la commande/).fill("jeanne@exemple.fr");
     await page.getByRole("button", { name: "Renoncer au contrat ici" }).click();
 
     await expect(page.getByRole("heading", { name: "Vérifie ta déclaration" })).toBeVisible();

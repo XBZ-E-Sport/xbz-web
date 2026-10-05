@@ -109,13 +109,22 @@ describe("WithdrawalForm — « Renoncer au contrat ici », puis « Confirmer la
     expect(screen.getByRole("button", { name: "Confirmer la rétractation" })).toBeTruthy();
   });
 
-  it("réseau coupé : message générique, aucune exception", async () => {
+  it("réseau coupé : message générique TRADUIT, jamais le texte brut du navigateur (« Failed to fetch »)", async () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
     const { container } = renderIntl(<WithdrawalForm />);
     fill(container, { nom: "Jeanne Martin", email: "jeanne@exemple.fr" });
     submitFirstStep(container);
     fireEvent.click(screen.getByRole("button", { name: "Confirmer la rétractation" }));
-    await waitFor(() => expect(screen.getByText(/Failed to fetch/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(new RegExp(messages("fr").formErrors.generic.slice(0, 15)))).toBeTruthy());
+    expect(screen.queryByText(/Failed to fetch/)).toBeNull();
+  });
+
+  it("révision : champs facultatifs vides → libellés accordés (« Non précisée », « Aucune précision »)", () => {
+    const { container } = renderIntl(<WithdrawalForm />);
+    fill(container, { nom: "Jeanne Martin", email: "jeanne@exemple.fr" });
+    submitFirstStep(container);
+    expect(screen.getByText("Non précisée")).toBeTruthy();
+    expect(screen.getByText("Aucune précision")).toBeTruthy();
   });
 
   it("le piège anti-bot rempli voyage avec la déclaration (le serveur l'ignorera)", async () => {

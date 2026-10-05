@@ -2,10 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Table → lignes supprimées (pilotées par test).
-const { deleted, deleteCalls, errorFor, retryAcks } = vi.hoisted(() => ({
+const { deleted, deleteCalls, errorFor, errorCode, retryAcks } = vi.hoisted(() => ({
   deleted: { value: {} as Record<string, unknown[]> },
-  deleteCalls: { value: [] as { table: string; cutoff: string }[] },
+  deleteCalls: { value: [] as { table: string; cutoff: string; eq: [string, unknown][] }[] },
   errorFor: { value: null as string | null },
+  errorCode: { value: undefined as string | undefined },
   retryAcks: vi.fn(async () => 0),
 }));
 
@@ -15,15 +16,23 @@ vi.mock("@/lib/withdrawal-server", () => ({ retryPendingAcks: retryAcks }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: (table: string) => ({
-      delete: () => ({
-        lt: (_col: string, cutoff: string) => ({
-          select: async () => {
-            deleteCalls.value.push({ table, cutoff });
-            if (errorFor.value === table) return { data: null, error: { message: "boom" } };
-            return { data: deleted.value[table] ?? [], error: null };
+      delete: () => {
+        const eq: [string, unknown][] = [];
+        const chain = {
+          eq: (col: string, value: unknown) => {
+            eq.push([col, value]);
+            return chain;
           },
-        }),
-      }),
+          lt: (_col: string, cutoff: string) => ({
+            select: async () => {
+              deleteCalls.value.push({ table, cutoff, eq });
+              if (errorFor.value === table) return { data: null, error: { message: "boom", code: errorCode.value } };
+              return { data: deleted.value[table] ?? [], error: null };
+            },
+          }),
+        };
+        return chain;
+      },
     }),
   }),
 }));
@@ -49,6 +58,7 @@ describe("GET /api/cron/purge", () => {
     deleted.value = {};
     deleteCalls.value = [];
     errorFor.value = null;
+    errorCode.value = undefined;
     retryAcks.mockClear();
   });
 
@@ -85,12 +95,45 @@ describe("GET /api/cron/purge", () => {
       candidatures: 2,
       support_messages: 1,
       rate_limit_hits: 3,
+      order_withdrawals: 0,
     });
     expect(deleteCalls.value.map((c) => c.table)).toEqual([
       "candidatures",
       "support_messages",
+      "order_withdrawals",
+      "order_withdrawals",
       "rate_limit_hits",
     ]);
+  });
+
+  it("rétractations : supprimées à 5 ans ; celles au piège anti-bot rempli, à 30 jours", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    deleted.value = { order_withdrawals: [{ id: 1 }] };
+    const json = await (await call("Bearer s3cret")).json();
+    expect(json.deleted.order_withdrawals).toBe(2); // une ligne par suppression (mock identique)
+
+    const [old, suspect] = deleteCalls.value.filter((c) => c.table === "order_withdrawals");
+    const years = (Date.now() - new Date(old.cutoff).getTime()) / (1000 * 3600 * 24 * 365.25);
+    expect(years).toBeGreaterThan(4.99);
+    expect(years).toBeLessThan(5.01);
+    expect(old.eq).toEqual([]); // TOUTES les déclarations de plus de 5 ans, pas seulement les suspectes
+
+    const days = (Date.now() - new Date(suspect.cutoff).getTime()) / (1000 * 3600 * 24);
+    expect(days).toBeGreaterThan(29.9);
+    expect(days).toBeLessThan(30.1);
+    expect(suspect.eq).toEqual([["suspect", true]]); // JAMAIS une vraie déclaration à 30 jours
+  });
+
+  it("table des rétractations absente (migration pas passée) ou en erreur : le reste de la purge continue", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    errorFor.value = "order_withdrawals";
+
+    errorCode.value = "42P01";
+    expect((await call("Bearer s3cret")).status).toBe(200);
+    errorCode.value = "XX000";
+    expect((await call("Bearer s3cret")).status).toBe(200);
+    expect(deleteCalls.value.map((c) => c.table)).toContain("rate_limit_hits");
   });
 
   it("supprime les données perso à 24 mois et les IP anti-flood à 1 heure", async () => {

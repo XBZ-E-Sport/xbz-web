@@ -245,13 +245,14 @@ Paiement sur la page **Stripe Checkout** hébergée : aucune clé n'atteint le n
 Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperçu
 (« Bientôt disponible ») : déployer avant de les renseigner ne risque rien.
 
-> **Avant de passer en clé live (`sk_live_…`)** : `src/lib/legal.ts` doit avoir un
-> **médiateur de la consommation** (`mediator`), un **numéro de téléphone** (`phone`,
-> exigé par les articles R.111-1 et D.211-1 du Code de la consommation) et la
-> **rétractation en ligne** doit exister (`onlineWithdrawal: true`, obligatoire depuis le
-> 19 juin 2026). Sinon le paiement est refusé et la boutique affiche « bientôt » ; la
-> liste de ce qui manque est dans les journaux Vercel (`[boutique] paiement live refusé :
-> …`, voir `legalMissing()`). La clé de test n'est pas concernée.
+> **Avant de passer en clé live (`sk_live_…`)** : le paiement est **refusé** (503, la boutique
+> affiche « bientôt ») tant que `liveBlockers()` n'est pas vide — la liste exacte de ce qui
+> manque est écrite dans les journaux Vercel (`[boutique] paiement live refusé : …`). Il
+> faut : un **médiateur** (`LEGAL.mediator`), un **téléphone** (`LEGAL.phone`, articles
+> R.111-1 et D.211-1), la **rétractation en ligne** (`LEGAL.onlineWithdrawal`, obligatoire
+> depuis le 19 juin 2026), l'**envoi d'e-mails** configuré (`BREVO_API_KEY` et
+> `MAIL_FROM_EMAIL`) et la **migration** `migration_retractation_05102026.sql` passée.
+> La clé de test n'est pas concernée.
 >
 > **L'encadré des garanties légales** des CGV (`cgv.garantiesEncadre`) est le modèle
 > officiel du décret n° 2022-946, annexe I-A : ne jamais le reformuler. Un test en
@@ -282,12 +283,39 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   par e-mail) — au-delà, la déclaration est gardée, seul l'envoi automatique est suspendu.
   Code : `src/lib/withdrawal.ts` (logique pure), `withdrawal-server.ts` (envoi, alerte,
   filet), `mailer.ts` (Brevo).
-- **E-mails (Brevo)** — compte gratuit (300 e-mails/jour), puis : (1) Brevo › Domaines :
-  ajouter `xbz-esport.com` et créer chez l'hébergeur DNS les enregistrements demandés
-  (code Brevo, DKIM, DMARC, et SPF si besoin) ; (2) créer une clé d'API ; (3) renseigner
-  `BREVO_API_KEY` et `MAIL_FROM_EMAIL` dans Vercel ; (4) faire une déclaration de test et
-  vérifier l'arrivée de l'accusé (et qu'il n'est pas en spam). Un compte Brevo neuf peut
-  devoir être activé par leur support avant l'envoi d'e-mails transactionnels.
+- **Mise en service de la rétractation en ligne** — dans cet ORDRE (aucune étape ne se
+  fait avant la précédente) :
+  1. Appliquer le lot, puis dans Supabase › SQL Editor exécuter
+     `supabase/migration_retractation_05102026.sql` (rejouable), et vérifier avec
+     `select to_regclass('public.order_withdrawals');` (doit répondre le nom de la table).
+  2. **Brevo** (compte gratuit, 300 e-mails/jour) : ajouter le domaine `xbz-esport.com` et
+     créer chez l'hébergeur DNS les enregistrements que Brevo affiche — **code Brevo (TXT),
+     DKIM, DMARC (TXT)**. Ne pas toucher aux MX ni au SPF de Google, et **ne jamais créer un
+     second enregistrement SPF** (un domaine n'en a qu'un) ; si un `_dmarc` existe déjà, le
+     modifier au lieu d'en ajouter un. Attendre « domaine authentifié ».
+  3. **Brevo › Sécurité › Adresses IP autorisées : désactiver le blocage.** Vercel n'a pas
+     d'IP de sortie fixe : sinon Brevo répond **401 « unrecognised IP address »** à chaque
+     envoi (visible dans `ack_error` et dans l'alerte Discord).
+  4. Brevo › Expéditeurs : ajouter `support@xbz-esport.com` (un code arrive dans cette boîte
+     Google), puis **SMTP & API › Clés API** : créer une clé. Un compte Brevo neuf peut devoir
+     être activé par leur support avant d'envoyer.
+  5. Vercel › Settings › Environment Variables, environnement **Production** :
+     `BREVO_API_KEY`, `MAIL_FROM_EMAIL=support@xbz-esport.com` (même domaine que celui
+     authentifié), `DISCORD_COMMANDES_WEBHOOK_URL` (sans lui, aucune alerte du staff) et
+     `CRON_SECRET` (sans lui, le filet quotidien ne tourne jamais). **Puis redéployer.**
+  6. **Test, avec la clé Stripe de test** : faire une déclaration avec sa propre adresse
+     (3 accusés par boîte et par jour au plus). Vérifier : l'accusé arrive, hors spams, avec la
+     date et l'heure ; l'alerte Discord ; la ligne dans Commandes › Rétractations. Supprimer
+     ensuite la déclaration d'essai (bouton « Supprimer » de l'onglet).
+  7. Seulement alors : passer en clé `sk_live_` (voir l'encadré plus haut).
+- **Garde-fous de la route publique** (elle envoie des e-mails sous notre domaine) : 5 envois
+  par minute et 12 par heure et par IP ; champ piège (déclaration **gardée** mais accusé
+  suspendu et staff alerté) ; au plus **3 accusés par boîte** (casse, « +tag » et points de
+  Gmail ramenés ensemble), **100 par jour** au total, dont 40 pour les déclarations non
+  rapprochées, pour rester sous les 300 de Brevo. Un accusé retenu par un plafond n'est pas
+  perdu : le cron le renvoie dès que la fenêtre de 24 h se libère, ou le staff le renvoie à la
+  main. Déclarations conservées **5 ans** (puis supprimées par le cron) ; celles au piège
+  rempli, 30 jours.
 - **Back-office › Commandes** : « à expédier » avec l'adresse, lien vers le paiement dans
   Stripe, « Marquer expédiée ».
 - **Export comptable (CSV)** — encart « Export comptable » de la page Commandes, route

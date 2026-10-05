@@ -59,7 +59,7 @@ export default async function WithdrawalPage({ params }: PageProps) {
             </a>
           ),
           cgv: (chunks: ReactNode) => (
-            <Link href="/cgv" locale={locale} className={linkCls}>
+            <Link href="/cgv#retractation" locale={locale} className={linkCls}>
               {chunks}
             </Link>
           ),

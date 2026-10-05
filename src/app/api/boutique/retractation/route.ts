@@ -3,38 +3,42 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/apierror";
 import { checkSpam } from "@/lib/antispam";
 import { FIELD_MAX, findTooLong, textField, tooLongMessage } from "@/lib/limits";
-import { checkFormRateLimit, getClientIp } from "@/lib/ratelimit";
+import { checkFormRateLimit, checkRateLimit, getClientIp } from "@/lib/ratelimit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeLike, matchOrder } from "@/lib/withdrawal";
-import {
-  finishWithdrawalAfterResponse,
-  MAX_ACK_ATTEMPTS,
-  MAX_ACK_PER_EMAIL_PER_DAY,
-} from "@/lib/withdrawal-server";
+import { emailLikePattern, mailboxKey, matchOrder, sameEmail } from "@/lib/withdrawal";
+import { finishWithdrawalAfterResponse } from "@/lib/withdrawal-server";
 
 // Rétractation en ligne : « Renoncer au contrat ici », puis « Confirmer la
 // rétractation » (le navigateur n'appelle cette route qu'à la confirmation).
 //
-// Principe : une déclaration valide est TOUJOURS enregistrée, même si la
-// commande ne peut pas être rapprochée — la loi ne laisse pas au vendeur le
-// droit de la refuser faute d'identification parfaite. Le rapprochement
-// (`match`) dit seulement au staff s'il doit vérifier à la main.
+// Principe : une déclaration valide est TOUJOURS enregistrée — jamais jetée, jamais
+// refusée faute d'identification parfaite : la loi ne laisse pas au vendeur ce droit.
+// Le rapprochement (`match`) dit seulement au staff s'il doit vérifier à la main, et
+// un champ piège rempli (`suspect`) suspend l'accusé automatique sans perdre la
+// déclaration (un gestionnaire de mots de passe peut remplir le champ caché d'un vrai
+// client).
 //
-// L'accusé de réception part APRÈS la réponse (`after`) : une panne du
-// fournisseur d'e-mails ne fait jamais échouer la déclaration, elle est notée
-// (`ack_error`) et le cron réessaie. La réponse ne confirme rien sur les
-// commandes de la personne : on ne dit pas si cet e-mail a acheté.
+// L'accusé de réception part APRÈS la réponse (`after`) : une panne du fournisseur
+// d'e-mails ne fait jamais échouer la déclaration, elle est notée (`ack_error`) et le
+// cron réessaie. La réponse ne dit rien des commandes de la personne : on ne révèle
+// pas si cet e-mail a acheté.
 
 export const dynamic = "force-dynamic";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const LOCALES = ["fr", "en"] as const;
 
+/** Envois au plus par IP et par heure, en plus des 5 par minute du limiteur commun. */
+const HOURLY_LIMIT = 12;
+
 export async function POST(request: Request) {
-  // Appelée par nos pages seulement (même garde que la route de paiement).
+  // Appelée par nos pages seulement (mêmes gardes que la route de paiement).
   const site = request.headers.get("sec-fetch-site");
   if (site && site !== "same-origin") {
     return apiError(403, "invalidRequest", "Requête invalide.");
+  }
+  if (!request.headers.get("content-type")?.includes("application/json")) {
+    return apiError(415, "invalidRequest", "Requête invalide.");
   }
 
   let body: Record<string, unknown>;
@@ -46,18 +50,16 @@ export async function POST(request: Request) {
     return apiError(400, "invalidRequest", "Requête invalide.");
   }
 
-  const { allowed, retryAfter } = await checkFormRateLimit(getClientIp(request), "retractation");
-  if (!allowed) {
-    return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans une minute.", {
-      headers: { "Retry-After": String(retryAfter) },
+  const ip = getClientIp(request);
+  const perMinute = await checkFormRateLimit(ip, "retractation");
+  const perHour = perMinute.allowed
+    ? await checkRateLimit(ip, "retractation:h", { limit: HOURLY_LIMIT, windowSeconds: 3600 })
+    : perMinute;
+  if (!perHour.allowed) {
+    return apiError(429, "rateLimited", "Trop de tentatives. Réessaie dans un moment.", {
+      headers: { "Retry-After": String(perHour.retryAfter) },
     });
   }
-
-  // Anti-spam : piège rempli → on répond OK sans rien enregistrer ni envoyer ;
-  // envoi trop rapide pour un humain → refusé.
-  const { spam, tooFast } = checkSpam(body);
-  if (spam) return NextResponse.json({ ok: true, receivedAt: new Date().toISOString() });
-  if (tooFast) return apiError(429, "tooFast", "Envoi trop rapide, réessaie dans un instant.");
 
   const nom = textField(body.nom);
   const email = textField(body.email);
@@ -67,55 +69,55 @@ export async function POST(request: Request) {
     return apiError(400, "invalidRequest", "Requête invalide.");
   }
   if (!nom || !email) return apiError(400, "missingFields", "Champs obligatoires manquants.");
-  if (!EMAIL.test(email)) return apiError(422, "invalidEmail", "Adresse email invalide.");
+  // Les longueurs AVANT l'expression régulière : elle ne doit jamais voir une chaîne géante.
   const tooLong = findTooLong({ nom, email, commande, details });
   if (tooLong) {
     return apiError(422, "tooLong", tooLongMessage(tooLong), {
       params: { field: tooLong, max: FIELD_MAX[tooLong] },
     });
   }
-  const locale = LOCALES.find((l) => l === body.locale) ?? "fr";
+  if (!EMAIL.test(email)) return apiError(422, "invalidEmail", "Adresse email invalide.");
 
+  // Envoi trop rapide pour un humain : refusé (le client peut réessayer). Piège rempli :
+  // la déclaration est GARDÉE, marquée suspecte, sans accusé automatique.
+  const { spam, tooFast } = checkSpam(body);
+  if (tooFast) return apiError(429, "tooFast", "Envoi trop rapide, réessaie dans un instant.");
+
+  const locale = LOCALES.find((l) => l === body.locale) ?? "fr";
   const admin = createAdminClient();
 
-  // Commandes PAYÉES de cet e-mail (casse ignorée, aucun joker toléré).
-  const { data: orders, error: ordersError } = await admin
+  // Commandes PAYÉES de cette adresse. Le motif ne tolère aucun joker, et on ne garde
+  // ensuite que les adresses EXACTEMENT identiques (casse mise à part).
+  const { data: candidates, error: ordersError } = await admin
     .from("orders")
-    .select("id")
+    .select("id, customer_email")
     .in("status", ["paid", "fulfilled"])
-    .ilike("customer_email", escapeLike(email))
+    .ilike("customer_email", emailLikePattern(email))
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(50);
   if (ordersError) {
     // Pas de rapprochement possible ne doit pas coûter sa déclaration au client :
     // on l'enregistre « non rapprochée », le staff la traitera à la main.
     console.error("[retractation] lecture des commandes:", ordersError.message);
   }
-  const matched = matchOrder((orders ?? []) as { id: string }[], commande || null);
-
-  // Plafond d'accusés par adresse et par jour (voir MAX_ACK_PER_EMAIL_PER_DAY). Si le
-  // comptage échoue on ne bride rien : la limite par IP reste en place.
-  const { count: recent } = await admin
-    .from("order_withdrawals")
-    .select("id", { count: "exact", head: true })
-    .ilike("customer_email", escapeLike(email))
-    .gte("received_at", new Date(Date.now() - 24 * 3600_000).toISOString());
-  const throttled = (recent ?? 0) >= MAX_ACK_PER_EMAIL_PER_DAY;
+  const orders = ((candidates ?? []) as { id: string; customer_email: string | null }[]).filter((o) =>
+    sameEmail(o.customer_email, email),
+  );
+  const matched = ordersError ? { orderId: null, match: "none" as const } : matchOrder(orders, commande || null);
 
   const { data, error } = await admin
     .from("order_withdrawals")
     .insert({
       order_id: matched.orderId,
-      order_number: matched.orderNumber,
-      match: ordersError ? "none" : matched.match,
+      // Ce que le client a tapé, TEL QUEL : fait partie de sa déclaration (rappelé dans l'accusé).
+      order_number: commande || null,
+      match: matched.match,
       customer_name: nom,
       customer_email: email,
       details: details || null,
       locale,
-      // Plafond atteint : déclaration gardée, envoi automatique suspendu.
-      ...(throttled
-        ? { ack_attempts: MAX_ACK_ATTEMPTS, ack_error: `plafond de ${MAX_ACK_PER_EMAIL_PER_DAY} accusés par adresse et par jour atteint` }
-        : {}),
+      mailbox_key: mailboxKey(email),
+      suspect: spam,
     })
     .select("id, received_at")
     .single();

@@ -38,7 +38,7 @@ export const LEGAL = {
    * Date d'entrée en vigueur de cette version des CGV (AAAA-MM-JJ) : le jour
    * où elle est publiée. À changer à chaque modification des CGV.
    */
-  cgvEffective: "2026-10-04",
+  cgvEffective: "2026-10-05",
   /**
    * Médiateur de la consommation auquel l'association adhère (obligatoire pour
    * vendre à des particuliers : garantir au client un recours effectif, article

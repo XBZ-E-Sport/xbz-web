@@ -1,9 +1,10 @@
 import AdminForm from "@/components/AdminForm";
+import ConfirmButton from "@/components/ConfirmButton";
 import { formatEuros } from "@/lib/money";
 import { orderNumber } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
 import type { MatchKind, WithdrawalRow } from "@/lib/withdrawal";
-import { linkWithdrawalToOrder, resendWithdrawalAck, setWithdrawalProcessed } from "./actions";
+import { deleteWithdrawal, linkWithdrawalToOrder, resendWithdrawalAck, setWithdrawalProcessed } from "./actions";
 
 // Onglet « Rétractations » du back-office : les déclarations faites avec la fonction
 // « Renoncer au contrat ici », à traiter une par une. Composant SERVEUR : les données
@@ -14,8 +15,9 @@ const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyl
 /** Ce que la commande rapprochée dit au staff. */
 const MATCH_HINT: Record<MatchKind, string> = {
   exact: "Rapprochée : numéro de commande reconnu.",
-  single: "Rapprochée : seule commande payée de cet e-mail.",
+  single: "Rapprochée d’après l’e-mail seul (la déclaration n’est pas authentifiée) : à confirmer avec le client si besoin.",
   ambiguous: "Non rapprochée : plusieurs commandes payées pour cet e-mail. Choisis laquelle ci-dessous.",
+  mismatch: "Non rapprochée : le numéro saisi ne correspond à aucune commande payée de cet e-mail (autre adresse ? faute de frappe ?). Vérifie avant de rattacher.",
   none: "Non rapprochée : aucune commande payée pour cet e-mail. Vérifie l’orthographe ou une autre adresse.",
 };
 
@@ -28,11 +30,23 @@ export default function Withdrawals({
   rows,
   orders,
   tableMissing,
+  loadError,
 }: {
   rows: WithdrawalRow[];
   orders: Map<string, LinkedOrder>;
   tableMissing: boolean;
+  /** Erreur de lecture autre que « table absente » : à montrer, jamais à confondre avec « aucune rétractation ». */
+  loadError?: string | null;
 }) {
+  if (loadError) {
+    return (
+      <p className="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+        ⚠️ Impossible de lire les rétractations ({loadError}). Il peut y en avoir que tu ne vois pas : recharge la page ou
+        regarde les journaux Vercel.
+      </p>
+    );
+  }
+
   if (tableMissing) {
     return (
       <p className="rounded-lg border border-xbz-cyan/30 bg-xbz-cyan/10 px-4 py-3 text-sm font-semibold text-xbz-cyan">
@@ -83,6 +97,12 @@ export default function Withdrawals({
               )}
 
               <div className="mt-3 text-sm text-neutral-300">
+                {w.suspect && (
+                  <p className="mb-2 font-semibold text-red-300">
+                    ⚠️ Le champ piège anti-spam était rempli (extension ou gestionnaire de mots de passe, ou robot) :
+                    vérifie que la demande est réelle avant de renvoyer l’accusé ou de rembourser.
+                  </p>
+                )}
                 {w.order_id ? (
                   <p>
                     <span className="font-semibold text-white">{orderNumber(w.order_id)}</span>
@@ -90,6 +110,7 @@ export default function Withdrawals({
                     {order?.status === "refunded" && <span className="font-semibold text-red-300"> · déjà remboursée</span>}
                     {order?.status === "fulfilled" && " · expédiée"}
                     <span className="text-neutral-400"> — {MATCH_HINT[w.match]}</span>
+                    {w.order_number && <span className="text-neutral-400"> Saisi par le client : « {w.order_number} ».</span>}
                     {order?.stripe_payment_intent && (
                       <>
                         {" "}
@@ -109,7 +130,7 @@ export default function Withdrawals({
                   <div className="flex flex-col gap-2">
                     <p className="font-semibold text-xbz-cyan">
                       ⚠️ {MATCH_HINT[w.match]}
-                      {w.order_number && ` Numéro saisi par le client : ${w.order_number}.`}
+                      {w.order_number && ` Saisi par le client : « ${w.order_number} ».`}
                     </p>
                     <AdminForm
                       action={linkWithdrawalToOrder}
@@ -141,7 +162,7 @@ export default function Withdrawals({
                 ) : (
                   <p className="font-semibold text-red-300">
                     ⚠️ Accusé de réception NON envoyé — {w.ack_error ?? "en attente d’envoi"} ({w.ack_attempts} essai
-                    {w.ack_attempts > 1 ? "s" : ""}). La loi l’exige « sans délai » : renvoie-le.
+                    {w.ack_attempts > 1 ? "s" : ""}). La loi l’exige « sans délai » : renvoie-le (bouton ci-dessous).
                   </p>
                 )}
               </div>
@@ -164,6 +185,15 @@ export default function Withdrawals({
                   <button className={`${btn} ${processed ? "bg-white/5 text-neutral-300 hover:bg-white/10" : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"}`}>
                     {processed ? "↩️ Rouvrir" : "✅ Marquer traitée"}
                   </button>
+                </AdminForm>
+                <AdminForm action={deleteWithdrawal} loadingMessage="Suppression…" successMessage="Déclaration supprimée" closeOnSuccess={false}>
+                  <input type="hidden" name="id" value={w.id} />
+                  <ConfirmButton
+                    message="Supprimer définitivement cette déclaration ? À réserver aux essais et au spam : une vraie rétractation est une preuve."
+                    className={`${btn} bg-white/5 text-neutral-400 hover:bg-red-500/15 hover:text-red-300`}
+                  >
+                    🗑️ Supprimer
+                  </ConfirmButton>
                 </AdminForm>
               </div>
             </li>

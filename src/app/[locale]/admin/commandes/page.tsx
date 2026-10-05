@@ -65,27 +65,28 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
   // Rétractations à traiter (pastille de l'onglet). Table absente = migration pas
   // encore passée : le code ne casse pas, l'onglet l'explique.
-  const pending = await admin
-    .from("order_withdrawals")
-    .select("id", { count: "exact", head: true })
-    .is("processed_at", null);
+  // Lecture réelle (pas un comptage « HEAD », qui ne distingue pas une table absente d'une
+  // table vide) : 42P01 / PGRST205 = migration pas passée ; toute autre erreur est montrée.
+  const pending = await admin.from("order_withdrawals").select("id").is("processed_at", null).limit(100);
   const tableMissing = pending.error?.code === "42P01" || pending.error?.code === "PGRST205";
-  const pendingWithdrawals = pending.error ? 0 : (pending.count ?? 0);
+  const withdrawalsError = pending.error && !tableMissing ? pending.error.message : null;
+  const pendingWithdrawals = pending.error ? 0 : (pending.data?.length ?? 0);
 
   let withdrawalRows: WithdrawalRow[] = [];
   let linkedOrders = new Map<string, LinkedOrder>();
   const withdrawalsByOrder = new Map<string, WithdrawalRow>();
-  if (!tableMissing && !pending.error) {
+  if (!pending.error) {
     if (showWithdrawals) {
+      // À traiter d'abord (`processed_at` nul en tête), les plus récentes en premier dans chaque
+      // groupe — trié par la base AVANT la limite : une déclaration en attente ne tombe jamais
+      // hors de la page parce que 200 plus récentes ont déjà été traitées.
       const { data } = await admin
         .from("order_withdrawals")
         .select("*")
+        .order("processed_at", { ascending: false, nullsFirst: true })
         .order("received_at", { ascending: false })
         .limit(200);
-      // À traiter d'abord (les plus récentes en tête), puis les traitées.
-      withdrawalRows = ((data ?? []) as WithdrawalRow[]).sort(
-        (a, b) => Number(Boolean(a.processed_at)) - Number(Boolean(b.processed_at)),
-      );
+      withdrawalRows = (data ?? []) as WithdrawalRow[];
       const ids = [...new Set(withdrawalRows.flatMap((w) => (w.order_id ? [w.order_id] : [])))];
       if (ids.length) {
         const { data: linked } = await admin
@@ -176,9 +177,9 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           <Link
             key={k}
             href={`/admin/commandes?vue=${k}`}
-            aria-current={k === key ? "page" : undefined}
+            aria-current={k === key && !showWithdrawals ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-              k === key ? "bg-xbz-blue text-white" : "bg-white/5 text-neutral-300 hover:bg-white/10"
+              k === key && !showWithdrawals ? "bg-xbz-blue text-white" : "bg-white/5 text-neutral-300 hover:bg-white/10"
             }`}
           >
             {FILTERS[k].label}
@@ -200,7 +201,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       </nav>
 
       {showWithdrawals ? (
-        <Withdrawals rows={withdrawalRows} orders={linkedOrders} tableMissing={tableMissing} />
+        <Withdrawals rows={withdrawalRows} orders={linkedOrders} tableMissing={tableMissing} loadError={withdrawalsError} />
       ) : orders.length === 0 ? (
         <p className="text-neutral-400">Aucune commande ici pour le moment.</p>
       ) : (
@@ -233,9 +234,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
                 {withdrawalsByOrder.has(o.id) && (
                   <p className="mt-3 rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200">
-                    ↩️ Le client s’est rétracté le{" "}
+                    ↩️ Une rétractation a été déclarée le{" "}
                     {dateTime.format(new Date((withdrawalsByOrder.get(o.id) as WithdrawalRow).received_at))}
-                    {(withdrawalsByOrder.get(o.id) as WithdrawalRow).processed_at ? " (traité)" : " — ne l’expédie pas, ou attends le retour"}
+                    {(withdrawalsByOrder.get(o.id) as WithdrawalRow).processed_at
+                      ? " (traitée)"
+                      : " — non vérifiée : contrôle-la avant d’expédier ou de rembourser"}
                     .{" "}
                     <Link href="/admin/commandes?vue=retractations" className="underline">
                       Voir la rétractation

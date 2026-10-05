@@ -11,11 +11,13 @@ import en from "../../messages/en.json";
 import { orderNumber } from "@/lib/shop";
 import {
   buildAck,
+  emailLikePattern,
   escapeHtml,
-  escapeLike,
   formatReceivedAt,
+  mailboxKey,
   matchOrder,
   normalizeOrderNumber,
+  sameEmail,
   type AckInput,
 } from "@/lib/withdrawal";
 
@@ -48,46 +50,63 @@ describe("normalizeOrderNumber", () => {
 
 describe("matchOrder — la déclaration est TOUJOURS acceptée, seul le rapprochement varie", () => {
   it("numéro reconnu : « exact », même s'il y a plusieurs commandes", () => {
-    expect(matchOrder([{ id: A }, { id: B }], "xbz-ffeeddcc")).toEqual({
-      orderId: B,
-      match: "exact",
-      orderNumber: "XBZ-FFEEDDCC",
-    });
+    expect(matchOrder([{ id: A }, { id: B }], "xbz-ffeeddcc")).toEqual({ orderId: B, match: "exact" });
   });
 
   it("pas de numéro, une seule commande payée pour cet e-mail : « single »", () => {
-    expect(matchOrder([{ id: A }], null)).toEqual({ orderId: A, match: "single", orderNumber: null });
+    expect(matchOrder([{ id: A }], null)).toEqual({ orderId: A, match: "single" });
+    expect(matchOrder([{ id: A }], "")).toEqual({ orderId: A, match: "single" });
   });
 
-  it("numéro inconnu mais une seule commande : on la rattache (« single ») en gardant le numéro saisi", () => {
-    expect(matchOrder([{ id: A }], "XBZ-00000000")).toEqual({
-      orderId: A,
-      match: "single",
-      orderNumber: "XBZ-00000000",
-    });
+  it("numéro valide mais inconnu de cet e-mail : « mismatch », JAMAIS rattaché à « la seule commande » (le client en désigne une autre)", () => {
+    expect(matchOrder([{ id: A }], "XBZ-00000000")).toEqual({ orderId: null, match: "mismatch" });
+    expect(matchOrder([{ id: A }, { id: B }], "xbz-00000000")).toEqual({ orderId: null, match: "mismatch" });
+    expect(matchOrder([], "XBZ-1A2B3C4D")).toEqual({ orderId: null, match: "mismatch" });
   });
 
-  it("plusieurs commandes et aucun numéro exploitable : « ambiguous », le staff tranche, on ne devine pas", () => {
-    expect(matchOrder([{ id: A }, { id: B }], null)).toEqual({ orderId: null, match: "ambiguous", orderNumber: null });
-    expect(matchOrder([{ id: A }, { id: B }], "n'importe quoi")).toEqual({
-      orderId: null,
-      match: "ambiguous",
-      orderNumber: null,
-    });
+  it("texte libre qui n'est pas un numéro (« ma commande de mai ») : on retombe sur l'e-mail", () => {
+    expect(matchOrder([{ id: A }], "ma commande de mai")).toEqual({ orderId: A, match: "single" });
+    expect(matchOrder([{ id: A }, { id: B }], "ma commande de mai")).toEqual({ orderId: null, match: "ambiguous" });
+    expect(matchOrder([], "ma commande de mai")).toEqual({ orderId: null, match: "none" });
   });
 
-  it("aucune commande payée pour cet e-mail : « none »", () => {
-    expect(matchOrder([], null)).toEqual({ orderId: null, match: "none", orderNumber: null });
-    expect(matchOrder([], "XBZ-1A2B3C4D")).toEqual({ orderId: null, match: "none", orderNumber: "XBZ-1A2B3C4D" });
+  it("plusieurs commandes et aucun numéro : « ambiguous », le staff tranche, on ne devine pas", () => {
+    expect(matchOrder([{ id: A }, { id: B }], null)).toEqual({ orderId: null, match: "ambiguous" });
+  });
+
+  it("aucune commande payée pour cet e-mail et aucun numéro : « none »", () => {
+    expect(matchOrder([], null)).toEqual({ orderId: null, match: "none" });
   });
 });
 
-describe("escapeLike / escapeHtml", () => {
-  it("aucun joker : « a_b@x.fr » ne vise pas « aXb@x.fr », « % » ne vise pas tout le monde", () => {
-    expect(escapeLike("a_b%c\\d@x.fr")).toBe("a\\_b\\%c\\\\d@x.fr");
-    expect(escapeLike("simple@x.fr")).toBe("simple@x.fr");
+describe("recherche par adresse : aucun joker, adresse EXACTE", () => {
+  it("emailLikePattern neutralise % _ \\ et le « * » que PostgREST lit comme %", () => {
+    expect(emailLikePattern("a_b%c\\d@x.fr")).toBe("a\\_b\\%c\\\\d@x.fr");
+    expect(emailLikePattern("a*b@x.fr")).toBe("a_b@x.fr"); // un seul caractère, jamais « tout »
+    expect(emailLikePattern("*@*.*")).toBe("_@_._");
+    expect(emailLikePattern("simple@x.fr")).toBe("simple@x.fr");
   });
 
+  it("sameEmail : casse et espaces ignorés, mais l'adresse doit être la MÊME", () => {
+    expect(sameEmail("Jeanne@Exemple.fr", " jeanne@exemple.fr ")).toBe(true);
+    // Ce que le motif approché (« * » → « _ ») ramènerait en trop est écarté ici.
+    expect(sameEmail("aXb@x.fr", "a*b@x.fr")).toBe(false);
+    expect(sameEmail("autre@x.fr", "jeanne@x.fr")).toBe(false);
+    expect(sameEmail(null, "jeanne@x.fr")).toBe(false);
+  });
+
+  it("mailboxKey : « +tag », casse et points de Gmail ramenés à une seule boîte (plafond d'accusés)", () => {
+    expect(mailboxKey("Victim+7@Example.COM")).toBe("victim@example.com");
+    expect(mailboxKey("v.i.c.t.i.m+x@gmail.com")).toBe("victim@gmail.com");
+    expect(mailboxKey("victim@googlemail.com")).toBe("victim@gmail.com");
+    // Hors Gmail, les points comptent (ce sont des boîtes différentes).
+    expect(mailboxKey("a.b@example.com")).toBe("a.b@example.com");
+    expect(mailboxKey("+tag@example.com")).toBe("+tag@example.com"); // pas de partie locale avant le +
+    expect(mailboxKey("pas-une-adresse")).toBe("pas-une-adresse");
+  });
+});
+
+describe("escapeHtml", () => {
   it("neutralise le HTML saisi par le client", () => {
     expect(escapeHtml(`<img src=x onerror="alert('1')"> & co`)).toBe(
       "&lt;img src=x onerror=&quot;alert(&#39;1&#39;)&quot;&gt; &amp; co",
@@ -174,6 +193,17 @@ describe("buildAck — accusé de réception (contenu de la déclaration + date 
     expect(mail.text).toContain("Commande : non précisée");
     expect(mail.text).not.toContain("Précisions");
     expect(mail.html).not.toContain("Précisions");
+  });
+
+  it("l'accusé ne PROMET pas : il confirme la réception, rappelle les conditions « si ton droit s'applique », et propose d'ignorer si ce n'est pas le client", () => {
+    for (const locale of ["fr", "en"] as const) {
+      const mail = buildAck(translator(locale), input({ locale }));
+      expect(mail.text).toMatch(locale === "fr" ? /confirme uniquement la réception/ : /only confirms receipt/);
+      expect(mail.text).toMatch(locale === "fr" ? /Si ton droit de rétractation s’applique, nous te remboursons/ : /If your right of withdrawal applies, we refund/);
+      expect(mail.text).toMatch(locale === "fr" ? /Tu n’es pas à l’origine de cette déclaration/ : /Did not make this statement/);
+      expect(mail.text).toContain("support@xbz-esport.com");
+      expect(mail.html).toContain("support@xbz-esport.com");
+    }
   });
 
   it("le texte brut est lisible seul (aucune balise)", () => {

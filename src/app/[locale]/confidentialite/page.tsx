@@ -161,6 +161,7 @@ export default async function ConfidentialitePage({ params }: PageProps) {
           </h2>
           <p>{t.rich("retentionText", { ...contactTags, months: RETENTION_MONTHS })}</p>
           <p className="mt-2">{t.rich("retentionOrdersText", contactTags)}</p>
+          <p className="mt-2">{t.rich("retentionWithdrawalsText", contactTags)}</p>
           <p className="mt-2">{t.rich("retentionStaffText", contactTags)}</p>
         </section>
 

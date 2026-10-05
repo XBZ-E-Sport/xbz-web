@@ -97,11 +97,28 @@ export async function linkWithdrawalToOrder(formData: FormData): Promise<AdminRe
 
     const { data, error } = await admin
       .from("order_withdrawals")
-      .update({ order_id: order.id, order_number: number, match: "exact" })
+      // `order_number` reste TEL QUE le client l'a tapé (contenu de sa déclaration).
+      .update({ order_id: order.id, match: "exact" })
       .eq("id", id)
       .select("id");
     if (error) throw dbError(error);
     if (!data?.length) throw new AdminError("Cette déclaration n'existe plus.");
+    revalidateLocalizedPath("/admin/commandes");
+  });
+}
+
+/**
+ * Supprime une déclaration (essai du staff, spam). Les vraies déclarations sont des
+ * preuves : elles se marquent « traitées », elles ne se suppriment pas à la légère
+ * (le formulaire demande confirmation).
+ */
+export async function deleteWithdrawal(formData: FormData): Promise<AdminResult> {
+  return adminAction(async () => {
+    const admin = await assertStaff();
+    const id = String(formData.get("id") ?? "").trim();
+    if (!UUID.test(id)) throw new AdminError("Identifiant de déclaration invalide.");
+    const { error } = await admin.from("order_withdrawals").delete().eq("id", id);
+    if (error) throw dbError(error);
     revalidateLocalizedPath("/admin/commandes");
   });
 }

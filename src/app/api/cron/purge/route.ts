@@ -27,8 +27,14 @@ import { retryPendingAcks } from "@/lib/withdrawal-server";
 // Écritures via service_role (createAdminClient) → contourne la RLS.
 
 export const dynamic = "force-dynamic";
+// Le filet des accusés appelle un fournisseur d'e-mails (jusqu'à 15 s chacun, en parallèle).
+export const maxDuration = 60;
 
 const RETENTION_MONTHS = 24;
+// Déclarations de rétractation : prescription des actions entre consommateur et vendeur.
+const WITHDRAWAL_RETENTION_YEARS = 5;
+// Déclarations au piège anti-bot rempli : du bruit, sauf rare faux positif déjà traité depuis.
+const SUSPECT_RETENTION_DAYS = 30;
 // Les IP anti-flood n'ont d'utilité qu'une minute : une heure suffit largement.
 const RATE_LIMIT_RETENTION_HOURS = 1;
 
@@ -54,6 +60,28 @@ async function purge() {
     .select("id");
   if (support.error) throw new Error(`support_messages: ${support.error.message}`);
 
+  // Rétractations : 5 ans (puis suppression) ; le bruit au piège rempli, 30 jours. Une
+  // erreur ici (migration pas encore passée…) ne doit pas bloquer le reste de la purge.
+  const withdrawalCutoff = new Date();
+  withdrawalCutoff.setFullYear(withdrawalCutoff.getFullYear() - WITHDRAWAL_RETENTION_YEARS);
+  const suspectCutoff = new Date(Date.now() - SUSPECT_RETENTION_DAYS * 24 * 3600_000);
+  const oldWithdrawals = await admin
+    .from("order_withdrawals")
+    .delete()
+    .lt("received_at", withdrawalCutoff.toISOString())
+    .select("id");
+  const suspectWithdrawals = await admin
+    .from("order_withdrawals")
+    .delete()
+    .eq("suspect", true)
+    .lt("received_at", suspectCutoff.toISOString())
+    .select("id");
+  for (const r of [oldWithdrawals, suspectWithdrawals]) {
+    if (r.error && r.error.code !== "42P01" && r.error.code !== "PGRST205") {
+      console.error("[cron/purge] order_withdrawals:", r.error.message);
+    }
+  }
+
   // Filet de sécurité anti-flood : `checkRateLimit` purge déjà les hits passés
   // à chaque requête, mais seulement s'il y a du trafic. Sans visite pendant
   // plusieurs jours, des IP resteraient stockées — d'où ce balayage quotidien.
@@ -66,7 +94,7 @@ async function purge() {
   if (hits.error) throw new Error(`rate_limit_hits: ${hits.error.message}`);
 
   const reservationsReleased = isStripeConfigured() ? await sweepStaleReservations(admin, 50) : 0;
-  const withdrawalAcksSent = await retryPendingAcks(admin, 20);
+  const withdrawalAcksSent = await retryPendingAcks(admin, 10);
 
   return {
     cutoff: iso,
@@ -75,6 +103,7 @@ async function purge() {
       candidatures: candidatures.data?.length ?? 0,
       support_messages: support.data?.length ?? 0,
       rate_limit_hits: hits.data?.length ?? 0,
+      order_withdrawals: (oldWithdrawals.data?.length ?? 0) + (suspectWithdrawals.data?.length ?? 0),
     },
     reservationsReleased,
     withdrawalAcksSent,

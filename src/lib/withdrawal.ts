@@ -15,7 +15,7 @@ import { orderNumber } from "@/lib/shop";
 /** Fonction de traduction (`getTranslations` ou `createTranslator`). */
 export type Translate = (key: string, values?: Record<string, string | number>) => string;
 
-export type MatchKind = "exact" | "single" | "ambiguous" | "none";
+export type MatchKind = "exact" | "single" | "ambiguous" | "mismatch" | "none";
 
 /** Ligne de `order_withdrawals` (voir supabase/migration_retractation_05102026.sql). */
 export type WithdrawalRow = {
@@ -27,19 +27,14 @@ export type WithdrawalRow = {
   customer_email: string;
   details: string | null;
   locale: string;
+  mailbox_key: string | null;
+  suspect: boolean;
   received_at: string;
   ack_sent_at: string | null;
   ack_attempts: number;
   ack_error: string | null;
+  ack_hold_until: string | null;
   processed_at: string | null;
-};
-
-export type Matched = {
-  /** Commande rapprochée, ou `null` si le staff doit trancher. */
-  orderId: string | null;
-  match: MatchKind;
-  /** Numéro saisi par le client, normalisé (`XBZ-1A2B3C4D`), ou `null`. */
-  orderNumber: string | null;
 };
 
 /**
@@ -52,14 +47,22 @@ export function normalizeOrderNumber(raw: string): string | null {
   return m ? `XBZ-${m[1]}` : null;
 }
 
+export type Matched = {
+  /** Commande rapprochée, ou `null` si le staff doit trancher. */
+  orderId: string | null;
+  match: MatchKind;
+};
+
 /**
- * Commande visée par la déclaration, parmi les commandes PAYÉES de l'e-mail
- * saisi (`orders`).
+ * Commande visée par la déclaration, parmi les commandes PAYÉES de l'e-mail saisi
+ * (`orders`), selon ce que le client a tapé dans « Numéro de commande » (`typed`).
  *
- *  - un numéro de commande reconnu l'emporte (`exact`) ;
- *  - sinon, une seule commande payée pour cet e-mail : c'est elle (`single`) ;
- *  - plusieurs : le staff tranche (`ambiguous`), sans jamais deviner ;
- *  - aucune : `none`.
+ *  - un numéro reconnu l'emporte (`exact`) ;
+ *  - un numéro saisi mais INCONNU de cet e-mail : `mismatch`. On ne rattache pas la
+ *    déclaration à « la seule commande » de l'e-mail : le client a désigné autre chose
+ *    (autre commande, autre adresse, faute de frappe), c'est au staff de vérifier ;
+ *  - rien de saisi (ou un texte qui n'est pas un numéro) : une seule commande payée,
+ *    c'est elle (`single`) ; plusieurs, le staff tranche (`ambiguous`) ; aucune (`none`).
  *
  * Dans tous les cas la déclaration est ENREGISTRÉE et ACQUITTÉE : un rapprochement
  * raté ne rend pas la rétractation invalide, il demande seulement un coup d'œil.
@@ -68,15 +71,44 @@ export function matchOrder(orders: { id: string }[], typed: string | null): Matc
   const number = typed ? normalizeOrderNumber(typed) : null;
   if (number) {
     const exact = orders.find((o) => orderNumber(o.id) === number);
-    if (exact) return { orderId: exact.id, match: "exact", orderNumber: number };
+    return exact ? { orderId: exact.id, match: "exact" } : { orderId: null, match: "mismatch" };
   }
-  if (orders.length === 1) return { orderId: orders[0].id, match: "single", orderNumber: number };
-  return { orderId: null, match: orders.length > 1 ? "ambiguous" : "none", orderNumber: number };
+  if (orders.length === 1) return { orderId: orders[0].id, match: "single" };
+  return { orderId: null, match: orders.length > 1 ? "ambiguous" : "none" };
 }
 
-/** Motif `ilike` qui ne tolère aucun joker : « a_b@x.fr » ne doit pas viser « aXb@x.fr ». */
-export function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+/**
+ * Motif `ilike` pour retrouver les commandes d'une adresse. Les jokers sont neutralisés
+ * (`%` et `_` échappés ; `*`, que PostgREST lit comme `%`, devient `_`, un seul
+ * caractère) : au pire la requête ramène un peu trop de lignes, et `sameEmail` garde
+ * ensuite uniquement celles qui sont EXACTEMENT la même adresse.
+ */
+export function emailLikePattern(email: string): string {
+  return email.replace(/[\\%_]/g, (c) => `\\${c}`).replace(/\*/g, "_");
+}
+
+/** Même adresse, casse et espaces mis à part. */
+export function sameEmail(a: string | null | undefined, b: string): boolean {
+  return typeof a === "string" && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/**
+ * Clé de boîte aux lettres : casse, sous-adresse « +tag » et points de Gmail ramenés
+ * à une seule forme (`V.ictim+7@Gmail.com` → `victim@gmail.com`). Sert UNIQUEMENT à
+ * plafonner les accusés par destinataire ; l'e-mail part toujours à l'adresse saisie.
+ */
+export function mailboxKey(email: string): string {
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email.trim().toLowerCase();
+  let local = email.slice(0, at).trim().toLowerCase();
+  let domain = email.slice(at + 1).trim().toLowerCase();
+  const plus = local.indexOf("+");
+  if (plus > 0) local = local.slice(0, plus);
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    local = local.replace(/\./g, "");
+    domain = "gmail.com";
+  }
+  return `${local}@${domain}`;
 }
 
 export function escapeHtml(value: string): string {
@@ -101,7 +133,7 @@ export type AckInput = {
   locale: string;
   name: string;
   email: string;
-  /** Numéro saisi par le client (normalisé) ou, à défaut, celui de la commande rapprochée. */
+  /** Ce que le client a saisi dans « Numéro de commande » ou, à défaut, le numéro de la commande rapprochée. */
   orderNumber: string | null;
   details: string | null;
   receivedAt: Date;
@@ -140,6 +172,7 @@ export function buildAck(t: Translate, input: AckInput): AckMail {
     t("nextSteps", { returnAddress: input.returnAddress }),
     t("refund"),
     t("keep"),
+    t("notYou", { email: input.contactEmail }),
     t("terms", { url: input.termsUrl }),
   ];
   const signature = t("signature", {

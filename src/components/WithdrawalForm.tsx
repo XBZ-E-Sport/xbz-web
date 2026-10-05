@@ -26,6 +26,9 @@ const primaryBtn =
 const secondaryBtn =
   "rounded-xl border border-white/20 px-7 py-3.5 text-center font-semibold text-neutral-200 transition hover:bg-white/5 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60";
 
+/** Message de la réponse du serveur, déjà traduit : le seul qu'on montre tel quel au client. */
+class ServerMessage extends Error {}
+
 type Values = { nom: string; email: string; commande: string; details: string; website: string };
 type Step = "form" | "review" | "done";
 
@@ -82,12 +85,14 @@ export default function WithdrawalForm() {
         body: JSON.stringify({ ...values, elapsed: elapsed(), locale }),
       });
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(translateApiError(json, tErr, tField));
+      if (!res.ok || !json?.ok) throw new ServerMessage(translateApiError(json, tErr, tField));
       // Horodatage du SERVEUR (celui de l'accusé), pas celui du navigateur.
       setReceivedAt(typeof json.receivedAt === "string" ? json.receivedAt : "");
       setStep("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : tErr("generic"));
+      // Réseau coupé, requête interrompue : le texte du navigateur (« Failed to fetch »,
+      // en anglais et propre à chaque moteur) n'a rien à faire sous les yeux du client.
+      setError(err instanceof ServerMessage ? err.message : tErr("generic"));
     } finally {
       setSubmitting(false);
     }
@@ -106,10 +111,11 @@ export default function WithdrawalForm() {
     return (
       <div role="status" className="flex flex-col gap-4 leading-relaxed text-neutral-300">
         <h2 ref={titleRef} tabIndex={-1} className={headingCls}>
-          ✅ {t("doneTitle")}
+          <span aria-hidden="true">✅ </span>
+          {t("doneTitle")}
         </h2>
         <p className="font-semibold text-white">{t("doneReceived", { when })}</p>
-        <p>{t("doneAck", { email: values.email })}</p>
+        <p className="break-words">{t("doneAck", { email: values.email })}</p>
         <p>{t("doneNext", { returnAddress: LEGAL.returnAddress })}</p>
         <Link href="/boutique" className={`${primaryBtn} self-start`}>
           {t("doneBack")}
@@ -122,8 +128,8 @@ export default function WithdrawalForm() {
     const rows: [string, string][] = [
       [t("reviewName"), values.nom],
       [t("reviewEmail"), values.email],
-      [t("reviewOrder"), values.commande || t("reviewNone")],
-      [t("reviewDetails"), values.details || t("reviewNone")],
+      [t("reviewOrder"), values.commande || t("reviewOrderNone")],
+      [t("reviewDetails"), values.details || t("reviewDetailsNone")],
     ];
     return (
       <div className="flex flex-col gap-5">
@@ -150,7 +156,12 @@ export default function WithdrawalForm() {
           </button>
         </div>
         <p aria-live="polite" className="min-h-5 text-sm text-red-500">
-          {error && `❌ ${error}`}
+          {error && (
+            <>
+              <span aria-hidden="true">❌ </span>
+              {error}
+            </>
+          )}
         </p>
       </div>
     );
@@ -192,7 +203,7 @@ export default function WithdrawalForm() {
           maxLength={FIELD_MAX.email}
           autoComplete="email"
           defaultValue={values.email}
-          placeholder="ton@email.com"
+          placeholder={t("emailPlaceholder")}
           aria-describedby="withdrawal-email-hint"
           className={inputCls}
         />
@@ -251,7 +262,7 @@ export default function WithdrawalForm() {
             </Link>
           ),
           cgv: (chunks) => (
-            <Link href="/cgv" className="font-semibold text-xbz-cyan hover:underline">
+            <Link href="/cgv#retractation" className="font-semibold text-xbz-cyan hover:underline">
               {chunks}
             </Link>
           ),
