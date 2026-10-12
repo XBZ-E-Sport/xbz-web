@@ -8,6 +8,10 @@ const db = vi.hoisted(() => ({
   updateRows: [{ id: "x" }] as unknown[],
   confirm: vi.fn(),
   filters: [] as [string, string, unknown][],
+  /** Liste renvoyée par une lecture non `maybeSingle` (recherche de commande par numéro). */
+  list: [] as unknown[],
+  /** Erreurs successives des mises à jour (`null` = succès). */
+  updateErrors: [] as ({ code?: string; message: string } | null)[],
 }));
 
 /** Faux client Supabase : une commande, ses mises à jour notées. */
@@ -20,6 +24,13 @@ vi.mock("@/lib/adminguard", () => ({
           db.filters.push(["select", col, v]);
           return c;
         };
+        for (const f of ["in", "gte", "lte", "order", "limit"]) {
+          c[f] = (...a: unknown[]) => {
+            db.filters.push(["select", f, a]);
+            return c;
+          };
+        }
+        c.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: db.list, error: db.readError }).then(res);
         c.maybeSingle = async () => ({ data: db.order, error: db.readError });
         return c;
       },
@@ -30,7 +41,10 @@ vi.mock("@/lib/adminguard", () => ({
           db.filters.push(["update", col, v]);
           return c;
         };
-        c.select = async () => ({ data: db.updateRows, error: null });
+        c.select = async () => {
+          const error = db.updateErrors.shift() ?? null;
+          return { data: error ? null : db.updateRows, error };
+        };
         return c;
       },
     }),
@@ -42,7 +56,7 @@ vi.mock("@/lib/order-confirmation", () => ({ sendOrderConfirmation: db.confirm }
 vi.mock("@/lib/withdrawal-server", () => ({ sendAck: vi.fn() }));
 vi.mock("@/lib/stripe", () => ({ stripe: () => ({}) }));
 
-import { markOrderShipped, resendOrderConfirmation, validateOrderPrints } from "./actions";
+import { linkWithdrawalToOrder, markOrderShipped, resendOrderConfirmation, validateOrderPrints } from "./actions";
 
 const ID = "0b6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
 const form = (fields: Record<string, string>) => {
@@ -65,6 +79,8 @@ beforeEach(() => {
   db.readError = null;
   db.updates.length = 0;
   db.filters.length = 0;
+  db.list = [];
+  db.updateErrors = [];
   db.updateRows = [{ id: "x" }];
   db.confirm.mockReset();
 });
@@ -177,5 +193,37 @@ describe("resendOrderConfirmation", () => {
   it("identifiant invalide : refusé AVANT tout envoi", async () => {
     expect(await resendOrderConfirmation(form({ id: "x" }))).toEqual({ error: expect.stringMatching(/invalide/) });
     expect(db.confirm).not.toHaveBeenCalled();
+  });
+});
+
+describe("linkWithdrawalToOrder — rattachement manuel d'une rétractation", () => {
+  const W = "1c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
+
+  it("cherche la commande par son numéro dans TOUTE la base (plage d'identifiants), et marque le rattachement « manual »", async () => {
+    db.list = [{ id: ID }];
+    expect(await linkWithdrawalToOrder(form({ id: W, numero: "xbz-0b6f1d3e" }))).toBeUndefined();
+    expect(db.filters).toContainEqual(["select", "gte", ["id", "0b6f1d3e-0000-0000-0000-000000000000"]]);
+    expect(db.filters).toContainEqual(["select", "lte", ["id", "0b6f1d3e-ffff-ffff-ffff-ffffffffffff"]]);
+    // Plus de limite aux 1 000 dernières commandes.
+    expect(db.filters.filter(([, f, a]) => f === "limit" && Array.isArray(a) && (a as number[])[0] === 1000)).toHaveLength(0);
+    expect(db.updates).toEqual([{ order_id: ID, match: "manual" }]);
+  });
+
+  it("migration pas passée (contrainte sur match) : retombe sur « exact », comme avant", async () => {
+    db.list = [{ id: ID }];
+    db.updateErrors = [{ code: "23514", message: "violates check constraint" }];
+    expect(await linkWithdrawalToOrder(form({ id: W, numero: "XBZ-0B6F1D3E" }))).toBeUndefined();
+    expect(db.updates).toEqual([
+      { order_id: ID, match: "manual" },
+      { order_id: ID, match: "exact" },
+    ]);
+  });
+
+  it("numéro inconnu, invalide, ou porté par deux commandes : message clair, rien d'écrit", async () => {
+    expect(await linkWithdrawalToOrder(form({ id: W, numero: "XBZ-0B6F1D3E" }))).toEqual({ error: expect.stringMatching(/Aucune commande payée/) });
+    expect(await linkWithdrawalToOrder(form({ id: W, numero: "pas un numéro" }))).toEqual({ error: expect.stringMatching(/invalide/) });
+    db.list = [{ id: ID }, { id: "0b6f1d3e-0000-4000-8000-000000000000" }];
+    expect(await linkWithdrawalToOrder(form({ id: W, numero: "XBZ-0B6F1D3E" }))).toEqual({ error: expect.stringMatching(/Plusieurs commandes/) });
+    expect(db.updates).toHaveLength(0);
   });
 });

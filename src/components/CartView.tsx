@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -8,7 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 // Types seulement : lib/boutique tire le client Supabase serveur.
 import type { Product, ProductVariant } from "@/lib/boutique";
-import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, lineKey, type CartLine } from "@/lib/cart";
+import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, PAYMENT_TAB_KEY, lineKey, type CartLine } from "@/lib/cart";
 import { LEGAL } from "@/lib/legal";
 import { removeFromCart, setCartQuantity, useCart } from "@/lib/cart-store";
 import { formatEuros } from "@/lib/money";
@@ -52,15 +52,49 @@ const ERRORS: Record<string, string> = {
 
 const noop = () => () => {};
 
-/** Retour depuis une page de paiement : « Annuler » sur Stripe, ou cookie. */
-function readCheckoutReturn(): { back: boolean; open: boolean } {
+/** L'onglet part payer : il garde le jeton du cookie (voir PAYMENT_TAB_KEY). */
+function markPaymentTab(tab: string): void {
   try {
-    return {
-      back: new URLSearchParams(window.location.search).has("annule"),
-      open: document.cookie.split("; ").some((c) => c.startsWith(`${CHECKOUT_OPEN_COOKIE}=`)),
-    };
+    sessionStorage.setItem(PAYMENT_TAB_KEY, tab);
   } catch {
-    return { back: false, open: false };
+    /* stockage indisponible : on retombe sur le cookie seul (voir readCheckoutReturn) */
+  }
+}
+
+function forgetPaymentTab(): void {
+  try {
+    sessionStorage.removeItem(PAYMENT_TAB_KEY);
+  } catch {
+    /* rien à oublier */
+  }
+}
+
+/**
+ * Retour depuis une page de paiement :
+ *  - `back`      : « Annuler » sur Stripe (?annule=1) ;
+ *  - `open`      : retour dans l'onglet qui a ouvert CE paiement (cookie = jeton gardé par l'onglet) ;
+ *  - `elsewhere` : un paiement est ouvert, mais par un AUTRE onglet (ou un onglet fermé, une
+ *    ancienne visite) : on ne l'annule pas d'office, on propose de le faire.
+ * Stockage de l'onglet illisible (navigation très restreinte) : on suppose que c'est le sien,
+ * comme avant.
+ */
+function readCheckoutReturn(): { back: boolean; open: boolean; elsewhere: boolean } {
+  try {
+    const back = new URLSearchParams(window.location.search).has("annule");
+    const cookie = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${CHECKOUT_OPEN_COOKIE}=`))
+      ?.slice(CHECKOUT_OPEN_COOKIE.length + 1);
+    if (!cookie) return { back, open: false, elsewhere: false };
+    let mine: boolean;
+    try {
+      mine = sessionStorage.getItem(PAYMENT_TAB_KEY) === cookie;
+    } catch {
+      mine = true;
+    }
+    return { back, open: mine, elsewhere: !mine };
+  } catch {
+    return { back: false, open: false, elsewhere: false };
   }
 }
 
@@ -87,6 +121,10 @@ export default function CartView({
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState<Set<string>>(() => new Set());
   const [cancelled, setCancelled] = useState(false);
+  // Paiement ouvert par un autre onglet (ou abandonné en fermant l'onglet) : l'annulation est
+  // proposée, jamais imposée. Lu dès le premier rendu : tant qu'il dure, le stock affiché
+  // décompte encore la réservation de ce navigateur, donc le panier n'est ni corrigé ni payable.
+  const [elsewhere, setElsewhere] = useState(() => typeof window !== "undefined" && readCheckoutReturn().elsewhere);
   // Réservation de ce navigateur en cours de restitution, puis catalogue relu.
   // Lu dès le premier rendu client : rien du panier ne doit s'afficher (ni
   // être corrigé) sur la base d'un stock qui décompte encore ses articles.
@@ -136,7 +174,7 @@ export default function CartView({
   // Quantité au-delà du stock affiché (pièces vendues depuis l'ajout) : on la
   // ramène au disponible plutôt que de faire payer autre chose que ce qu'on voit.
   useEffect(() => {
-    if (settling) return;
+    if (settling || elsewhere) return;
     // Le stock d'une taille se partage entre ses lignes, dans l'ordre du panier :
     // les premières gardent leurs pièces, les DERNIÈRES sont ramenées au reste.
     const left = new Map<string, number>();
@@ -146,36 +184,75 @@ export default function CartView({
       if (r.line.quantity > remaining) setCartQuantity(lineKey(r.line), remaining);
       left.set(r.line.variantId, Math.max(0, remaining - r.line.quantity));
     }
-  }, [rows, settling]);
+  }, [rows, settling, elsewhere]);
+
+  // Rend la réservation de ce navigateur, PUIS relit le catalogue ; d'ici là, le
+  // panier attend au lieu d'afficher « plus disponible » ses propres articles.
+  const releaseReservation = useCallback(
+    (back: boolean) => {
+      setReleasing(true);
+      fetch("/api/boutique/cancel", { method: "POST" })
+        .then(async (res) => {
+          const body = (await res.json().catch(() => ({}))) as { ok?: boolean; released?: boolean };
+          return { ...body, httpOk: res.ok, status: res.status };
+        })
+        .catch(() => ({ httpOk: false, ok: false, released: false, status: 0 }))
+        .then((data: { ok?: boolean; released?: boolean; httpOk: boolean; status: number }) => {
+          if (!data.httpOk || !data.ok) {
+            // Annulation non confirmée (hors ligne…) : la réservation tient peut-être encore,
+            // et le stock affiché la décompte. Quel que soit le chemin, on le dit et on passe
+            // en « paiement ouvert ailleurs » : panier ni rogné ni payable, et le bouton du
+            // bandeau permet de réessayer. L'adresse « Annuler » de Stripe est nettoyée.
+            setElsewhere(true);
+            // 503 : la route a répondu, mais Stripe ou la base non (le réseau du client n'y est pour rien).
+            setError(t(data.status === 503 ? "errCancelService" : "errNetwork"));
+            if (back) startRefresh(() => router.replace(window.location.pathname, { scroll: false }));
+            return;
+          }
+          if (back) setCancelled(true);
+          forgetPaymentTab();
+          setElsewhere(false);
+          setError(null);
+          startRefresh(() => {
+            // Adresse nettoyée PAR LE ROUTEUR (un `history.replaceState` direct
+            // serait annulé par le rafraîchissement) : recharger la page ne
+            // réannonce pas l'annulation.
+            if (back) router.replace(window.location.pathname, { scroll: false });
+            // Catalogue relu, même sans stock rendu par CET appel (rendu par le webhook, ou
+            // par un essai précédent dont la réponse s'est perdue) : le stock à jour s'affiche.
+            router.refresh();
+          });
+        })
+        .finally(() => setReleasing(false));
+    },
+    [router, t],
+  );
 
   // Retour depuis une page de paiement — « Annuler » sur Stripe (?annule=1) ou
-  // simple retour arrière (cookie CHECKOUT_OPEN_COOKIE) : les articles de CE
-  // navigateur sont encore réservés, donc décomptés du stock affiché. On rend
-  // la réservation, PUIS on relit le catalogue ; d'ici là, le panier attend
-  // au lieu d'afficher « plus disponible » ses propres articles.
+  // simple retour arrière dans l'onglet qui a payé : les articles de CE navigateur
+  // sont encore réservés, donc décomptés du stock affiché. On rend la réservation.
+  // Paiement ouvert dans un AUTRE onglet : on le signale, sans l'annuler d'office.
+  // Aussi au retour arrière servi depuis le cache du navigateur (bfcache) : la page
+  // n'est alors pas remontée, l'événement `pageshow` est le seul signal.
   useEffect(() => {
-    const { back, open } = readCheckoutReturn();
-    if (!back && !open) return;
-    // Lecture unique de l'adresse et des cookies au montage (système externe) :
-    // c'est l'usage même d'un effet, que la règle ne distingue pas d'un rendu
-    // en cascade.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (back) setCancelled(true);
-    fetch("/api/boutique/cancel", { method: "POST" })
-      .then((res) => res.json())
-      .catch(() => ({}))
-      .then((data: { released?: boolean }) => {
-        startRefresh(() => {
-          // Adresse nettoyée PAR LE ROUTEUR (un `history.replaceState` direct
-          // serait annulé par le rafraîchissement) : recharger la page ne
-          // réannonce pas l'annulation.
-          if (back) router.replace(window.location.pathname, { scroll: false });
-          // Catalogue relu : le stock rendu s'affiche.
-          if (data.released) router.refresh();
-        });
-      })
-      .finally(() => setReleasing(false));
-  }, [router]);
+    const check = () => {
+      const { back, open, elsewhere: other } = readCheckoutReturn();
+      // « Paiement annulé » n'est annoncé qu'une fois la réservation vraiment rendue.
+      if (back || open) releaseReservation(back);
+      else setElsewhere(other);
+    };
+    // Lecture de l'adresse, des cookies et du stockage de l'onglet (système externe) :
+    // c'est l'usage même d'un effet.
+    check();
+    const onShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return;
+      // Page restaurée telle qu'au départ vers Stripe : le bouton était resté occupé.
+      setBusy(false);
+      check();
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [releaseReservation]);
 
   async function pay() {
     if (!terms) {
@@ -198,11 +275,13 @@ export default function CartView({
           terms: true,
         }),
       });
-      const data: { ok?: boolean; url?: string; code?: string; unavailable?: string[] } = await res
+      const data: { ok?: boolean; url?: string; tab?: string; code?: string; unavailable?: string[] } = await res
         .json()
         .catch(() => ({}));
       if (res.ok && data.ok && data.url) {
-        // Départ vers la page de paiement Stripe (le bouton reste occupé).
+        // Départ vers la page de paiement Stripe (le bouton reste occupé). Cet onglet
+        // garde le jeton du paiement : lui seul l'annule d'office en revenant.
+        if (data.tab) markPaymentTab(data.tab);
         window.location.assign(data.url);
         return;
       }
@@ -248,6 +327,21 @@ export default function CartView({
           <p role="status" className="rounded-lg border border-xbz-cyan/30 bg-white/5 px-4 py-3 text-sm text-xbz-cyan">
             {t("cancelled")}
           </p>
+        )}
+        {elsewhere && (
+          <div
+            role="status"
+            className="flex flex-col gap-3 rounded-lg border border-xbz-cyan/30 bg-white/5 px-4 py-3 text-sm text-xbz-cyan sm:flex-row sm:items-center sm:justify-between"
+          >
+            <p>{t("paymentElsewhere")}</p>
+            <button
+              type="button"
+              onClick={() => releaseReservation(false)}
+              className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 font-semibold text-white transition hover:bg-white/15 hover:cursor-pointer"
+            >
+              {t("paymentElsewhereCancel")}
+            </button>
+          </div>
         )}
         <ul className="flex flex-col gap-3">
           {rows.map((r) => {
@@ -404,7 +498,7 @@ export default function CartView({
             <button
               type="button"
               onClick={pay}
-              disabled={busy || payable.length === 0}
+              disabled={busy || elsewhere || payable.length === 0}
               className="rounded-xl bg-xbz-blue px-6 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? t("paying") : t("pay", { amount: formatEuros(total, locale) })}

@@ -204,6 +204,9 @@ correspondant :
 - `migration_confirmation_commande_05102026.sql` — `orders.confirmation_sent_at` et
   `orders.confirmation_error` (suivi de l'e-mail de confirmation de commande). Le code
   fonctionne avant cette migration : la confirmation part alors une seule fois, sans reprise.
+- `migration_rattachement_manuel_12102026.sql` — autorise `order_withdrawals.match = 'manual'`
+  (rétractation rattachée à la main par le staff, affichée comme telle). Avant cette migration,
+  un rattachement manuel est enregistré « exact », comme avant.
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
@@ -291,15 +294,24 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   (orthographe, texte injurieux, marque, droits de tiers) puis clique « Textes relus et validés » :
   la date est gardée sur l'article. **« Marquer expédiée » est refusé tant qu'un texte n'est pas
   validé.** Discord signale « texte à relire et valider » (sans le texte lui-même).
+- **Commandes de test** (payées avec une clé Stripe de test, session `cs_test_…`) : badge
+  « 🧪 Test » dans le back-office ; quand la boutique passe en LIVE, elles n'entrent plus dans
+  l'export comptable. À supprimer après la recette (voir la checklist de recette).
 - **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
   (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
   autorité côté base. Détail du parcours : `src/lib/shop.ts`.
 - **Webhook Stripe** — endpoint `https://www.xbz-esport.org/api/stripe/webhook`, cinq
   événements : `checkout.session.completed`, `…async_payment_succeeded`,
-  `…async_payment_failed`, `checkout.session.expired`, `charge.refunded`. Un secret
-  différent par mode (test / live).
+  `…async_payment_failed`, `checkout.session.expired`, `charge.refunded` ; sixième,
+  recommandé : `refund.updated` (remboursement échoué ou annulé, tous moyens de paiement). Un secret différent
+  par mode (test / live). Clé secrète standard conseillée ; une clé restreinte (`rk_…`) doit
+  avoir au moins Checkout Sessions (écriture), PaymentIntents et **Charges (lecture)**, à
+  compléter en mode test selon les erreurs renvoyées (produits et frais de port à la volée).
 - **Remboursements** : faits depuis Stripe, la commande passe seule en « Remboursée »
-  (total) ou reçoit une note (partiel) ; le montant est gardé. Le stock n'est pas remis
+  (total) ou reçoit une note (partiel) ; le montant et la date sont gardés. L'état est
+  relu chez Stripe à chaque événement (ordre, rejeu, remboursement échoué ou annulé : une
+  note « à vérifier » le signale, et un remboursement total défait remet la commande en
+  « payée » ou « expédiée »). Le stock n'est pas remis
   automatiquement : un colis remboursé n'est pas forcément revenu.
 - **Rétractation en ligne** (obligatoire depuis le 19 juin 2026, directive 2023/2673 et
   art. L.221-21 du Code de la consommation) — lien « Renoncer au contrat ici » dans le pied

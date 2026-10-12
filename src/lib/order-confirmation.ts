@@ -41,6 +41,8 @@ const MISSING_COLUMN = "42703";
 
 /** Une panne passagère du fournisseur (limite de débit, erreur serveur, réseau) : un second essai a une chance. */
 const TRANSIENT = /HTTP (429|5\d\d)|injoignable/;
+/** Trace laissée par un envoi interrompu par une erreur imprévue (voir le `catch`). */
+const UNEXPECTED = "erreur inattendue";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -102,11 +104,11 @@ export async function sendOrderConfirmation(
     console.error("[boutique] confirmation, erreur inattendue:", orderId, e);
     // Laisse une trace : le filet quotidien et le back-office la voient. Au mieux (sans la migration, rien à noter).
     try {
-      await admin.from("orders").update({ confirmation_error: "erreur inattendue" }).eq("id", orderId).is("confirmation_sent_at", null);
+      await admin.from("orders").update({ confirmation_error: UNEXPECTED }).eq("id", orderId).is("confirmation_sent_at", null);
     } catch {
       /* déjà journalisé */
     }
-    return { sent: false, error: "erreur inattendue" };
+    return { sent: false, error: UNEXPECTED };
   }
 }
 
@@ -153,7 +155,8 @@ export async function retryPendingConfirmations(admin: Admin, limit = 10): Promi
     return 0;
   }
   const retry = (data ?? []).filter(
-    (o: { id: string; confirmation_error: string | null }) => !o.confirmation_error || TRANSIENT.test(o.confirmation_error),
+    (o: { id: string; confirmation_error: string | null }) =>
+      !o.confirmation_error || o.confirmation_error === UNEXPECTED || TRANSIENT.test(o.confirmation_error),
   );
   const results = await Promise.all(retry.map((o: { id: string }) => sendOrderConfirmation(admin, o.id)));
   return results.filter((r) => r.sent).length;

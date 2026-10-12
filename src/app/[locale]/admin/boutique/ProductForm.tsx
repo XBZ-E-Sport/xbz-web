@@ -102,6 +102,7 @@ export default function ProductForm({
           id={`${uid}-price`}
           name="price"
           type="number"
+          required
           min={0}
           step="0.01"
           defaultValue={product ? String(product.price ?? "") : ""}

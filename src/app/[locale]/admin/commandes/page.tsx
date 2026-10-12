@@ -4,7 +4,7 @@ import AdminForm from "@/components/AdminForm";
 import { Link } from "@/i18n/navigation";
 import { requireStaff } from "@/lib/adminguard";
 import { formatEuros } from "@/lib/money";
-import { parisDay } from "@/lib/orders-export";
+import { isTestOrder, parisDay } from "@/lib/orders-export";
 import { printText } from "@/lib/personalization";
 import { localizedPath } from "@/lib/site";
 import { CONFIRMATION_SINCE } from "@/lib/order-mail";
@@ -76,30 +76,37 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   // table vide) : 42P01 / PGRST205 = migration pas passée ; toute autre erreur est montrée.
   const pending = await admin.from("order_withdrawals").select("id").is("processed_at", null).limit(100);
   const tableMissing = pending.error?.code === "42P01" || pending.error?.code === "PGRST205";
-  const withdrawalsError = pending.error && !tableMissing ? pending.error.message : null;
+  let withdrawalsError = pending.error && !tableMissing ? pending.error.message : null;
   const pendingWithdrawals = pending.error ? 0 : (pending.data?.length ?? 0);
 
   let withdrawalRows: WithdrawalRow[] = [];
   let linkedOrders = new Map<string, LinkedOrder>();
+  let linkedOrdersError: string | null = null;
   const withdrawalsByOrder = new Map<string, WithdrawalRow>();
   if (!pending.error) {
     if (showWithdrawals) {
       // À traiter d'abord (`processed_at` nul en tête), les plus récentes en premier dans chaque
       // groupe — trié par la base AVANT la limite : une déclaration en attente ne tombe jamais
       // hors de la page parce que 200 plus récentes ont déjà été traitées.
-      const { data } = await admin
+      const { data, error: listError } = await admin
         .from("order_withdrawals")
         .select("*")
         .order("processed_at", { ascending: false, nullsFirst: true })
         .order("received_at", { ascending: false })
         .limit(200);
+      // Une panne ici ne doit jamais s'afficher « Aucune rétractation pour le moment ».
+      if (listError) withdrawalsError = listError.message;
       withdrawalRows = (data ?? []) as WithdrawalRow[];
       const ids = [...new Set(withdrawalRows.flatMap((w) => (w.order_id ? [w.order_id] : [])))];
       if (ids.length) {
-        const { data: linked } = await admin
+        const { data: linked, error: linkedError } = await admin
           .from("orders")
-          .select("id, status, stripe_payment_intent, amount_total, items")
+          .select("id, status, stripe_payment_intent, amount_total, items, customer_email")
           .in("id", ids);
+        // Sans les commandes liées, les cartes seraient incomplètes (montant, remboursement,
+        // article personnalisé, e-mail différent) sans que rien ne le dise : bandeau d'erreur,
+        // la liste des déclarations (pièces légales, actions) restant affichée.
+        if (linkedError) linkedOrdersError = linkedError.message;
         linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
       }
     } else if (orders.length) {
@@ -208,7 +215,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       </nav>
 
       {showWithdrawals ? (
-        <Withdrawals rows={withdrawalRows} orders={linkedOrders} tableMissing={tableMissing} loadError={withdrawalsError} />
+        <Withdrawals
+          rows={withdrawalRows}
+          orders={linkedOrders}
+          tableMissing={tableMissing}
+          loadError={withdrawalsError}
+          linkedError={linkedOrdersError}
+        />
       ) : orders.length === 0 ? (
         <p className="text-neutral-400">Aucune commande ici pour le moment.</p>
       ) : (
@@ -229,6 +242,14 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                     <span className="font-display text-lg font-bold text-white">
                       {formatEuros(Number(o.amount_total ?? Number(o.subtotal) + Number(o.shipping)), "fr")}
                     </span>
+                    {isTestOrder(o) && (
+                      <span
+                        className="rounded-lg bg-amber-400/15 px-2.5 py-1 text-xs font-bold text-amber-300"
+                        title="Payée avec une clé Stripe de test : aucun argent encaissé, rien à expédier."
+                      >
+                        🧪 Test
+                      </span>
+                    )}
                     <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${st.cls}`}>{st.label}</span>
                   </div>
                 </div>

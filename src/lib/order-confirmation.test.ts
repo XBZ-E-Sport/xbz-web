@@ -162,6 +162,7 @@ describe("sendOrderConfirmation", () => {
     const { admin, calls } = fakeAdmin({ reads: [ok(order())] });
     expect(await sendOrderConfirmation(admin, ID)).toEqual({ sent: false, error: "erreur inattendue" });
     expect(calls.updates).toEqual([{ confirmation_error: "erreur inattendue" }]);
+    // … et c'est exactement la trace que le filet quotidien reprend (test « reprend … une erreur imprévue »).
   });
 });
 
@@ -227,9 +228,18 @@ describe("retryPendingConfirmations — filet quotidien", () => {
   const B = "1c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
   const C = "2c6f1d3e-8f1a-4a7e-9c2d-5e4f3a2b1c0d";
 
-  it("reprend un envoi interrompu sans trace et une panne passagère ; renvoie le nombre parti", async () => {
-    expect(await retryPendingConfirmations(listAdmin([{ id: A, confirmation_error: null }, { id: B, confirmation_error: "Brevo HTTP 503" }]), 10)).toBe(2);
-    expect(m.sendMail).toHaveBeenCalledTimes(2);
+  it("reprend un envoi interrompu sans trace, une panne passagère et une erreur imprévue ; renvoie le nombre parti", async () => {
+    expect(
+      await retryPendingConfirmations(
+        listAdmin([
+          { id: A, confirmation_error: null },
+          { id: B, confirmation_error: "Brevo HTTP 503" },
+          { id: C, confirmation_error: "erreur inattendue" },
+        ]),
+        10,
+      ),
+    ).toBe(3);
+    expect(m.sendMail).toHaveBeenCalledTimes(3);
   });
 
   it("ne rejoue pas une erreur définitive (adresse refusée, clé invalide)", async () => {

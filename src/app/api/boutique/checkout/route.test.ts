@@ -82,13 +82,16 @@ describe("POST /api/boutique/checkout", () => {
   it("panier valide : réserve, ouvre la page Stripe, renvoie son adresse et pose le cookie", async () => {
     const res = await call();
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_1" });
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_1", tab: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect(m.reserve).toHaveBeenCalledWith(expect.anything(), good.lines, "fr");
     expect(m.update).toHaveBeenCalledWith({ stripe_session_id: "cs_1" }, "id", ORDER.id);
     expect(m.setCookie).toHaveBeenCalledWith("xbz_checkout", ORDER.id, expect.objectContaining({ httpOnly: true, sameSite: "lax" }));
-    // Témoin lisible par la page panier (aucun identifiant dedans).
+    // Témoin lisible par la page panier : un jeton aléatoire (aucun identifiant de commande),
+    // le même que celui renvoyé à l'onglet qui part payer.
     const flag = m.setCookie.mock.calls.find((c) => c[0] === "xbz_checkout_open");
-    expect(flag?.[1]).toBe("1");
+    expect(flag?.[1]).toBe(body.tab);
+    expect(flag?.[1]).not.toContain(ORDER.id);
     expect(flag?.[2]).not.toHaveProperty("httpOnly");
     // Une seule page de paiement par commande, même si le SDK rejoue la requête.
     expect(m.create.mock.calls[0][1]).toEqual({ idempotencyKey: `checkout-${ORDER.id}` });

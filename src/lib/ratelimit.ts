@@ -120,6 +120,13 @@ type Options = {
 };
 
 /**
+ * Plus longue fenêtre utilisée sur le site (limite horaire des rétractations). La purge
+ * globale de `checkRateLimit` n'efface que les passages plus vieux que ça : aucune limite
+ * n'en a plus besoin.
+ */
+const MAX_WINDOW_SECONDS = 3600;
+
+/**
  * Autorise au plus `limit` requêtes par (IP, route) sur `windowSeconds`.
  *
  * Ordre : on ENREGISTRE d'abord ce passage, puis on compte en l'incluant.
@@ -138,6 +145,11 @@ export async function checkRateLimit(
   route: string,
   { limit = 5, windowSeconds = 60, failOpen = false, prefix = 64 }: Options = {},
 ): Promise<{ allowed: boolean; retryAfter: number }> {
+  if (windowSeconds > MAX_WINDOW_SECONDS) {
+    // La purge globale ci-dessous (et le cron, à 1 h) effaceraient les passages de cette
+    // limite avant la fin de sa fenêtre : relever MAX_WINDOW_SECONDS ET la rétention du cron.
+    throw new Error(`[ratelimit] fenêtre de ${windowSeconds} s au-delà du maximum (${MAX_WINDOW_SECONDS} s)`);
+  }
   const admin = createAdminClient();
   const key = rateLimitKey(ip, prefix);
   const since = new Date(Date.now() - windowSeconds * 1000).toISOString();
@@ -171,8 +183,19 @@ export async function checkRateLimit(
     return { allowed: false, retryAfter: windowSeconds };
   }
 
-  // Purge best-effort des vieux passages (table légère).
-  await admin.from("rate_limit_hits").delete().lt("created_at", since);
+  // Purge best-effort des vieux passages DE CETTE ROUTE seulement : chaque route a sa
+  // propre fenêtre (60 s pour un formulaire, 15 min pour le paiement, 1 h pour la
+  // limite horaire des rétractations). Purger toutes les routes avec la fenêtre de
+  // l'appel courant effaçait les compteurs plus longs des autres : leur limite ne
+  // se déclenchait jamais. Le cron balaie le reste (`/api/cron/purge`).
+  await admin.from("rate_limit_hits").delete().eq("route", route).lt("created_at", since);
+  // … et, toutes routes confondues, ce qui a dépassé la PLUS LONGUE fenêtre utilisée : sans
+  // risque pour aucune limite, et une adresse IP d'une route rare ne reste pas jusqu'au cron
+  // (la politique de confidentialité promet une suppression sous 24 heures).
+  await admin
+    .from("rate_limit_hits")
+    .delete()
+    .lt("created_at", new Date(Date.now() - MAX_WINDOW_SECONDS * 1000).toISOString());
   return { allowed: true, retryAfter: 0 };
 }
 

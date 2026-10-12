@@ -128,7 +128,7 @@ describe("GET /api/cron/purge", () => {
     expect(suspect.eq).toEqual([["suspect", true]]); // JAMAIS une vraie déclaration à 30 jours
   });
 
-  it("table des rétractations absente (migration pas passée) ou en erreur : le reste de la purge continue", async () => {
+  it("table des rétractations absente (migration pas passée) : pas une erreur ; vraie erreur : 500, et le reste de la purge continue", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret");
     vi.spyOn(console, "error").mockImplementation(() => {});
     errorFor.value = "order_withdrawals";
@@ -136,7 +136,9 @@ describe("GET /api/cron/purge", () => {
     errorCode.value = "42P01";
     expect((await call("Bearer s3cret")).status).toBe(200);
     errorCode.value = "XX000";
-    expect((await call("Bearer s3cret")).status).toBe(200);
+    const res = await call("Bearer s3cret");
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("order_withdrawals: boom");
     expect(deleteCalls.value.map((c) => c.table)).toContain("rate_limit_hits");
   });
 
@@ -161,6 +163,56 @@ describe("GET /api/cron/purge", () => {
     const res = await call("Bearer s3cret");
     expect(res.status).toBe(500);
     expect((await res.json()).error).toContain("support_messages");
+  });
+
+  it("une purge en échec ne fait PAS sauter les filets de la boutique (exécutés ensuite, chacun isolé)", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    for (const table of ["candidatures", "support_messages", "rate_limit_hits"]) {
+      errorFor.value = table;
+      retryAcks.mockClear();
+      retryConfirmations.mockClear();
+      const res = await call("Bearer s3cret");
+      expect(res.status).toBe(500);
+      expect(retryAcks).toHaveBeenCalledTimes(1);
+      expect(retryConfirmations).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("un filet qui lève n'empêche ni les autres filets ni la purge, et le cron se voit en échec", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    retryAcks.mockRejectedValueOnce(new Error("brevo down"));
+    retryConfirmations.mockResolvedValueOnce(1);
+    const res = await call("Bearer s3cret");
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("accusés de rétractation: brevo down");
+    expect(retryConfirmations).toHaveBeenCalledTimes(1);
+    expect(deleteCalls.value.map((c) => c.table)).toEqual(expect.arrayContaining(["candidatures", "support_messages", "rate_limit_hits"]));
+  });
+
+  it("les purges passent AVANT les filets (un filet lent ne les prive jamais), et toutes les erreurs sont remontées et journalisées", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    const order: string[] = [];
+    retryAcks.mockImplementationOnce(async () => {
+      order.push(`filet après ${deleteCalls.value.length} purges`);
+      throw new Error("brevo down");
+    });
+    retryConfirmations.mockResolvedValueOnce(3);
+    errorFor.value = "support_messages";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const res = await call("Bearer s3cret");
+    const body = await res.json();
+    expect(res.status).toBe(500);
+    // Toutes les purges ont été lancées avant le premier filet.
+    expect(order).toEqual([`filet après ${deleteCalls.value.length} purges`]);
+    // Les deux erreurs sont dans la réponse ET dans les journaux ; le bilan est journalisé quand même.
+    expect(body.error).toContain("support_messages: boom");
+    expect(body.error).toContain("accusés de rétractation: brevo down");
+    expect(body.orderConfirmationsSent).toBe(3);
+    expect(errorSpy.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("brevo down");
+    expect(logSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+    logSpy.mockRestore();
   });
 
   it("relance au passage les accusés de rétractation restés sans réponse, et le dit dans le bilan", async () => {
