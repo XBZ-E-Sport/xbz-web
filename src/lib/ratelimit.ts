@@ -120,6 +120,13 @@ type Options = {
 };
 
 /**
+ * Plus longue fenêtre utilisée sur le site (limite horaire des rétractations). La purge
+ * globale de `checkRateLimit` n'efface que les passages plus vieux que ça : aucune limite
+ * n'en a plus besoin.
+ */
+const MAX_WINDOW_SECONDS = 3600;
+
+/**
  * Autorise au plus `limit` requêtes par (IP, route) sur `windowSeconds`.
  *
  * Ordre : on ENREGISTRE d'abord ce passage, puis on compte en l'incluant.
@@ -177,6 +184,13 @@ export async function checkRateLimit(
   // l'appel courant effaçait les compteurs plus longs des autres : leur limite ne
   // se déclenchait jamais. Le cron balaie le reste (`/api/cron/purge`).
   await admin.from("rate_limit_hits").delete().eq("route", route).lt("created_at", since);
+  // … et, toutes routes confondues, ce qui a dépassé la PLUS LONGUE fenêtre utilisée : sans
+  // risque pour aucune limite, et une adresse IP d'une route rare ne reste pas jusqu'au cron
+  // (la politique de confidentialité promet une suppression sous 24 heures).
+  await admin
+    .from("rate_limit_hits")
+    .delete()
+    .lt("created_at", new Date(Date.now() - Math.max(MAX_WINDOW_SECONDS, windowSeconds) * 1000).toISOString());
   return { allowed: true, retryAfter: 0 };
 }
 

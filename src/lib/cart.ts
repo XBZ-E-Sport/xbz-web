@@ -110,6 +110,13 @@ export function parseCheckoutLines(raw: unknown): CartLine[] | null {
  */
 export const CHECKOUT_OPEN_COOKIE = "xbz_checkout_open";
 
+/**
+ * Clé de sessionStorage (propre à CHAQUE onglet) : le jeton du cookie ci-dessus, gardé par
+ * l'onglet qui est parti payer. Seul cet onglet annule d'office la réservation en revenant ;
+ * un autre onglet le propose seulement.
+ */
+export const PAYMENT_TAB_KEY = "xbz-checkout-tab";
+
 /** Nombre total de pièces (pastille de l'en-tête). */
 export function cartCount(lines: readonly CartLine[]): number {
   return lines.reduce((n, l) => n + l.quantity, 0);

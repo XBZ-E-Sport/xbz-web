@@ -8,7 +8,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 // Types seulement : lib/boutique tire le client Supabase serveur.
 import type { Product, ProductVariant } from "@/lib/boutique";
-import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, lineKey, type CartLine } from "@/lib/cart";
+import { CART_MAX_QUANTITY, CHECKOUT_OPEN_COOKIE, PAYMENT_TAB_KEY, lineKey, type CartLine } from "@/lib/cart";
 import { LEGAL } from "@/lib/legal";
 import { removeFromCart, setCartQuantity, useCart } from "@/lib/cart-store";
 import { formatEuros } from "@/lib/money";
@@ -52,19 +52,12 @@ const ERRORS: Record<string, string> = {
 
 const noop = () => () => {};
 
-/**
- * Marque, dans CET onglet seulement (sessionStorage), qu'il est parti vers une page de
- * paiement. Le cookie CHECKOUT_OPEN_COOKIE, lui, est commun à tous les onglets : sans
- * cette marque, ouvrir le panier dans un AUTRE onglet pendant qu'on paie annulait le
- * paiement en cours.
- */
-const PAYMENT_TAB_KEY = "xbz-checkout-tab";
-
-function markPaymentTab(): void {
+/** L'onglet part payer : il garde le jeton du cookie (voir PAYMENT_TAB_KEY). */
+function markPaymentTab(tab: string): void {
   try {
-    sessionStorage.setItem(PAYMENT_TAB_KEY, "1");
+    sessionStorage.setItem(PAYMENT_TAB_KEY, tab);
   } catch {
-    /* stockage indisponible : on retombe sur le cookie seul (voir thisTabPaid) */
+    /* stockage indisponible : on retombe sur le cookie seul (voir readCheckoutReturn) */
   }
 }
 
@@ -76,31 +69,30 @@ function forgetPaymentTab(): void {
   }
 }
 
-/** Cet onglet a-t-il ouvert la page de paiement ? Stockage illisible : on le suppose (comportement d'avant). */
-function thisTabPaid(): boolean {
-  try {
-    return sessionStorage.getItem(PAYMENT_TAB_KEY) === "1";
-  } catch {
-    return true;
-  }
-}
-
 /**
  * Retour depuis une page de paiement :
  *  - `back`      : « Annuler » sur Stripe (?annule=1) ;
- *  - `open`      : retour arrière dans l'onglet qui a ouvert le paiement (cookie + marque) ;
- *  - `elsewhere` : un paiement est ouvert, mais par un AUTRE onglet (ou un onglet fermé) :
- *    on ne l'annule pas d'office, on propose de le faire.
+ *  - `open`      : retour dans l'onglet qui a ouvert CE paiement (cookie = jeton gardé par l'onglet) ;
+ *  - `elsewhere` : un paiement est ouvert, mais par un AUTRE onglet (ou un onglet fermé, une
+ *    ancienne visite) : on ne l'annule pas d'office, on propose de le faire.
+ * Stockage de l'onglet illisible (navigation très restreinte) : on suppose que c'est le sien,
+ * comme avant.
  */
 function readCheckoutReturn(): { back: boolean; open: boolean; elsewhere: boolean } {
   try {
-    const cookie = document.cookie.split("; ").some((c) => c.startsWith(`${CHECKOUT_OPEN_COOKIE}=`));
-    const mine = cookie && thisTabPaid();
-    return {
-      back: new URLSearchParams(window.location.search).has("annule"),
-      open: mine,
-      elsewhere: cookie && !mine,
-    };
+    const back = new URLSearchParams(window.location.search).has("annule");
+    const cookie = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${CHECKOUT_OPEN_COOKIE}=`))
+      ?.slice(CHECKOUT_OPEN_COOKIE.length + 1);
+    if (!cookie) return { back, open: false, elsewhere: false };
+    let mine: boolean;
+    try {
+      mine = sessionStorage.getItem(PAYMENT_TAB_KEY) === cookie;
+    } catch {
+      mine = true;
+    }
+    return { back, open: mine, elsewhere: !mine };
   } catch {
     return { back: false, open: false, elsewhere: false };
   }
@@ -129,8 +121,10 @@ export default function CartView({
   const [error, setError] = useState<string | null>(null);
   const [refused, setRefused] = useState<Set<string>>(() => new Set());
   const [cancelled, setCancelled] = useState(false);
-  // Paiement ouvert par un autre onglet (ou abandonné en fermant l'onglet) : proposé, jamais imposé.
-  const [elsewhere, setElsewhere] = useState(false);
+  // Paiement ouvert par un autre onglet (ou abandonné en fermant l'onglet) : l'annulation est
+  // proposée, jamais imposée. Lu dès le premier rendu : tant qu'il dure, le stock affiché
+  // décompte encore la réservation de ce navigateur, donc le panier n'est ni corrigé ni payable.
+  const [elsewhere, setElsewhere] = useState(() => typeof window !== "undefined" && readCheckoutReturn().elsewhere);
   // Réservation de ce navigateur en cours de restitution, puis catalogue relu.
   // Lu dès le premier rendu client : rien du panier ne doit s'afficher (ni
   // être corrigé) sur la base d'un stock qui décompte encore ses articles.
@@ -180,7 +174,7 @@ export default function CartView({
   // Quantité au-delà du stock affiché (pièces vendues depuis l'ajout) : on la
   // ramène au disponible plutôt que de faire payer autre chose que ce qu'on voit.
   useEffect(() => {
-    if (settling) return;
+    if (settling || elsewhere) return;
     // Le stock d'une taille se partage entre ses lignes, dans l'ordre du panier :
     // les premières gardent leurs pièces, les DERNIÈRES sont ramenées au reste.
     const left = new Map<string, number>();
@@ -190,7 +184,7 @@ export default function CartView({
       if (r.line.quantity > remaining) setCartQuantity(lineKey(r.line), remaining);
       left.set(r.line.variantId, Math.max(0, remaining - r.line.quantity));
     }
-  }, [rows, settling]);
+  }, [rows, settling, elsewhere]);
 
   // Rend la réservation de ce navigateur, PUIS relit le catalogue ; d'ici là, le
   // panier attend au lieu d'afficher « plus disponible » ses propres articles.
@@ -198,11 +192,23 @@ export default function CartView({
     (back: boolean) => {
       setReleasing(true);
       fetch("/api/boutique/cancel", { method: "POST" })
-        .then((res) => res.json())
-        .catch(() => ({}))
-        .then((data: { released?: boolean }) => {
+        .then(async (res) => {
+          const body = (await res.json().catch(() => ({}))) as { ok?: boolean; released?: boolean };
+          return { ...body, httpOk: res.ok };
+        })
+        .catch(() => ({ httpOk: false, ok: false, released: false }))
+        .then((data: { ok?: boolean; released?: boolean; httpOk: boolean }) => {
+          if (!data.httpOk || !data.ok) {
+            // Annulation non confirmée (hors ligne…). Retour « Annuler » de Stripe : l'adresse
+            // est quand même nettoyée. Bouton du bandeau : le paiement de l'autre onglet est
+            // peut-être toujours ouvert, on le dit et le bandeau reste.
+            if (back) startRefresh(() => router.replace(window.location.pathname, { scroll: false }));
+            else setError(t("errNetwork"));
+            return;
+          }
           forgetPaymentTab();
           setElsewhere(false);
+          setError(null);
           startRefresh(() => {
             // Adresse nettoyée PAR LE ROUTEUR (un `history.replaceState` direct
             // serait annulé par le rafraîchissement) : recharger la page ne
@@ -214,7 +220,7 @@ export default function CartView({
         })
         .finally(() => setReleasing(false));
     },
-    [router],
+    [router, t],
   );
 
   // Retour depuis une page de paiement — « Annuler » sur Stripe (?annule=1) ou
@@ -264,13 +270,13 @@ export default function CartView({
           terms: true,
         }),
       });
-      const data: { ok?: boolean; url?: string; code?: string; unavailable?: string[] } = await res
+      const data: { ok?: boolean; url?: string; tab?: string; code?: string; unavailable?: string[] } = await res
         .json()
         .catch(() => ({}));
       if (res.ok && data.ok && data.url) {
         // Départ vers la page de paiement Stripe (le bouton reste occupé). Cet onglet
-        // retient qu'il a ouvert le paiement : lui seul l'annule en revenant.
-        markPaymentTab();
+        // garde le jeton du paiement : lui seul l'annule d'office en revenant.
+        if (data.tab) markPaymentTab(data.tab);
         window.location.assign(data.url);
         return;
       }
@@ -487,7 +493,7 @@ export default function CartView({
             <button
               type="button"
               onClick={pay}
-              disabled={busy || payable.length === 0}
+              disabled={busy || elsewhere || payable.length === 0}
               className="rounded-xl bg-xbz-blue px-6 py-3.5 text-center font-bold text-white transition hover:brightness-110 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy ? t("paying") : t("pay", { amount: formatEuros(total, locale) })}

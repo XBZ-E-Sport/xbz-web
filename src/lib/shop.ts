@@ -305,6 +305,12 @@ export async function recordPayment(
   return result;
 }
 
+/**
+ * Colonne absente : Postgres (42703, en lecture) ou PostgREST (PGRST204 en écriture,
+ * PGRST200 sur une relation) — une migration n'est pas encore passée.
+ */
+const SCHEMA_ERRORS = new Set(["42703", "PGRST200", "PGRST204"]);
+
 /** Note d'une commande sans la mention d'un remboursement précédent (remplacée par la nouvelle). */
 function keptNote(note: string | null | undefined): string {
   return (note ?? "")
@@ -315,77 +321,103 @@ function keptNote(note: string | null | undefined): string {
 
 /**
  * Remboursement fait depuis Stripe : total → « refunded », partiel → note.
- * Dans les deux cas, le montant remboursé et la date du dernier remboursement sont
- * gardés (comptabilité, export).
+ * Dans les deux cas, le montant remboursé et la date du dernier changement sont gardés
+ * (comptabilité, export).
  *
- * Stripe ne garantit pas l'ordre des événements : `charge.refunded` peut
- * arriver AVANT que le paiement soit enregistré (webhook « payé » en retard ou
- * en nouvel essai). La commande n'a alors pas encore son identifiant de
- * paiement, la mise à jour ne trouve rien, et répondre 200 perdrait ce
- * remboursement pour de bon. Dans ce cas on lève une erreur : Stripe rejoue
- * l'événement, et cette fois le paiement est enregistré.
+ * L'état est RELU chez Stripe (la charge du moment), jamais déduit de l'événement : Stripe
+ * ne garantit pas l'ordre de livraison, rejoue les événements, et un remboursement peut
+ * échouer ou être annulé (le montant remboursé redescend alors). Écrire l'état courant
+ * rend le traitement idempotent et indépendant de l'ordre d'arrivée.
+ *
+ * `charge.refunded` peut aussi arriver AVANT que le paiement soit enregistré (webhook
+ * « payé » en retard ou en nouvel essai). La commande n'a alors pas encore son
+ * identifiant de paiement ; répondre 200 perdrait ce remboursement pour de bon. Dans ce
+ * cas on lève une erreur : Stripe rejoue l'événement, et cette fois le paiement est
+ * enregistré.
  */
 export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise<void> {
   const paymentIntent =
     typeof charge.payment_intent === "string" ? charge.payment_intent : (charge.payment_intent?.id ?? null);
   if (!paymentIntent) return;
 
-  const amount = (charge.amount_refunded ?? 0) / 100;
-  const refunded = formatEuros(amount, "fr");
-
-  // La mention du remboursement dit toujours le DERNIER état (un total efface un partiel
-  // antérieur), mais une autre alerte déjà posée sur la commande — « Paiement reçu après
-  // la fin de la réservation : stock à vérifier… » (shop_mark_paid) — est gardée devant.
-  const { data: current } = await admin
+  // Commande payée portant ce paiement (et ce qui est déjà enregistré). Une erreur de
+  // lecture fait réessayer Stripe : on ne réécrit jamais une note qu'on n'a pas pu lire.
+  const PAID = ["paid", "fulfilled", "refunded"];
+  let tracked = true;
+  let read = await admin
     .from("orders")
-    .select("note")
+    .select("id, status, note, refunded_amount")
     .eq("stripe_payment_intent", paymentIntent)
+    .in("status", PAID)
     .maybeSingle();
-  const kept = keptNote((current as { note?: string | null } | null)?.note);
-  const mention = charge.refunded
-    ? `Remboursée en totalité : ${refunded} (voir Stripe).`
-    : `Remboursement partiel : ${refunded} (voir Stripe).`;
-  const note = kept ? `${kept} ${mention}` : mention;
-  // Date du DERNIER remboursement, partiel compris (export comptable).
-  const refundedAt = new Date().toISOString();
-  const update = charge.refunded ? { status: "refunded", refunded_at: refundedAt, note } : { refunded_at: refundedAt, note };
-
-  const write = (values: Record<string, unknown>, guard: boolean) => {
-    let q = admin
+  if (read.error && SCHEMA_ERRORS.has(read.error.code ?? "")) {
+    // Migration d'export pas encore passée : pas de colonne du montant remboursé.
+    tracked = false;
+    read = await admin
       .from("orders")
-      .update(values)
+      .select("id, status, note")
       .eq("stripe_payment_intent", paymentIntent)
-      .in("status", ["paid", "fulfilled", "refunded"]);
-    // Événement rejoué ou livré en retard : un montant remboursé qui n'AUGMENTE pas est un
-    // état déjà vu ou ancien (Stripe ne garantit pas l'ordre). Il ne doit ni baisser le
-    // montant, ni remettre « partiel » sur une commande remboursée en totalité, ni changer
-    // la date du remboursement. La commande, déjà à jour, est alors laissée telle quelle.
-    if (guard) q = q.or(`refunded_amount.is.null,refunded_amount.lt.${amount}`);
-    return q.select("id");
-  };
-  let { data, error } = await write({ ...update, refunded_amount: amount }, true);
-  // Migration d'export pas encore passée : on enregistre le remboursement sans
-  // le montant plutôt que de perdre l'événement.
-  if (error?.code === "42703") ({ data, error } = await write(update, false));
-  if (error) throw new Error(error.message);
+      .in("status", PAID)
+      .maybeSingle();
+  }
+  if (read.error) throw new Error(read.error.message);
+  const order = read.data as { id: string; status: string; note: string | null; refunded_amount?: number | string | null } | null;
 
-  if (!data?.length) {
-    // Rien d'écrit : soit la commande est déjà à jour (événement rejoué, voir la garde
-    // ci-dessus), soit aucune commande payée ne porte ce paiement. Le paiement est-il
-    // simplement en retard ? Les paiements du site portent `order_id` (voir
-    // buildCheckoutParams). On le lit sur le paiement lui-même, la source sûre :
-    // une erreur réseau ici fait aussi réessayer Stripe.
+  if (!order) {
+    // Aucune commande payée avec ce paiement. Le paiement est-il simplement en retard ?
+    // Les paiements du site portent `order_id` (voir buildCheckoutParams). On le lit sur
+    // le paiement lui-même, la source sûre : une erreur réseau ici fait aussi réessayer Stripe.
     const orderId =
       charge.metadata?.order_id ?? (await stripe().paymentIntents.retrieve(paymentIntent)).metadata?.order_id;
     if (orderId) {
-      const { data: order } = await admin.from("orders").select("id, status").eq("id", orderId).maybeSingle();
-      if (order && order.status === "pending") {
+      const { data: pending } = await admin.from("orders").select("id, status").eq("id", orderId).maybeSingle();
+      if (pending && pending.status === "pending") {
         throw new Error(`remboursement reçu avant l'enregistrement du paiement (commande ${orderNumber(orderId)})`);
       }
     }
     // Sinon : paiement étranger à la boutique (ou commande inconnue), rien à faire.
     return;
   }
+
+  // État courant chez Stripe (une erreur réseau fait réessayer Stripe).
+  const fresh = await stripe().charges.retrieve(charge.id);
+  const amount = (fresh.amount_refunded ?? 0) / 100;
+  const fully = Boolean(fresh.refunded);
+
+  // Rien de neuf (événement rejoué, ou déjà traité dans un autre ordre) : on ne touche à rien,
+  // pas même à la date.
+  if (
+    tracked &&
+    order.refunded_amount !== null &&
+    order.refunded_amount !== undefined &&
+    Number(order.refunded_amount) === amount &&
+    (order.status === "refunded") === fully
+  ) {
+    return;
+  }
+
+  // La mention du remboursement dit toujours l'état COURANT (un total remplace un partiel),
+  // mais une autre alerte déjà posée sur la commande — « Paiement reçu après la fin de la
+  // réservation : stock à vérifier… » (shop_mark_paid) — est gardée devant.
+  const refunded = formatEuros(amount, "fr");
+  const mention = fully
+    ? `Remboursée en totalité : ${refunded} (voir Stripe).`
+    : amount > 0
+      ? `Remboursement partiel : ${refunded} (voir Stripe).`
+      : "";
+  const note = [keptNote(order.note), mention].filter(Boolean).join(" ") || null;
+  const refundedAt = amount > 0 ? new Date().toISOString() : null;
+  // Un remboursement total échoué ou annulé ne remet pas le statut « payée » : le staff
+  // tranche (la note dit le montant réellement remboursé).
+  const update = fully ? { status: "refunded", refunded_at: refundedAt, note } : { refunded_at: refundedAt, note };
+
+  const write = (values: Record<string, unknown>) =>
+    admin.from("orders").update(values).eq("id", order.id).in("status", PAID).select("id");
+  let { error } = await write(tracked ? { ...update, refunded_amount: amount } : update);
+  // Colonne absente malgré la lecture (schéma en cours de migration) : on enregistre
+  // sans le montant plutôt que de perdre l'événement.
+  if (error && SCHEMA_ERRORS.has(error.code ?? "")) ({ error } = await write(update));
+  if (error) throw new Error(error.message);
   revalidateLocalizedPath("/admin/commandes");
 }
 

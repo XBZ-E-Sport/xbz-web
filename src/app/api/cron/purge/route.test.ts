@@ -187,6 +187,32 @@ describe("GET /api/cron/purge", () => {
     expect(deleteCalls.value.map((c) => c.table)).toEqual(expect.arrayContaining(["candidatures", "support_messages", "rate_limit_hits"]));
   });
 
+  it("les purges passent AVANT les filets (un filet lent ne les prive jamais), et toutes les erreurs sont remontées et journalisées", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    const order: string[] = [];
+    retryAcks.mockImplementationOnce(async () => {
+      order.push(`filet après ${deleteCalls.value.length} purges`);
+      throw new Error("brevo down");
+    });
+    retryConfirmations.mockResolvedValueOnce(3);
+    errorFor.value = "support_messages";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const res = await call("Bearer s3cret");
+    const body = await res.json();
+    expect(res.status).toBe(500);
+    // Toutes les purges ont été lancées avant le premier filet.
+    expect(order).toEqual([`filet après ${deleteCalls.value.length} purges`]);
+    // Les deux erreurs sont dans la réponse ET dans les journaux ; le bilan est journalisé quand même.
+    expect(body.error).toContain("support_messages: boom");
+    expect(body.error).toContain("accusés de rétractation: brevo down");
+    expect(body.orderConfirmationsSent).toBe(3);
+    expect(errorSpy.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("brevo down");
+    expect(logSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+
   it("relance au passage les accusés de rétractation restés sans réponse, et le dit dans le bilan", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret");
     retryAcks.mockResolvedValueOnce(2);

@@ -98,10 +98,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       withdrawalRows = (data ?? []) as WithdrawalRow[];
       const ids = [...new Set(withdrawalRows.flatMap((w) => (w.order_id ? [w.order_id] : [])))];
       if (ids.length) {
-        const { data: linked } = await admin
+        const { data: linked, error: linkedError } = await admin
           .from("orders")
           .select("id, status, stripe_payment_intent, amount_total, items, customer_email")
           .in("id", ids);
+        // Sans les commandes liées, les cartes seraient incomplètes (montant, remboursement,
+        // article personnalisé, e-mail différent) sans que rien ne le dise : on montre l'erreur.
+        if (linkedError) withdrawalsError ??= `commandes liées : ${linkedError.message}`;
         linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
       }
     } else if (orders.length) {

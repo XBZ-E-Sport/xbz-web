@@ -114,16 +114,22 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
   // changée (`image_orig` = ce qu'il affichait au chargement). Sans cela, un
   // formulaire resté ouvert pendant qu'on changeait la photo principale
   // (« En principale ») la remettait à l'ancienne en enregistrant autre chose.
+  // Champs refusables lus AVANT l'envoi de la photo : un refus ne laisse pas d'image
+  // orpheline dans le stockage.
+  const price = priceField(formData, "price");
+  const available = formData.get("available") === "on";
+  if (available && price === 0) throw new AdminError("Un produit « En vente » doit avoir un prix supérieur à 0 €.");
+  const personalization = formData.has("personalization_price") && {
+    personalizable: formData.get("personalizable") === "on",
+    personalization_price: personalizationPriceField(formData),
+  };
+
   const imageFile = formData.get("image_file");
   const hasFile = imageFile instanceof File && imageFile.size > 0;
   const url = field(formData, "image_url") || null;
   const changed = !formData.has("image_orig") || hasFile || url !== (field(formData, "image_orig") || null);
   let image = url;
   if (hasFile) image = await uploadImage(admin, imageFile, slug);
-
-  const price = priceField(formData, "price");
-  const available = formData.get("available") === "on";
-  if (available && price === 0) throw new AdminError("Un produit « En vente » doit avoir un prix supérieur à 0 €.");
 
   return {
     name: field(formData, "name"),
@@ -144,10 +150,7 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     // Personnalisation : seulement si le formulaire la propose (il ne la propose
     // pas tant que la migration de personnalisation n'est pas passée). Le champ du
     // supplément est toujours envoyé avec elle : la case décochée, elle, est absente.
-    ...(formData.has("personalization_price") && {
-      personalizable: formData.get("personalizable") === "on",
-      personalization_price: personalizationPriceField(formData),
-    }),
+    ...personalization,
     // Guide des tailles : seulement si le formulaire le propose (il ne le
     // propose pas tant que la migration des pages produit n'est pas passée).
     ...(formData.has("size_guide") && {

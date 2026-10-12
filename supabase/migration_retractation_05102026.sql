@@ -27,9 +27,10 @@ create table if not exists public.order_withdrawals (
   --   ambiguous : aucun numéro saisi et plusieurs commandes payées pour cet e-mail ;
   --   mismatch  : un numéro a été saisi mais ne correspond à aucune commande payée
   --               de cet e-mail (on ne devine pas : le staff vérifie) ;
-  --   none      : aucune commande payée pour cet e-mail.
+  --   none      : aucune commande payée pour cet e-mail ;
+  --   manual    : rattachée à la main par le staff (migration_rattachement_manuel_12102026.sql).
   match          text not null default 'none'
-                 check (match in ('exact', 'single', 'ambiguous', 'mismatch', 'none')),
+                 check (match in ('exact', 'single', 'ambiguous', 'mismatch', 'none', 'manual')),
   customer_name  text not null,
   customer_email text not null,
   -- Précisions libres du client (articles concernés si rétractation partielle).
@@ -60,9 +61,11 @@ create table if not exists public.order_withdrawals (
 alter table public.order_withdrawals add column if not exists mailbox_key text;
 alter table public.order_withdrawals add column if not exists suspect boolean not null default false;
 alter table public.order_withdrawals add column if not exists ack_hold_until timestamptz;
+-- 'manual' (rattachement à la main par le staff, migration_rattachement_manuel_12102026.sql) :
+-- présent ici aussi, pour que rejouer ce fichier ne le retire jamais.
 alter table public.order_withdrawals drop constraint if exists order_withdrawals_match_check;
 alter table public.order_withdrawals add constraint order_withdrawals_match_check
-  check (match in ('exact', 'single', 'ambiguous', 'mismatch', 'none'));
+  check (match in ('exact', 'single', 'ambiguous', 'mismatch', 'none', 'manual'));
 
 create index if not exists order_withdrawals_order_idx on public.order_withdrawals (order_id);
 create index if not exists order_withdrawals_mailbox_idx on public.order_withdrawals (mailbox_key, ack_sent_at);

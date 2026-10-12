@@ -185,7 +185,7 @@ describe("CartView : paiement ouvert dans un AUTRE onglet", () => {
     setCart([{ variantId: id(3), quantity: 1 }]);
     fetchMock.mockImplementation(async (url: string) =>
       url === "/api/boutique/checkout"
-        ? { ok: true, json: async () => ({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_test_x" }) }
+        ? { ok: true, json: async () => ({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_test_x", tab: "tok-1" }) }
         : { ok: true, json: async () => ({ ok: true, released: true }) },
     );
     const assign = vi.fn();
@@ -198,9 +198,9 @@ describe("CartView : paiement ouvert dans un AUTRE onglet", () => {
       fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
     });
     expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_x");
-    expect(sessionStorage.getItem("xbz-checkout-tab")).toBe("1");
+    expect(sessionStorage.getItem("xbz-checkout-tab")).toBe("tok-1");
     // Retour arrière servi depuis le bfcache : pas de remontage, seulement `pageshow` (persisted).
-    document.cookie = "xbz_checkout_open=1; path=/";
+    document.cookie = "xbz_checkout_open=tok-1; path=/";
     const ev = new Event("pageshow") as PageTransitionEvent;
     Object.defineProperty(ev, "persisted", { value: true });
     await act(async () => {
@@ -210,6 +210,45 @@ describe("CartView : paiement ouvert dans un AUTRE onglet", () => {
     // Le bouton n'est plus figé sur « Ouverture du paiement sécurisé… ».
     await waitFor(() => expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy());
     expect(sessionStorage.getItem("xbz-checkout-tab")).toBeNull();
+  });
+});
+
+describe("CartView : paiement ouvert ailleurs — garde-fous", () => {
+  it("jeton d'un AUTRE paiement (onglet resté sur une ancienne page) : pas d'annulation d'office", async () => {
+    setCart([{ variantId: id(3), quantity: 1 }]);
+    document.cookie = "xbz_checkout_open=tok-new; path=/";
+    sessionStorage.setItem("xbz-checkout-tab", "tok-old");
+    await act(async () => {
+      render();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(fr.cart.paymentElsewhere)).toBeTruthy();
+  });
+
+  it("tant que le paiement est ouvert ailleurs : panier ni rogné ni payable (le stock affiché compte encore la réservation)", async () => {
+    // Stock affiché 1 (l'autre onglet a réservé 1 pièce) ; le panier en contient 2.
+    const reserved: CartProduct[] = [{ ...products[0], variants: [{ id: id(1), size: "M", stock: 1 }] }];
+    setCart([{ variantId: id(1), quantity: 2 }]);
+    document.cookie = "xbz_checkout_open=tok-a; path=/";
+    await act(async () => {
+      renderIntl(<CartView products={reserved} shipping={4.9} open />);
+    });
+    expect(JSON.parse(localStorage.getItem(CART_STORAGE_KEY)!)).toEqual([{ variantId: id(1), quantity: 2 }]);
+    expect((screen.getByRole("button", { name: /obligation de paiement/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("« Annuler ce paiement » qui échoue (hors ligne) : le bandeau RESTE et l'erreur est dite", async () => {
+    setCart([{ variantId: id(3), quantity: 1 }]);
+    document.cookie = "xbz_checkout_open=tok-a; path=/";
+    fetchMock.mockRejectedValue(new Error("hors ligne"));
+    await act(async () => {
+      render();
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: fr.cart.paymentElsewhereCancel }));
+    });
+    await waitFor(() => expect(screen.getByText(fr.cart.errNetwork)).toBeTruthy());
+    expect(screen.getByText(fr.cart.paymentElsewhere)).toBeTruthy();
   });
 });
 

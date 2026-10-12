@@ -273,6 +273,21 @@ describe("purge par route (chaque limite garde sa propre fenêtre)", () => {
     }
   });
 
+  it("purge globale à 1 h : une ligne d'une route rare de plus d'une heure part, une ligne de paiement de 10 min reste", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+      await checkRateLimit("4.4.4.4", "retractation");
+      vi.setSystemTime(new Date("2026-10-12T10:55:00Z"));
+      await checkRateLimit("5.5.5.5", "checkout", { limit: 10, windowSeconds: 900 });
+      vi.setSystemTime(new Date("2026-10-12T11:05:00Z"));
+      await checkRateLimit("6.6.6.6", "support");
+      expect(db.rows.map((h) => h.route).sort()).toEqual(["checkout", "support"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("chaque route purge ses PROPRES passages sortis de sa fenêtre", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {

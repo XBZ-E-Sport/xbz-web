@@ -151,6 +151,9 @@ export async function POST(request: Request) {
     maxAge: (RESERVATION_MINUTES + 30) * 60,
   } as const;
   jar.set(CHECKOUT_COOKIE, order.id, { ...cookie, httpOnly: true });
-  jar.set(CHECKOUT_OPEN_COOKIE, "1", cookie);
-  return NextResponse.json({ ok: true, url });
+  // Jeton aléatoire (aucun identifiant de commande) : l'onglet qui part payer le garde pour
+  // lui seul ; le panier d'un autre onglet, ou d'une ancienne visite, ne l'a pas.
+  const tab = crypto.randomUUID();
+  jar.set(CHECKOUT_OPEN_COOKIE, tab, cookie);
+  return NextResponse.json({ ok: true, url, tab });
 }

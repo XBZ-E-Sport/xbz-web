@@ -41,6 +41,7 @@ vi.mock("@/lib/cache", async (importOriginal) => ({
 }));
 vi.mock("@/lib/storage-image", () => ({ processAndUploadImage: vi.fn(async () => "https://cdn.test/uploaded.png") }));
 
+import { processAndUploadImage } from "@/lib/storage-image";
 import { createProduct, updateProduct } from "./actions";
 
 const PRODUCT = "11111111-1111-4111-8111-111111111111";
@@ -169,6 +170,14 @@ describe("prix", () => {
     await updateProduct(form({ id: PRODUCT, price: "19,99 €" }));
     await updateProduct(form({ id: PRODUCT, price: "19.994" }));
     expect(calls.productUpdates.map((u) => u.price)).toEqual([19.99, 19.99]);
+  });
+
+  it("prix refusé : la photo n'est PAS envoyée (pas d'image orpheline dans le stockage)", async () => {
+    vi.mocked(processAndUploadImage).mockClear();
+    const file = new File([new Uint8Array([1, 2, 3])], "maillot.png", { type: "image/png" });
+    const r = await createProduct(form({ price: "", image_file: file }));
+    expect(r).toEqual({ error: expect.stringMatching(/Prix illisible/) });
+    expect(processAndUploadImage).not.toHaveBeenCalled();
   });
 
   it("0 € : permis hors vente, refusé pour un produit « En vente »", async () => {
