@@ -67,8 +67,8 @@ describe("POST /api/stripe/webhook", () => {
     expect(m.recordRefund).toHaveBeenCalledWith({}, expect.objectContaining({ id: "ch_1" }));
   });
 
-  it("refund.failed → remboursement échoué enregistré (charge relue)", async () => {
-    await signed(event("refund.failed", { id: "re_1", charge: "ch_1", status: "failed" }));
+  it.each(["charge.refund.updated", "refund.failed"])("%s → remboursement échoué ou annulé enregistré (charge relue)", async (type) => {
+    await signed(event(type, { id: "re_1", charge: "ch_1", status: "canceled" }));
     expect(m.recordRefundFailure).toHaveBeenCalledWith({}, expect.objectContaining({ id: "re_1", charge: "ch_1" }));
   });
 

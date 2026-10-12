@@ -217,8 +217,9 @@ export default function CartView({
             // serait annulé par le rafraîchissement) : recharger la page ne
             // réannonce pas l'annulation.
             if (back) router.replace(window.location.pathname, { scroll: false });
-            // Catalogue relu : le stock rendu s'affiche.
-            if (data.released) router.refresh();
+            // Catalogue relu, même sans stock rendu par CET appel (rendu par le webhook, ou
+            // par un essai précédent dont la réponse s'est perdue) : le stock à jour s'affiche.
+            router.refresh();
           });
         })
         .finally(() => setReleasing(false));

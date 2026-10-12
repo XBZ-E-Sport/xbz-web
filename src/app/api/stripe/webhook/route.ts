@@ -16,7 +16,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 //   checkout.session.async_payment_failed      paiement refusé → stock rendu
 //   checkout.session.expired                   abandonné → stock rendu
 //   charge.refunded                            remboursé depuis Stripe
-//   refund.failed                              remboursement échoué (recommandé)
+//   charge.refund.updated                      remboursement échoué ou annulé (recommandé)
 //
 // Hors du proxy i18n (le matcher exclut `/api`) : URL fixe, sans langue.
 
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       case "charge.refunded":
         await recordRefund(admin, event.data.object);
         break;
+      case "charge.refund.updated":
       case "refund.failed":
         await recordRefundFailure(admin, event.data.object);
         break;

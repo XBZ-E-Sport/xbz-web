@@ -15,6 +15,7 @@ vi.mock("@/lib/order-confirmation", () => ({ sendOrderConfirmationAfterResponse:
 import {
   abandonOrder,
   buildCheckoutParams,
+  cancelReservation,
   orderNumber,
   recordPayment,
   recordRefund,
@@ -306,6 +307,39 @@ describe("abandonOrder", () => {
   });
 });
 
+describe("cancelReservation — l'issue est dite, jamais devinée", () => {
+  const pending = (session: string | null, release: { data: unknown; error: unknown } = { data: true, error: null }) =>
+    fakeAdmin({
+      select: () => ({ data: { id: ORDER_ID, status: "pending", stripe_session_id: session } }),
+      rpc: (name) => (name === "shop_release_order" ? release : { data: "paid", error: null }),
+    });
+
+  it("rendu : « released » ; déjà rendu par le webhook : « done »", async () => {
+    stripeMock.checkout.sessions.expire.mockResolvedValue({});
+    expect(await cancelReservation(pending("cs_1") as unknown as Admin, ORDER_ID)).toBe("released");
+    expect(await cancelReservation(pending("cs_1", { data: false, error: null }) as unknown as Admin, ORDER_ID)).toBe("done");
+  });
+
+  it("Stripe injoignable, page encore ouverte, ou base en erreur : « unknown » (rien n'est rendu, à réessayer)", async () => {
+    stripeMock.checkout.sessions.expire.mockRejectedValue(new Error("network"));
+    stripeMock.checkout.sessions.retrieve.mockRejectedValue(new Error("network"));
+    expect(await cancelReservation(pending("cs_1") as unknown as Admin, ORDER_ID)).toBe("unknown");
+    stripeMock.checkout.sessions.retrieve.mockResolvedValue({ id: "cs_1", status: "open", payment_status: "unpaid" });
+    expect(await cancelReservation(pending("cs_1") as unknown as Admin, ORDER_ID)).toBe("unknown");
+    stripeMock.checkout.sessions.expire.mockResolvedValue({});
+    expect(await cancelReservation(pending("cs_1", { data: null, error: { message: "boom" } }) as unknown as Admin, ORDER_ID)).toBe("unknown");
+    const readError = fakeAdmin({ select: () => ({ data: null, error: { message: "boom" } }) });
+    expect(await cancelReservation(readError as unknown as Admin, ORDER_ID)).toBe("unknown");
+  });
+
+  it("commande déjà payée, abandonnée ou inconnue : « done »", async () => {
+    const paid = fakeAdmin({ select: () => ({ data: { id: ORDER_ID, status: "paid", stripe_session_id: "cs_1" } }) });
+    expect(await cancelReservation(paid as unknown as Admin, ORDER_ID)).toBe("done");
+    const none = fakeAdmin({ select: () => ({ data: null }) });
+    expect(await cancelReservation(none as unknown as Admin, ORDER_ID)).toBe("done");
+  });
+});
+
 describe("recordPayment / releaseFromSession / recordRefund", () => {
   it("transmet montant, client et adresse ; ignore une session non payée", async () => {
     const admin = fakeAdmin({ rpc: () => ({ data: "paid", error: null }), select: () => ({ data: null }) });
@@ -413,11 +447,14 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
       expect(updates(total)).toHaveLength(0);
     });
 
-    it("remboursement échoué ou annulé (le montant redescend) : l'état courant est écrit, la mention disparaît", async () => {
+    it("remboursement échoué ou annulé (le montant redescend) : l'état courant est écrit, avec une alerte à la place de la mention", async () => {
       freshCharge(0, false);
       const admin = refundAdmin({ order: paidRow({ refunded_amount: 4.9, note: "Remboursement partiel : 4,90 € (voir Stripe)." }) });
       await recordRefund(admin as unknown as Admin, event());
-      expect(updates(admin)[0].args).toEqual({ refunded_amount: 0, refunded_at: null, note: null });
+      const w = updates(admin)[0].args as { refunded_amount: number; refunded_at: string | null; note: string };
+      expect(w.refunded_amount).toBe(0);
+      expect(w.refunded_at).toBeNull();
+      expect(w.note).toMatch(/^Remboursement partiel échoué ou annulé chez Stripe/);
     });
 
     it("écriture CONDITIONNELLE sur l'état lu ; si la commande a changé entre-temps : levée (Stripe rejoue et relit)", async () => {
@@ -445,6 +482,27 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
       const shipped = refundAdmin({ order: paidRow({ status: "refunded", fulfilled_at: "2026-10-10T10:00:00Z", refunded_amount: 119.87 }) });
       await recordRefund(shipped as unknown as Admin, event());
       expect((updates(shipped)[0].args as { status: string }).status).toBe("fulfilled");
+    });
+
+    it("remboursement PARTIEL échoué ou annulé (le montant baisse) : note « à vérifier », statut inchangé", async () => {
+      freshCharge(0, false);
+      const admin = refundAdmin({ order: paidRow({ status: "fulfilled", refunded_amount: 50, note: "Remboursement partiel : 50,00 € (voir Stripe)." }) });
+      await recordRefund(admin as unknown as Admin, event());
+      const w = updates(admin)[0].args as Record<string, unknown>;
+      expect(w).not.toHaveProperty("status");
+      expect(w.refunded_amount).toBe(0);
+      expect(String(w.note).replace(/\s/g, " ")).toBe(
+        "Remboursement partiel échoué ou annulé chez Stripe : 0,00 € remboursés à ce jour — à vérifier (voir Stripe).",
+      );
+    });
+
+    it("une alerte d'échec est remplacée (jamais doublée) au remboursement suivant", async () => {
+      freshCharge(11987, true);
+      const admin = refundAdmin({
+        order: paidRow({ refunded_amount: 0, note: "Remboursement total échoué ou annulé chez Stripe : 0,00 € remboursés à ce jour — à vérifier (voir Stripe)." }),
+      });
+      await recordRefund(admin as unknown as Admin, event());
+      expect(String((updates(admin)[0].args as { note: string }).note).replace(/\s/g, " ")).toBe("Remboursée en totalité : 119,87 € (voir Stripe).");
     });
 
     it("refund.failed : la charge du remboursement est relue puis enregistrée comme un remboursement", async () => {

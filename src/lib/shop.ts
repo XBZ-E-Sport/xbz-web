@@ -221,15 +221,29 @@ export function buildCheckoutParams(order: Order, texts: CheckoutTexts): Stripe.
 // --- 3. Fin de parcours : payé, abandonné, remboursé -----------------------
 
 /** Rend le stock d'une commande en attente (vrai si c'est cet appel qui l'a rendu). */
-async function release(admin: Admin, orderId: string): Promise<boolean> {
+/** Rend le stock d'une commande : `released`, `done` (rien à rendre, déjà fait) ou `unknown` (erreur). */
+async function releaseState(admin: Admin, orderId: string): Promise<CancelOutcome> {
   const { data, error } = await admin.rpc("shop_release_order", { p_order: orderId });
   if (error) {
     console.error("[shop] libération:", error.message);
-    return false;
+    return "unknown";
   }
   if (data === true) stockChanged();
-  return data === true;
+  return data === true ? "released" : "done";
 }
+
+async function release(admin: Admin, orderId: string): Promise<boolean> {
+  return (await releaseState(admin, orderId)) === "released";
+}
+
+/**
+ * Issue d'une annulation :
+ *  - `released` : la page de paiement est fermée et le stock rendu ;
+ *  - `done`     : plus rien à faire (commande déjà payée, abandonnée, ou stock déjà rendu) ;
+ *  - `unknown`  : on n'a pas pu savoir (Stripe ou la base injoignables) — rien n'est rendu,
+ *    la réservation tient peut-être encore : à réessayer (le filet repassera de toute façon).
+ */
+export type CancelOutcome = "released" | "done" | "unknown";
 
 /**
  * Abandon d'une commande en attente : la page de paiement est fermée chez
@@ -237,13 +251,14 @@ async function release(admin: Admin, orderId: string): Promise<boolean> {
  * revendues entre-temps. Si Stripe dit que c'est déjà payé, on enregistre le
  * paiement au lieu de rendre quoi que ce soit.
  */
-export async function abandonOrder(admin: Admin, orderId: string): Promise<boolean> {
-  const { data: order } = await admin
+export async function cancelReservation(admin: Admin, orderId: string): Promise<CancelOutcome> {
+  const { data: order, error } = await admin
     .from("orders")
     .select("id, status, stripe_session_id")
     .eq("id", orderId)
     .maybeSingle();
-  if (!order || order.status !== "pending") return false;
+  if (error) return "unknown";
+  if (!order || order.status !== "pending") return "done";
 
   if (order.stripe_session_id) {
     try {
@@ -253,15 +268,20 @@ export async function abandonOrder(admin: Admin, orderId: string): Promise<boole
       const session = await stripe()
         .checkout.sessions.retrieve(order.stripe_session_id)
         .catch(() => null);
-      if (!session) return false; // dans le doute, on ne rend rien : le filet repassera
+      if (!session) return "unknown"; // dans le doute, on ne rend rien : le filet repassera
       if (session.status === "complete") {
         if (session.payment_status === "paid") await recordPayment(admin, session);
-        return false;
+        return "done";
       }
-      if (session.status !== "expired") return false;
+      if (session.status !== "expired") return "unknown";
     }
   }
-  return release(admin, orderId);
+  return releaseState(admin, orderId);
+}
+
+/** Comme `cancelReservation`, réduit à « le stock a-t-il été rendu ? » (filet, nouveau paiement). */
+export async function abandonOrder(admin: Admin, orderId: string): Promise<boolean> {
+  return (await cancelReservation(admin, orderId)) === "released";
 }
 
 /** Webhook « expirée » / « paiement échoué » : la page est déjà close, on rend. */
@@ -314,7 +334,10 @@ const SCHEMA_ERRORS = new Set(["42703", "PGRST200", "PGRST204"]);
 /** Note d'une commande sans la mention d'un remboursement précédent (remplacée par la nouvelle). */
 function keptNote(note: string | null | undefined): string {
   return (note ?? "")
-    .replace(/(Remboursée en totalité|Remboursement partiel) : [^()]*\(voir Stripe\)\./g, "")
+    .replace(
+      /(Remboursée en totalité|Remboursement partiel|Remboursement (total|partiel) échoué ou annulé chez Stripe) : [^()]*\(voir Stripe\)\./g,
+      "",
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -409,13 +432,19 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
   // Commande « Remboursée » dont le remboursement total a échoué ou été annulé chez Stripe :
   // elle redevient payée (ou expédiée), avec une note qui le dit au staff.
   const revoked = order.status === "refunded" && !fully;
+  // Montant remboursé qui BAISSE (remboursement partiel échoué ou annulé) : à signaler aussi,
+  // le staff a pu déjà cocher la rétractation « Traitée ».
+  const decreased =
+    tracked && order.refunded_amount !== null && order.refunded_amount !== undefined && amount < Number(order.refunded_amount);
   const mention = fully
     ? `Remboursée en totalité : ${refunded} (voir Stripe).`
     : revoked
       ? `Remboursement total échoué ou annulé chez Stripe : ${refunded} remboursés à ce jour — à vérifier (voir Stripe).`
-      : amount > 0
-        ? `Remboursement partiel : ${refunded} (voir Stripe).`
-        : "";
+      : decreased
+        ? `Remboursement partiel échoué ou annulé chez Stripe : ${refunded} remboursés à ce jour — à vérifier (voir Stripe).`
+        : amount > 0
+          ? `Remboursement partiel : ${refunded} (voir Stripe).`
+          : "";
   const note = [keptNote(order.note), mention].filter(Boolean).join(" ") || null;
   const refundedAt = amount > 0 ? new Date().toISOString() : null;
   const update = fully
@@ -449,9 +478,10 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
 }
 
 /**
- * Remboursement ÉCHOUÉ (`refund.failed` : carte fermée, compte clos…) : Stripe rend l'argent
- * au solde du compte et le montant remboursé de la charge redescend. On relit la charge et
- * on enregistre son état courant, comme pour `charge.refunded`.
+ * Remboursement mis à jour (`charge.refund.updated`) ou ÉCHOUÉ (`refund.failed` : carte
+ * fermée, compte clos…), y compris ANNULÉ depuis le tableau de bord : le montant remboursé
+ * de la charge peut redescendre. On relit la charge et on enregistre son état courant, comme
+ * pour `charge.refunded` (sans effet si rien n'a changé).
  */
 export async function recordRefundFailure(admin: Admin, refund: Stripe.Refund): Promise<void> {
   const chargeId = typeof refund.charge === "string" ? refund.charge : (refund.charge?.id ?? null);
