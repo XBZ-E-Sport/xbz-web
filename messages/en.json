@@ -323,6 +323,7 @@
     "errStock": "Some items just sold out: they are flagged above. Remove them to continue.",
     "errPayment": "Payment couldn’t start. Try again in a moment.",
     "errNetwork": "Couldn’t connect. Check your connection and try again.",
+    "errCancelService": "The payment service isn’t responding right now: try again in a moment.",
     "printLine": "Personalisation: {text}",
     "printIncluded": "({price} surcharge included in the price)",
     "personalizedNotice": "Your basket contains {count, plural, one {a personalised item} other {# personalised items}}: {count, plural, one {it is} other {they are}} not covered by the right of withdrawal (Article L.221-28, 3° of the French Consumer Code). Your other items keep their 14-day right of withdrawal. The statutory guarantees apply to all of them.",

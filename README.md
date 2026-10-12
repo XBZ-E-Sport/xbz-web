@@ -303,7 +303,7 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
 - **Webhook Stripe** — endpoint `https://www.xbz-esport.org/api/stripe/webhook`, cinq
   événements : `checkout.session.completed`, `…async_payment_succeeded`,
   `…async_payment_failed`, `checkout.session.expired`, `charge.refunded` ; sixième,
-  recommandé : `charge.refund.updated` (remboursement échoué ou annulé). Un secret différent
+  recommandé : `refund.updated` (remboursement échoué ou annulé, tous moyens de paiement). Un secret différent
   par mode (test / live). Clé secrète standard conseillée ; une clé restreinte (`rk_…`) doit
   avoir au moins Checkout Sessions (écriture), PaymentIntents et **Charges (lecture)**, à
   compléter en mode test selon les erreurs renvoyées (produits et frais de port à la volée).

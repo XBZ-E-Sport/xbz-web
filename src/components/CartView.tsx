@@ -194,17 +194,18 @@ export default function CartView({
       fetch("/api/boutique/cancel", { method: "POST" })
         .then(async (res) => {
           const body = (await res.json().catch(() => ({}))) as { ok?: boolean; released?: boolean };
-          return { ...body, httpOk: res.ok };
+          return { ...body, httpOk: res.ok, status: res.status };
         })
-        .catch(() => ({ httpOk: false, ok: false, released: false }))
-        .then((data: { ok?: boolean; released?: boolean; httpOk: boolean }) => {
+        .catch(() => ({ httpOk: false, ok: false, released: false, status: 0 }))
+        .then((data: { ok?: boolean; released?: boolean; httpOk: boolean; status: number }) => {
           if (!data.httpOk || !data.ok) {
             // Annulation non confirmée (hors ligne…) : la réservation tient peut-être encore,
             // et le stock affiché la décompte. Quel que soit le chemin, on le dit et on passe
             // en « paiement ouvert ailleurs » : panier ni rogné ni payable, et le bouton du
             // bandeau permet de réessayer. L'adresse « Annuler » de Stripe est nettoyée.
             setElsewhere(true);
-            setError(t("errNetwork"));
+            // 503 : la route a répondu, mais Stripe ou la base non (le réseau du client n'y est pour rien).
+            setError(t(data.status === 503 ? "errCancelService" : "errNetwork"));
             if (back) startRefresh(() => router.replace(window.location.pathname, { scroll: false }));
             return;
           }

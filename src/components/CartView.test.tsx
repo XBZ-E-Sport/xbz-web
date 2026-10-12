@@ -169,11 +169,12 @@ describe("CartView", () => {
   it("retour « Annuler » de Stripe dont l'annulation échoue : pas de « Paiement annulé », l'erreur est dite, l'adresse est nettoyée", async () => {
     setCart([{ variantId: id(3), quantity: 1 }]);
     window.history.replaceState(null, "", "/fr/boutique/panier?annule=1");
-    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ ok: false }) });
+    fetchMock.mockResolvedValue({ ok: false, status: 503, json: async () => ({ ok: false }) });
     await act(async () => {
       render();
     });
-    await waitFor(() => expect(screen.getByText(fr.cart.errNetwork)).toBeTruthy());
+    // Le service de paiement ne répond pas : message dédié (pas « vérifie ton réseau »).
+    await waitFor(() => expect(screen.getByText(fr.cart.errCancelService)).toBeTruthy());
     expect(screen.queryByText(fr.cart.cancelled)).toBeNull();
     expect(replace).toHaveBeenCalledWith("/fr/boutique/panier", { scroll: false });
   });

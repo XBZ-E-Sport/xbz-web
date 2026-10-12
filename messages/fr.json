@@ -323,6 +323,7 @@
     "errStock": "Certains articles viennent d’être épuisés : ils sont signalés ci-dessus. Retire-les pour continuer.",
     "errPayment": "Le paiement n’a pas pu démarrer. Réessaie dans un instant.",
     "errNetwork": "Connexion impossible. Vérifie ton réseau et réessaie.",
+    "errCancelService": "Le service de paiement ne répond pas pour l’instant : réessaie dans un instant.",
     "printLine": "Personnalisation : {text}",
     "printIncluded": "(supplément de {price} compris dans le prix)",
     "personalizedNotice": "Ton panier contient {count, plural, one {un article personnalisé} other {# articles personnalisés}} : {count, plural, one {il n’ouvre} other {ils n’ouvrent}} pas droit à la rétractation (article L.221-28, 3° du Code de la consommation). Tes autres articles gardent leur droit de rétractation de 14 jours. Les garanties légales restent applicables à tous.",

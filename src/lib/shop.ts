@@ -220,7 +220,6 @@ export function buildCheckoutParams(order: Order, texts: CheckoutTexts): Stripe.
 
 // --- 3. Fin de parcours : payé, abandonné, remboursé -----------------------
 
-/** Rend le stock d'une commande en attente (vrai si c'est cet appel qui l'a rendu). */
 /** Rend le stock d'une commande : `released`, `done` (rien à rendre, déjà fait) ou `unknown` (erreur). */
 async function releaseState(admin: Admin, orderId: string): Promise<CancelOutcome> {
   const { data, error } = await admin.rpc("shop_release_order", { p_order: orderId });
@@ -232,6 +231,7 @@ async function releaseState(admin: Admin, orderId: string): Promise<CancelOutcom
   return data === true ? "released" : "done";
 }
 
+/** Rend le stock d'une commande en attente (vrai si c'est cet appel qui l'a rendu). */
 async function release(admin: Admin, orderId: string): Promise<boolean> {
   return (await releaseState(admin, orderId)) === "released";
 }
@@ -478,7 +478,7 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
 }
 
 /**
- * Remboursement mis à jour (`charge.refund.updated`) ou ÉCHOUÉ (`refund.failed` : carte
+ * Remboursement mis à jour (`refund.updated`, `charge.refund.updated`) ou ÉCHOUÉ (`refund.failed` : carte
  * fermée, compte clos…), y compris ANNULÉ depuis le tableau de bord : le montant remboursé
  * de la charge peut redescendre. On relit la charge et on enregistre son état courant, comme
  * pour `charge.refunded` (sans effet si rien n'a changé).
