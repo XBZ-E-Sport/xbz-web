@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import fr from "../../messages/fr.json";
+import en from "../../messages/en.json";
 import { PRINT_NAME_MAX, normalizePrintName, normalizePrintNumber, parsePrint, printKey, printText } from "@/lib/personalization";
 
 describe("normalizePrintName", () => {
@@ -81,5 +83,21 @@ describe("printKey / printText", () => {
     expect(printText({ name: "MARTIN", number: "10" }, "n°")).toBe("MARTIN · n° 10");
     expect(printText({ name: "MARTIN" }, "n°")).toBe("MARTIN");
     expect(printText({ number: "0" }, "No.")).toBe("No. 0");
+  });
+});
+
+describe("aide et message d'erreur du nom : ils annoncent tout ce qui est accepté", () => {
+  it("le point est accepté ET annoncé (fr/en), comme dans les CGV", () => {
+    expect(normalizePrintName("J.R. SMITH")).toBe("J.R. SMITH");
+    expect(fr.boutique.printNameHint).toMatch(/points/);
+    expect(fr.boutique.errPrintName).toMatch(/points/);
+    expect(en.boutique.printNameHint).toMatch(/full stops/);
+    expect(en.boutique.errPrintName).toMatch(/full stops/);
+  });
+
+  it("le nom doit commencer par une lettre (annoncé dans le message d'erreur)", () => {
+    expect(normalizePrintName("-MARTIN")).toBeNull();
+    expect(fr.boutique.errPrintName).toMatch(/commencer par une lettre/);
+    expect(en.boutique.errPrintName).toMatch(/start with a letter/);
   });
 });

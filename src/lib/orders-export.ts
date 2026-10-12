@@ -35,6 +35,14 @@ export type ExportParams = {
 };
 
 /** Statuts qui ont donné lieu à un encaissement : les seuls exportés. */
+/**
+ * Commande passée avec une clé Stripe de TEST (recette, essais) : sa session de paiement
+ * commence par `cs_test_`. Elle n'a jamais encaissé d'argent réel.
+ */
+export function isTestOrder(o: Pick<Order, "stripe_session_id">): boolean {
+  return /^cs_test_/.test(o.stripe_session_id ?? "");
+}
+
 export const EXPORT_STATUSES = ["paid", "fulfilled", "refunded"] as const satisfies readonly OrderStatus[];
 
 /** Période maximale d'un export (jours). */

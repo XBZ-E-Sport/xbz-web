@@ -156,3 +156,26 @@ describe("personnalisation (interrupteur et supplément)", () => {
   });
 });
 
+describe("prix", () => {
+  it("vide ou illisible : refusé avec un message, rien n'est écrit (jamais 0 € en silence)", async () => {
+    for (const price of ["", "abc", "-1"]) {
+      const r = await updateProduct(form({ id: PRODUCT, price }));
+      expect(r).toEqual({ error: expect.stringMatching(/Prix illisible/) });
+    }
+    expect(calls.productUpdates).toHaveLength(0);
+  });
+
+  it("« 19,99 € » et « 19.99 » acceptés, arrondis au centime", async () => {
+    await updateProduct(form({ id: PRODUCT, price: "19,99 €" }));
+    await updateProduct(form({ id: PRODUCT, price: "19.994" }));
+    expect(calls.productUpdates.map((u) => u.price)).toEqual([19.99, 19.99]);
+  });
+
+  it("0 € : permis hors vente, refusé pour un produit « En vente »", async () => {
+    await updateProduct(form({ id: PRODUCT, price: "0" }));
+    expect(calls.productUpdates[0]).toMatchObject({ price: 0, available: false });
+    const r = await updateProduct(form({ id: PRODUCT, price: "0", available: "on" }));
+    expect(r).toEqual({ error: expect.stringMatching(/prix supérieur à 0/) });
+    expect(calls.productUpdates).toHaveLength(1);
+  });
+});

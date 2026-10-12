@@ -163,6 +163,30 @@ describe("GET /api/cron/purge", () => {
     expect((await res.json()).error).toContain("support_messages");
   });
 
+  it("une purge en échec ne fait PAS sauter les filets de la boutique (exécutés avant, chacun isolé)", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    for (const table of ["candidatures", "support_messages", "rate_limit_hits"]) {
+      errorFor.value = table;
+      retryAcks.mockClear();
+      retryConfirmations.mockClear();
+      const res = await call("Bearer s3cret");
+      expect(res.status).toBe(500);
+      expect(retryAcks).toHaveBeenCalledTimes(1);
+      expect(retryConfirmations).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("un filet qui lève n'empêche ni les autres filets ni la purge, et le cron se voit en échec", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret");
+    retryAcks.mockRejectedValueOnce(new Error("brevo down"));
+    retryConfirmations.mockResolvedValueOnce(1);
+    const res = await call("Bearer s3cret");
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("accusés de rétractation: brevo down");
+    expect(retryConfirmations).toHaveBeenCalledTimes(1);
+    expect(deleteCalls.value.map((c) => c.table)).toEqual(expect.arrayContaining(["candidatures", "support_messages", "rate_limit_hits"]));
+  });
+
   it("relance au passage les accusés de rétractation restés sans réponse, et le dit dans le bilan", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret");
     retryAcks.mockResolvedValueOnce(2);

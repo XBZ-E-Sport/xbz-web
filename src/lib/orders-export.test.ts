@@ -16,6 +16,7 @@ import {
   orderAmounts,
   parisDay,
   parisMidnight,
+  isTestOrder,
   parseExportParams,
   toCsv,
 } from "@/lib/orders-export";
@@ -378,5 +379,13 @@ describe("fichier", () => {
   it("encodé en UTF-8, les accents des noms de produits survivent", () => {
     const csv = toCsv(["Désignation"], [[csvText("Casquette « Élite »")]]);
     expect(new TextDecoder().decode(new TextEncoder().encode(csv))).toContain("Casquette « Élite »");
+  });
+});
+
+describe("isTestOrder", () => {
+  it("reconnaît une commande payée avec une clé de test (session cs_test_)", () => {
+    expect(isTestOrder({ stripe_session_id: "cs_test_a1B2" })).toBe(true);
+    expect(isTestOrder({ stripe_session_id: "cs_live_a1B2" })).toBe(false);
+    expect(isTestOrder({ stripe_session_id: null })).toBe(false);
   });
 });

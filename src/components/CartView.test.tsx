@@ -30,6 +30,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   window.history.replaceState(null, "", "/fr/boutique/panier");
   document.cookie = "xbz_checkout_open=; max-age=0; path=/";
+  sessionStorage.clear();
 });
 afterEach(() => {
   cleanup();
@@ -129,6 +130,7 @@ describe("CartView", () => {
     const reserved: CartProduct[] = [{ ...products[0], variants: [{ id: id(1), size: "M", stock: 1 }] }];
     setCart([{ variantId: id(1), quantity: 2 }]);
     document.cookie = "xbz_checkout_open=1; path=/";
+    sessionStorage.setItem("xbz-checkout-tab", "1"); // c'est CET onglet qui est parti payer
     let release!: (v: unknown) => void;
     fetchMock.mockReturnValue(new Promise((r) => (release = r)));
     let view!: ReturnType<typeof renderIntl>;
@@ -150,12 +152,64 @@ describe("CartView", () => {
   it("route d'annulation injoignable : le panier s'affiche quand même", async () => {
     setCart([{ variantId: id(3), quantity: 1 }]);
     document.cookie = "xbz_checkout_open=1; path=/";
+    sessionStorage.setItem("xbz-checkout-tab", "1");
     fetchMock.mockRejectedValue(new Error("hors ligne"));
     await act(async () => {
       render();
     });
     await waitFor(() => expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy());
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("CartView : paiement ouvert dans un AUTRE onglet", () => {
+  it("n'annule PAS d'office le paiement de l'autre onglet : il le signale et propose de l'annuler", async () => {
+    setCart([{ variantId: id(3), quantity: 1 }]);
+    document.cookie = "xbz_checkout_open=1; path=/"; // cookie commun aux onglets, sans marque dans celui-ci
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, released: true }) });
+    await act(async () => {
+      render();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(fr.cart.paymentElsewhere)).toBeTruthy();
+    // Le client choisit d'annuler : stock rendu, catalogue relu, bandeau retiré.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: fr.cart.paymentElsewhereCancel }));
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/api/boutique/cancel", { method: "POST" });
+    await waitFor(() => expect(screen.queryByText(fr.cart.paymentElsewhere)).toBeNull());
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("l'onglet qui part payer le retient (pour lui seul) ; au retour depuis le cache du navigateur, il rend la réservation", async () => {
+    setCart([{ variantId: id(3), quantity: 1 }]);
+    fetchMock.mockImplementation(async (url: string) =>
+      url === "/api/boutique/checkout"
+        ? { ok: true, json: async () => ({ ok: true, url: "https://checkout.stripe.com/c/pay/cs_test_x" }) }
+        : { ok: true, json: async () => ({ ok: true, released: true }) },
+    );
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "", pathname: "/fr/boutique/panier" });
+    await act(async () => {
+      render();
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /obligation de paiement/ }));
+    });
+    expect(assign).toHaveBeenCalledWith("https://checkout.stripe.com/c/pay/cs_test_x");
+    expect(sessionStorage.getItem("xbz-checkout-tab")).toBe("1");
+    // Retour arrière servi depuis le bfcache : pas de remontage, seulement `pageshow` (persisted).
+    document.cookie = "xbz_checkout_open=1; path=/";
+    const ev = new Event("pageshow") as PageTransitionEvent;
+    Object.defineProperty(ev, "persisted", { value: true });
+    await act(async () => {
+      window.dispatchEvent(ev);
+    });
+    expect(fetchMock).toHaveBeenCalledWith("/api/boutique/cancel", { method: "POST" });
+    // Le bouton n'est plus figé sur « Ouverture du paiement sécurisé… ».
+    await waitFor(() => expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy());
+    expect(sessionStorage.getItem("xbz-checkout-tab")).toBeNull();
   });
 });
 

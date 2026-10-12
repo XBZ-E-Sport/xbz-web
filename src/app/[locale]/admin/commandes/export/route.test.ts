@@ -7,10 +7,11 @@ const h = vi.hoisted(() => ({
   pages: [] as { data: unknown[] | null; error: { message: string } | null }[],
   filters: [] as [string, unknown[]][],
   ranges: [] as [number, number][],
+  live: false,
 }));
 
 vi.mock("@/lib/adminguard", () => ({ requireStaff: h.requireStaff }));
-vi.mock("@/lib/stripe", () => ({ stripe: () => ({}) }));
+vi.mock("@/lib/stripe", () => ({ stripe: () => ({}), isLiveStripeKey: () => h.live }));
 vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void fn() }));
 
@@ -58,6 +59,7 @@ beforeEach(() => {
   h.requireStaff.mockResolvedValue({ user: { id: "u1", email: "staff@xbz.gg" }, admin });
   h.pages = [];
   h.filters = [];
+  h.live = false;
   h.ranges = [];
   vi.restoreAllMocks();
   vi.spyOn(console, "info").mockImplementation(() => {});
@@ -171,5 +173,20 @@ describe("export des commandes — fichier", () => {
     expect(res.headers.get("content-disposition")).toContain("xbz-articles_");
     const lines = (await res.text()).trim().split("\r\n");
     expect(lines).toHaveLength(1 + 2); // un article + le port
+  });
+
+  it("boutique en LIVE : les commandes de la recette (session cs_test_) n'entrent jamais dans le fichier comptable", async () => {
+    h.live = true;
+    h.pages = [{ data: [row(1, { stripe_session_id: "cs_test_a1" }), row(2, { stripe_session_id: "cs_live_b2" })], error: null }];
+    const lines = (await (await call()).text()).trim().split("\r\n");
+    expect(lines).toHaveLength(2); // en-tête + la seule vraie vente
+    expect(lines[1]).toContain("pi_2");
+    expect(lines.join("\n")).not.toContain("pi_1");
+  });
+
+  it("boutique en TEST : tout est de test, on garde tout (c'est ce que la recette contrôle)", async () => {
+    h.pages = [{ data: [row(1, { stripe_session_id: "cs_test_a1" }), row(2, { stripe_session_id: "cs_test_b2" })], error: null }];
+    const lines = (await (await call()).text()).trim().split("\r\n");
+    expect(lines).toHaveLength(3);
   });
 });

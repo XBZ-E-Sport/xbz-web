@@ -154,22 +154,32 @@ export async function linkWithdrawalToOrder(formData: FormData): Promise<AdminRe
     const number = normalizeOrderNumber(String(formData.get("numero") ?? ""));
     if (!number) throw new AdminError("Numéro de commande invalide (attendu : XBZ- suivi de 8 caractères).");
 
+    // Le numéro est le début de l'identifiant (8 caractères hexadécimaux) : on cherche
+    // directement cette plage d'identifiants, sur TOUTES les commandes (pas seulement les
+    // plus récentes).
+    const hex = number.slice(4).toLowerCase();
     const { data: orders, error: ordersError } = await admin
       .from("orders")
       .select("id")
       .in("status", ["paid", "fulfilled", "refunded"])
-      .order("created_at", { ascending: false })
-      .limit(1000);
+      .gte("id", `${hex}-0000-0000-0000-000000000000`)
+      .lte("id", `${hex}-ffff-ffff-ffff-ffffffffffff`)
+      .limit(2);
     if (ordersError) throw dbError(ordersError);
-    const order = ((orders ?? []) as { id: string }[]).find((o) => orderNumber(o.id) === number);
-    if (!order) throw new AdminError(`Aucune commande payée ne porte le numéro ${number}.`);
+    const found = ((orders ?? []) as { id: string }[]).filter((o) => orderNumber(o.id) === number);
+    if (found.length === 0) throw new AdminError(`Aucune commande payée ne porte le numéro ${number}.`);
+    if (found.length > 1) {
+      throw new AdminError(`Plusieurs commandes portent le numéro ${number} : rattache-la depuis Supabase, avec l'identifiant complet.`);
+    }
+    const order = found[0];
 
-    const { data, error } = await admin
-      .from("order_withdrawals")
-      // `order_number` reste TEL QUE le client l'a tapé (contenu de sa déclaration).
-      .update({ order_id: order.id, match: "exact" })
-      .eq("id", id)
-      .select("id");
+    // `order_number` reste TEL QUE le client l'a tapé (contenu de sa déclaration).
+    const link = (match: "manual" | "exact") =>
+      admin.from("order_withdrawals").update({ order_id: order.id, match }).eq("id", id).select("id");
+    let { data, error } = await link("manual");
+    // Migration du rattachement manuel pas encore passée (contrainte sur `match`) :
+    // comportement d'avant, plutôt que de refuser le rattachement.
+    if (error?.code === "23514") ({ data, error } = await link("exact"));
     if (error) throw dbError(error);
     if (!data?.length) throw new AdminError("Cette déclaration n'existe plus.");
     revalidateLocalizedPath("/admin/commandes");

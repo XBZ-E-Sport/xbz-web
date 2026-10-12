@@ -5,10 +5,12 @@ import {
   exportFilename,
   exportHeaders,
   exportRows,
+  isTestOrder,
   parseExportParams,
   toCsv,
 } from "@/lib/orders-export";
 import type { Order } from "@/lib/shop";
+import { isLiveStripeKey } from "@/lib/stripe";
 
 // Export CSV des commandes payées, pour la comptabilité (contenu et format :
 // src/lib/orders-export.ts). Réservé au staff, comme tout le back-office.
@@ -62,6 +64,11 @@ export async function GET(request: Request): Promise<Response> {
     if ((data?.length ?? 0) < PAGE) break;
   }
 
+  // Boutique en LIVE : les commandes de la recette (clé de test, aucun argent encaissé) ne
+  // sont pas des ventes et n'entrent jamais dans le fichier comptable. En mode test, tout
+  // est de test : on garde tout (c'est ce qu'on veut contrôler).
+  const exported = isLiveStripeKey() ? orders.filter((o) => !isTestOrder(o)) : orders;
+
   // Trace d'accès : un fichier de clients (avec `perso=1`) a quitté le site.
   console.info(
     "[export commandes]",
@@ -71,11 +78,11 @@ export async function GET(request: Request): Promise<Response> {
       au: params.toDay,
       detail: params.detail,
       perso: params.personal,
-      commandes: orders.length,
+      commandes: exported.length,
     }),
   );
 
-  return new Response(toCsv(exportHeaders(params), exportRows(orders, params)), {
+  return new Response(toCsv(exportHeaders(params), exportRows(exported, params)), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFilename(params)}"`,

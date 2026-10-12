@@ -171,8 +171,12 @@ export async function checkRateLimit(
     return { allowed: false, retryAfter: windowSeconds };
   }
 
-  // Purge best-effort des vieux passages (table légère).
-  await admin.from("rate_limit_hits").delete().lt("created_at", since);
+  // Purge best-effort des vieux passages DE CETTE ROUTE seulement : chaque route a sa
+  // propre fenêtre (60 s pour un formulaire, 15 min pour le paiement, 1 h pour la
+  // limite horaire des rétractations). Purger toutes les routes avec la fenêtre de
+  // l'appel courant effaçait les compteurs plus longs des autres : leur limite ne
+  // se déclenchait jamais. Le cron balaie le reste (`/api/cron/purge`).
+  await admin.from("rate_limit_hits").delete().eq("route", route).lt("created_at", since);
   return { allowed: true, retryAfter: 0 };
 }
 

@@ -15,7 +15,8 @@ import { orderNumber } from "@/lib/order-number";
 /** Fonction de traduction (`getTranslations` ou `createTranslator`). */
 export type Translate = (key: string, values?: Record<string, string | number>) => string;
 
-export type MatchKind = "exact" | "single" | "ambiguous" | "mismatch" | "none";
+/** `manual` : rattachée à la main par le staff (migration_rattachement_manuel_12102026.sql). */
+export type MatchKind = "exact" | "single" | "ambiguous" | "mismatch" | "none" | "manual";
 
 /** Ligne de `order_withdrawals` (voir supabase/migration_retractation_05102026.sql). */
 export type WithdrawalRow = {

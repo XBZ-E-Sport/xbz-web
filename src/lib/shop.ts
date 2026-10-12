@@ -305,9 +305,18 @@ export async function recordPayment(
   return result;
 }
 
+/** Note d'une commande sans la mention d'un remboursement précédent (remplacée par la nouvelle). */
+function keptNote(note: string | null | undefined): string {
+  return (note ?? "")
+    .replace(/(Remboursée en totalité|Remboursement partiel) : [^()]*\(voir Stripe\)\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * Remboursement fait depuis Stripe : total → « refunded », partiel → note.
- * Dans les deux cas, le montant remboursé est gardé (comptabilité, export).
+ * Dans les deux cas, le montant remboursé et la date du dernier remboursement sont
+ * gardés (comptabilité, export).
  *
  * Stripe ne garantit pas l'ordre des événements : `charge.refunded` peut
  * arriver AVANT que le paiement soit enregistré (webhook « payé » en retard ou
@@ -323,28 +332,47 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
 
   const amount = (charge.amount_refunded ?? 0) / 100;
   const refunded = formatEuros(amount, "fr");
-  // La note dit toujours le DERNIER état : un remboursement total efface la
-  // mention d'un partiel antérieur.
-  const update = charge.refunded
-    ? { status: "refunded", refunded_at: new Date().toISOString(), note: `Remboursée en totalité : ${refunded} (voir Stripe).` }
-    : { note: `Remboursement partiel : ${refunded} (voir Stripe).` };
 
-  const write = (values: Record<string, unknown>) =>
-    admin
+  // La mention du remboursement dit toujours le DERNIER état (un total efface un partiel
+  // antérieur), mais une autre alerte déjà posée sur la commande — « Paiement reçu après
+  // la fin de la réservation : stock à vérifier… » (shop_mark_paid) — est gardée devant.
+  const { data: current } = await admin
+    .from("orders")
+    .select("note")
+    .eq("stripe_payment_intent", paymentIntent)
+    .maybeSingle();
+  const kept = keptNote((current as { note?: string | null } | null)?.note);
+  const mention = charge.refunded
+    ? `Remboursée en totalité : ${refunded} (voir Stripe).`
+    : `Remboursement partiel : ${refunded} (voir Stripe).`;
+  const note = kept ? `${kept} ${mention}` : mention;
+  // Date du DERNIER remboursement, partiel compris (export comptable).
+  const refundedAt = new Date().toISOString();
+  const update = charge.refunded ? { status: "refunded", refunded_at: refundedAt, note } : { refunded_at: refundedAt, note };
+
+  const write = (values: Record<string, unknown>, guard: boolean) => {
+    let q = admin
       .from("orders")
       .update(values)
       .eq("stripe_payment_intent", paymentIntent)
-      .in("status", ["paid", "fulfilled", "refunded"])
-      .select("id");
-  let { data, error } = await write({ ...update, refunded_amount: amount });
+      .in("status", ["paid", "fulfilled", "refunded"]);
+    // Événement rejoué ou livré en retard : un montant remboursé qui n'AUGMENTE pas est un
+    // état déjà vu ou ancien (Stripe ne garantit pas l'ordre). Il ne doit ni baisser le
+    // montant, ni remettre « partiel » sur une commande remboursée en totalité, ni changer
+    // la date du remboursement. La commande, déjà à jour, est alors laissée telle quelle.
+    if (guard) q = q.or(`refunded_amount.is.null,refunded_amount.lt.${amount}`);
+    return q.select("id");
+  };
+  let { data, error } = await write({ ...update, refunded_amount: amount }, true);
   // Migration d'export pas encore passée : on enregistre le remboursement sans
   // le montant plutôt que de perdre l'événement.
-  if (error?.code === "42703") ({ data, error } = await write(update));
+  if (error?.code === "42703") ({ data, error } = await write(update, false));
   if (error) throw new Error(error.message);
 
   if (!data?.length) {
-    // Aucune commande payée avec ce paiement. Le paiement est-il simplement en
-    // retard ? Les paiements du site portent `order_id` (voir
+    // Rien d'écrit : soit la commande est déjà à jour (événement rejoué, voir la garde
+    // ci-dessus), soit aucune commande payée ne porte ce paiement. Le paiement est-il
+    // simplement en retard ? Les paiements du site portent `order_id` (voir
     // buildCheckoutParams). On le lit sur le paiement lui-même, la source sûre :
     // une erreur réseau ici fait aussi réessayer Stripe.
     const orderId =

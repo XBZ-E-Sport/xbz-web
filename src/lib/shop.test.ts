@@ -33,7 +33,7 @@ function fakeAdmin(opts: {
   const calls: { op: string; table?: string; args?: unknown; filters: [string, unknown][] }[] = [];
   const chain = (call: (typeof calls)[number], result: () => unknown) => {
     const c: Record<string, unknown> = {};
-    for (const f of ["select", "eq", "in", "lt", "order", "limit"]) {
+    for (const f of ["select", "eq", "in", "lt", "or", "order", "limit"]) {
       c[f] = (...a: unknown[]) => {
         call.filters.push([f, a]);
         return c;
@@ -348,18 +348,45 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
 
   it("remboursement total → « refunded » ; partiel → note ; le montant remboursé est gardé", async () => {
     const updated = { error: null, data: [{ id: ORDER_ID }] };
+    const updates = (a: ReturnType<typeof fakeAdmin>) => a.calls.filter((c) => c.op === "update");
     const full = fakeAdmin({ update: updated });
     await recordRefund(full as unknown as Admin, { payment_intent: "pi_9", refunded: true, amount_refunded: 11987 } as never);
-    expect(full.calls[0]).toMatchObject({ op: "update", table: "orders", args: { status: "refunded", refunded_amount: 119.87 } });
+    expect(updates(full)[0]).toMatchObject({ op: "update", table: "orders", args: { status: "refunded", refunded_amount: 119.87 } });
     // Le remboursement total remplace la mention d'un éventuel partiel.
-    expect((full.calls[0].args as { note: string }).note).toMatch(/^Remboursée en totalité : 119,87\s€ \(voir Stripe\)\.$/);
-    expect(full.calls[0].filters).toContainEqual(["eq", ["stripe_payment_intent", "pi_9"]]);
+    expect((updates(full)[0].args as { note: string }).note).toMatch(/^Remboursée en totalité : 119,87\s€ \(voir Stripe\)\.$/);
+    expect(updates(full)[0].filters).toContainEqual(["eq", ["stripe_payment_intent", "pi_9"]]);
 
     const partial = fakeAdmin({ update: updated });
     await recordRefund(partial as unknown as Admin, { payment_intent: "pi_9", refunded: false, amount_refunded: 490 } as never);
-    expect((partial.calls[0].args as { note: string }).note).toMatch(/^Remboursement partiel : 4,90\s€ \(voir Stripe\)\.$/);
-    expect(Object.keys(partial.calls[0].args as object).sort()).toEqual(["note", "refunded_amount"]);
-    expect((partial.calls[0].args as { refunded_amount: number }).refunded_amount).toBe(4.9);
+    expect((updates(partial)[0].args as { note: string }).note).toMatch(/^Remboursement partiel : 4,90\s€ \(voir Stripe\)\.$/);
+    // Le partiel garde aussi sa date (colonne « Date de remboursement » de l'export).
+    expect(Object.keys(updates(partial)[0].args as object).sort()).toEqual(["note", "refunded_amount", "refunded_at"]);
+    expect((updates(partial)[0].args as { refunded_amount: number }).refunded_amount).toBe(4.9);
+  });
+
+  it("événement rejoué ou ancien : seul un montant remboursé qui AUGMENTE est écrit", async () => {
+    const admin = fakeAdmin({ update: { error: null, data: [{ id: ORDER_ID }] } });
+    await recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", refunded: false, amount_refunded: 490 } as never);
+    const write = admin.calls.find((c) => c.op === "update")!;
+    expect(write.filters).toContainEqual(["or", ["refunded_amount.is.null,refunded_amount.lt.4.9"]]);
+  });
+
+  it("une alerte déjà posée (paiement tardif) est gardée ; une mention de remboursement précédente est remplacée", async () => {
+    const late = "Paiement reçu après la fin de la réservation : stock à vérifier avant expédition.";
+    const noteAfter = async (before: string | null, refund: { refunded: boolean; amount_refunded: number }) => {
+      const admin = fakeAdmin({ select: () => ({ data: { note: before } }), update: { error: null, data: [{ id: ORDER_ID }] } });
+      await recordRefund(admin as unknown as Admin, { payment_intent: "pi_9", ...refund } as never);
+      const write = admin.calls.find((c) => c.op === "update")!;
+      return (write.args as { note: string }).note.replace(/\s/g, " ");
+    };
+    const partial = { refunded: false, amount_refunded: 490 };
+    const total = { refunded: true, amount_refunded: 11987 };
+    expect(await noteAfter(late, partial)).toBe(`${late} Remboursement partiel : 4,90 € (voir Stripe).`);
+    expect(await noteAfter(`${late} Remboursement partiel : 4,90 € (voir Stripe).`, total)).toBe(
+      `${late} Remboursée en totalité : 119,87 € (voir Stripe).`,
+    );
+    expect(await noteAfter("Remboursement partiel : 4,90 € (voir Stripe).", total)).toBe("Remboursée en totalité : 119,87 € (voir Stripe).");
+    expect(await noteAfter(null, partial)).toBe("Remboursement partiel : 4,90 € (voir Stripe).");
   });
 
   it("migration d'export pas encore passée (colonne absente) : le remboursement est enregistré SANS le montant", async () => {
@@ -371,6 +398,8 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
     expect(updates).toHaveLength(2);
     expect(updates[1].args).toMatchObject({ status: "refunded" });
     expect(updates[1].args).not.toHaveProperty("refunded_amount");
+    // Sans la colonne, la garde sur le montant ne peut pas s'appliquer (elle lèverait la même erreur).
+    expect(updates[1].filters.map(([f]) => f)).not.toContain("or");
   });
 
   it("remboursement reçu AVANT l'enregistrement du paiement : erreur, pour que Stripe rejoue l'événement", async () => {

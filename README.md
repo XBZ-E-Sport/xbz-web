@@ -204,6 +204,9 @@ correspondant :
 - `migration_confirmation_commande_05102026.sql` — `orders.confirmation_sent_at` et
   `orders.confirmation_error` (suivi de l'e-mail de confirmation de commande). Le code
   fonctionne avant cette migration : la confirmation part alors une seule fois, sans reprise.
+- `migration_rattachement_manuel_12102026.sql` — autorise `order_withdrawals.match = 'manual'`
+  (rétractation rattachée à la main par le staff, affichée comme telle). Avant cette migration,
+  un rattachement manuel est enregistré « exact », comme avant.
 
 **Rattrapage** : `migrations_a_passer_02082026.sql` regroupe les points 6, 8 et 9 plus un
 `notify pgrst, 'reload schema'` et une requête de vérification. Idempotent — c'est le
@@ -291,6 +294,9 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   (orthographe, texte injurieux, marque, droits de tiers) puis clique « Textes relus et validés » :
   la date est gardée sur l'article. **« Marquer expédiée » est refusé tant qu'un texte n'est pas
   validé.** Discord signale « texte à relire et valider » (sans le texte lui-même).
+- **Commandes de test** (payées avec une clé Stripe de test, session `cs_test_…`) : badge
+  « 🧪 Test » dans le back-office ; quand la boutique passe en LIVE, elles n'entrent plus dans
+  l'export comptable. À supprimer après la recette (voir la checklist de recette).
 - **Stock réservé 32 minutes** au départ vers Stripe, confirmé par le **webhook** signé
   (`/api/stripe/webhook`), rendu si le paiement est abandonné. Le prix fait toujours
   autorité côté base. Détail du parcours : `src/lib/shop.ts`.

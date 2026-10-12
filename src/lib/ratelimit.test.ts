@@ -40,11 +40,20 @@ vi.mock("@/lib/supabase/admin", () => ({
         }),
       }),
       delete: () => ({
-        eq: async (_c: string, id: number) => {
-          await tick();
-          db.rows = db.rows.filter((h) => h.id !== id);
-          return { error: null };
-        },
+        // `.eq("id", n)` (passage refusé retiré) ou `.eq("route", r).lt(...)` (purge de la route).
+        eq: (col: "id" | "route", value: number | string) => ({
+          then: (res: (v: unknown) => unknown, rej?: (e: unknown) => unknown) =>
+            (async () => {
+              await tick();
+              db.rows = db.rows.filter((h) => h[col] !== value);
+              return { error: null };
+            })().then(res, rej),
+          lt: async (_c: string, since: string) => {
+            await tick();
+            db.rows = db.rows.filter((h) => !(h[col] === value && h.created_at < since));
+            return { error: null };
+          },
+        }),
         lt: async (_c: string, since: string) => {
           await tick();
           db.rows = db.rows.filter((h) => h.created_at >= since);
@@ -231,5 +240,49 @@ describe("checkFormRateLimit", () => {
     for (let i = 0; i < 6; i++) results.push((await checkFormRateLimit("198.51.100.9", "support")).allowed);
     expect(results).toEqual([true, true, true, true, true, false]);
     expect(db.rows.every((h) => h.route === "support")).toBe(true);
+  });
+});
+
+describe("purge par route (chaque limite garde sa propre fenêtre)", () => {
+  beforeEach(() => {
+    db.rows = [];
+    db.nextId = 1;
+    db.fail = null;
+  });
+
+  it("un formulaire (fenêtre 60 s) n'efface pas les passages plus anciens d'une limite longue (paiement, 15 min)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+      for (let i = 0; i < 10; i++) {
+        expect((await checkRateLimit("1.1.1.1", "checkout", { limit: 10, windowSeconds: 900 })).allowed).toBe(true);
+      }
+      // 2 minutes plus tard, n'importe quel visiteur envoie un formulaire (fenêtre de 60 s).
+      vi.setSystemTime(new Date("2026-10-12T10:02:00Z"));
+      expect((await checkRateLimit("9.9.9.9", "support")).allowed).toBe(true);
+      expect(db.rows.filter((h) => h.route === "checkout")).toHaveLength(10);
+      // La 11e tentative de paiement dans les 15 minutes reste refusée.
+      expect((await checkRateLimit("1.1.1.1", "checkout", { limit: 10, windowSeconds: 900 })).allowed).toBe(false);
+      // Et une limite à une heure (rétractations) n'est pas effacée par la limite à la minute.
+      for (let i = 0; i < 3; i++) await checkRateLimit("2.2.2.2", "retractation:h", { limit: 12, windowSeconds: 3600 });
+      vi.setSystemTime(new Date("2026-10-12T10:10:00Z"));
+      await checkRateLimit("2.2.2.2", "retractation");
+      expect(db.rows.filter((h) => h.route === "retractation:h")).toHaveLength(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("chaque route purge ses PROPRES passages sortis de sa fenêtre", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-10-12T10:00:00Z"));
+      await checkRateLimit("1.1.1.1", "support");
+      vi.setSystemTime(new Date("2026-10-12T10:05:00Z"));
+      await checkRateLimit("3.3.3.3", "support");
+      expect(db.rows.filter((h) => h.route === "support").map((h) => h.ip)).toEqual(["3.3.3.3"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -40,8 +40,29 @@ const SUSPECT_RETENTION_DAYS = 30;
 // Les IP anti-flood n'ont d'utilité qu'une minute : une heure suffit largement.
 const RATE_LIMIT_RETENTION_HOURS = 1;
 
+/** Filet de la boutique : isolé, pour qu'une panne de l'un ne prive pas les autres. */
+async function net(name: string, run: () => Promise<number>, errors: string[]): Promise<number> {
+  try {
+    return await run();
+  } catch (e) {
+    errors.push(`${name}: ${e instanceof Error ? e.message : String(e)}`);
+    return 0;
+  }
+}
+
 async function purge() {
   const admin = createAdminClient();
+
+  // Filets de la boutique EN PREMIER, chacun isolé : une purge en échec plus bas (une
+  // table en panne) ne doit jamais faire sauter la remise en stock, la relance des
+  // accusés de rétractation ni celle des confirmations de commande. Leurs erreurs sont
+  // remontées à la fin (réponse 500 : le cron se voit en échec dans Vercel).
+  const netErrors: string[] = [];
+  const reservationsReleased = isStripeConfigured()
+    ? await net("réservations", () => sweepStaleReservations(admin, 50), netErrors)
+    : 0;
+  const withdrawalAcksSent = await net("accusés de rétractation", () => retryPendingAcks(admin, 10), netErrors);
+  const orderConfirmationsSent = await net("confirmations de commande", () => retryPendingConfirmations(admin, 10), netErrors);
 
   // Date de coupure : maintenant − RETENTION_MONTHS.
   const cutoff = new Date();
@@ -94,10 +115,8 @@ async function purge() {
     .lt("created_at", ipCutoff)
     .select("id");
   if (hits.error) throw new Error(`rate_limit_hits: ${hits.error.message}`);
+  if (netErrors.length) throw new Error(netErrors.join(" ; "));
 
-  const reservationsReleased = isStripeConfigured() ? await sweepStaleReservations(admin, 50) : 0;
-  const withdrawalAcksSent = await retryPendingAcks(admin, 10);
-  const orderConfirmationsSent = await retryPendingConfirmations(admin, 10);
 
   return {
     cutoff: iso,

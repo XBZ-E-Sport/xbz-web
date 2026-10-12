@@ -3,7 +3,7 @@ import ConfirmButton from "@/components/ConfirmButton";
 import { formatEuros } from "@/lib/money";
 import { orderNumber, type OrderItem } from "@/lib/shop";
 import { stripeDashboardUrl } from "@/lib/stripe";
-import type { MatchKind, WithdrawalRow } from "@/lib/withdrawal";
+import { sameEmail, type MatchKind, type WithdrawalRow } from "@/lib/withdrawal";
 import { deleteWithdrawal, linkWithdrawalToOrder, resendWithdrawalAck, setWithdrawalProcessed } from "./actions";
 import PersonalizedNotice from "./PersonalizedNotice";
 
@@ -20,6 +20,7 @@ const MATCH_HINT: Record<MatchKind, string> = {
   ambiguous: "Non rapprochée : plusieurs commandes payées pour cet e-mail. Choisis laquelle ci-dessous.",
   mismatch: "Non rapprochée : le numéro saisi ne correspond à aucune commande payée de cet e-mail (autre adresse ? faute de frappe ?). Vérifie avant de rattacher.",
   none: "Non rapprochée : aucune commande payée pour cet e-mail. Vérifie l’orthographe ou une autre adresse.",
+  manual: "Rattachée à la main par le staff (la déclaration n’est pas authentifiée) : vérifie que c’est bien la commande de ce client.",
 };
 
 export type LinkedOrder = {
@@ -27,6 +28,8 @@ export type LinkedOrder = {
   status: string;
   stripe_payment_intent: string | null;
   amount_total: number | string | null;
+  /** E-mail saisi chez Stripe : comparé à celui de la déclaration. */
+  customer_email?: string | null;
   /** Articles (dont ceux personnalisés, exclus du droit de rétractation). */
   items?: OrderItem[] | null;
 };
@@ -71,9 +74,11 @@ export default function Withdrawals({
     <div className="flex flex-col gap-4">
       <p className="text-sm leading-relaxed text-neutral-400">
         Quand un client se rétracte : il renvoie les produits sous 14 jours (frais de retour à sa charge) ; tu le
-        rembourses de tous ses paiements, livraison initiale comprise, au plus tard 14 jours après sa déclaration (tu peux
-        attendre le retour du colis) — sauf les articles personnalisés, exclus du droit de rétractation (un encadré le
-        signale sur la commande concernée). Le remboursement se fait dans Stripe ; coche ensuite « Traitée ».
+        rembourses au plus tard 14 jours après sa déclaration (tu peux attendre le retour du colis). S’il se rétracte
+        pour toute la commande : tous ses paiements, livraison initiale comprise. S’il ne se rétracte que pour une partie
+        des articles : le prix de ces articles seulement, la livraison initiale reste due (CGV, article « Droit de
+        rétractation »). Les articles personnalisés sont exclus du droit de rétractation (un encadré le signale sur la
+        commande concernée). Le remboursement se fait dans Stripe ; coche ensuite « Traitée ».
       </p>
 
       <ul className="flex flex-col gap-4">
@@ -120,6 +125,12 @@ export default function Withdrawals({
                       {order?.status === "refunded" && <span className="font-semibold text-red-300"> · déjà remboursée</span>}
                       {order?.status === "fulfilled" && " · expédiée"}
                       <span className="text-neutral-400"> — {MATCH_HINT[w.match]}</span>
+                      {order?.customer_email && !sameEmail(order.customer_email, w.customer_email) && (
+                        <span className="font-semibold text-red-300">
+                          {" "}
+                          ⚠️ E-mail de la commande différent de celui de la déclaration ({order.customer_email}).
+                        </span>
+                      )}
                       {w.order_number && <span className="text-neutral-400"> Saisi par le client : « {w.order_number} ».</span>}
                       {order?.stripe_payment_intent && (
                         <>
