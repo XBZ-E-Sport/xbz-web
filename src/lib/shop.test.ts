@@ -18,6 +18,7 @@ import {
   orderNumber,
   recordPayment,
   recordRefund,
+  recordRefundFailure,
   releaseFromSession,
   reserveOrder,
   shippingEuros,
@@ -34,7 +35,7 @@ function fakeAdmin(opts: {
   const calls: { op: string; table?: string; args?: unknown; filters: [string, unknown][] }[] = [];
   const chain = (call: (typeof calls)[number], result: () => unknown) => {
     const c: Record<string, unknown> = {};
-    for (const f of ["select", "eq", "in", "lt", "or", "order", "limit"]) {
+    for (const f of ["select", "eq", "in", "is", "lt", "or", "order", "limit"]) {
       c[f] = (...a: unknown[]) => {
         call.filters.push([f, a]);
         return c;
@@ -348,10 +349,10 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
   });
 
   describe("recordRefund — l'état est relu chez Stripe", () => {
-    const READ = "id, status, note, refunded_amount";
-    const READ_OLD = "id, status, note";
-    type Row = { id: string; status: string; note: string | null; refunded_amount?: number | string | null };
-    const paidRow = (over: Partial<Row> = {}): Row => ({ id: ORDER_ID, status: "paid", note: null, refunded_amount: null, ...over });
+    const READ = "id, status, note, fulfilled_at, refunded_amount";
+    const READ_OLD = "id, status, note, fulfilled_at";
+    type Row = { id: string; status: string; note: string | null; fulfilled_at?: string | null; refunded_amount?: number | string | null };
+    const paidRow = (over: Partial<Row> = {}): Row => ({ id: ORDER_ID, status: "paid", note: null, fulfilled_at: null, refunded_amount: null, ...over });
     const refundAdmin = (o: {
       order?: Row | null;
       readError?: { code?: string; message: string } | ((cols: string) => { code?: string; message: string } | null);
@@ -417,6 +418,41 @@ describe("recordPayment / releaseFromSession / recordRefund", () => {
       const admin = refundAdmin({ order: paidRow({ refunded_amount: 4.9, note: "Remboursement partiel : 4,90 € (voir Stripe)." }) });
       await recordRefund(admin as unknown as Admin, event());
       expect(updates(admin)[0].args).toEqual({ refunded_amount: 0, refunded_at: null, note: null });
+    });
+
+    it("écriture CONDITIONNELLE sur l'état lu ; si la commande a changé entre-temps : levée (Stripe rejoue et relit)", async () => {
+      freshCharge(3000, false);
+      const admin = refundAdmin({ order: paidRow({ refunded_amount: "10.00" }), update: { error: null, data: [] } });
+      await expect(recordRefund(admin as unknown as Admin, event())).rejects.toThrow(/modifiée pendant l'enregistrement/);
+      const [w] = updates(admin);
+      expect(w.filters).toContainEqual(["eq", ["status", "paid"]]);
+      expect(w.filters).toContainEqual(["eq", ["refunded_amount", "10.00"]]);
+      // Premier remboursement : la garde porte sur « aucun montant enregistré ».
+      const first = refundAdmin({ order: paidRow() });
+      await recordRefund(first as unknown as Admin, event());
+      expect(updates(first)[0].filters).toContainEqual(["is", ["refunded_amount", null]]);
+    });
+
+    it("remboursement TOTAL échoué ou annulé : la commande redevient payée (ou expédiée), avec une note explicite", async () => {
+      freshCharge(0, false);
+      const paid = refundAdmin({ order: paidRow({ status: "refunded", refunded_amount: 119.87, note: "Remboursée en totalité : 119,87 € (voir Stripe)." }) });
+      await recordRefund(paid as unknown as Admin, event());
+      const w = updates(paid)[0].args as { status: string; note: string; refunded_amount: number };
+      expect(w.status).toBe("paid");
+      expect(w.refunded_amount).toBe(0);
+      expect(w.note.replace(/\s/g, " ")).toBe("Remboursement total échoué ou annulé chez Stripe : 0,00 € remboursés à ce jour — à vérifier (voir Stripe).");
+      freshCharge(0, false);
+      const shipped = refundAdmin({ order: paidRow({ status: "refunded", fulfilled_at: "2026-10-10T10:00:00Z", refunded_amount: 119.87 }) });
+      await recordRefund(shipped as unknown as Admin, event());
+      expect((updates(shipped)[0].args as { status: string }).status).toBe("fulfilled");
+    });
+
+    it("refund.failed : la charge du remboursement est relue puis enregistrée comme un remboursement", async () => {
+      stripeMock.charges.retrieve.mockResolvedValue({ id: "ch_9", payment_intent: "pi_9", metadata: {}, amount_refunded: 0, refunded: false });
+      const admin = refundAdmin({ order: paidRow({ status: "refunded", refunded_amount: 119.87 }) });
+      await recordRefundFailure(admin as unknown as Admin, { id: "re_1", charge: "ch_9" } as never);
+      expect(stripeMock.charges.retrieve).toHaveBeenCalledWith("ch_9");
+      expect((updates(admin)[0].args as { status: string }).status).toBe("paid");
     });
 
     it("une alerte déjà posée (paiement tardif) est gardée ; une mention de remboursement précédente est remplacée", async () => {

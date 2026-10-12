@@ -2,7 +2,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import Stripe from "stripe";
 
-const m = vi.hoisted(() => ({ recordPayment: vi.fn(), releaseFromSession: vi.fn(), recordRefund: vi.fn() }));
+const m = vi.hoisted(() => ({
+  recordPayment: vi.fn(),
+  releaseFromSession: vi.fn(),
+  recordRefund: vi.fn(),
+  recordRefundFailure: vi.fn(),
+}));
 vi.mock("@/lib/shop", () => m);
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
 // Vrai SDK pour la vérification de signature (clé factice, aucun appel réseau).
@@ -60,6 +65,11 @@ describe("POST /api/stripe/webhook", () => {
   it("charge.refunded → remboursement enregistré", async () => {
     await signed(event("charge.refunded", { id: "ch_1", refunded: true }));
     expect(m.recordRefund).toHaveBeenCalledWith({}, expect.objectContaining({ id: "ch_1" }));
+  });
+
+  it("refund.failed → remboursement échoué enregistré (charge relue)", async () => {
+    await signed(event("refund.failed", { id: "re_1", charge: "ch_1", status: "failed" }));
+    expect(m.recordRefundFailure).toHaveBeenCalledWith({}, expect.objectContaining({ id: "re_1", charge: "ch_1" }));
   });
 
   it("événement non géré : 200 sans rien faire (Stripe cesse de le renvoyer)", async () => {

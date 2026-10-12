@@ -90,7 +90,8 @@ async function purge() {
   );
 
   // Rétractations : 5 ans (puis suppression) ; le bruit au piège rempli, 30 jours. Une
-  // table absente (migration pas encore passée) n'est pas une erreur.
+  // table absente (migration pas encore passée) n'est pas une erreur ; toute autre erreur
+  // l'est (la durée de conservation ne serait pas appliquée).
   const withdrawalCutoff = new Date();
   withdrawalCutoff.setFullYear(withdrawalCutoff.getFullYear() - WITHDRAWAL_RETENTION_YEARS);
   const suspectCutoff = new Date(Date.now() - SUSPECT_RETENTION_DAYS * 24 * 3600_000);
@@ -107,7 +108,9 @@ async function purge() {
     .select("id");
   for (const r of [oldWithdrawals, suspectWithdrawals]) {
     if (r.error && r.error.code !== "42P01" && r.error.code !== "PGRST205") {
-      console.error("[cron/purge] order_withdrawals:", r.error.message);
+      const msg = `order_withdrawals: ${r.error.message}`;
+      console.error("[cron/purge]", msg);
+      errors.push(msg);
     }
   }
 

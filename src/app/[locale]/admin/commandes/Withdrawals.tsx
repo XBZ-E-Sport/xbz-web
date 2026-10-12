@@ -42,12 +42,15 @@ export default function Withdrawals({
   orders,
   tableMissing,
   loadError,
+  linkedError,
 }: {
   rows: WithdrawalRow[];
   orders: Map<string, LinkedOrder>;
   tableMissing: boolean;
   /** Erreur de lecture autre que « table absente » : à montrer, jamais à confondre avec « aucune rétractation ». */
   loadError?: string | null;
+  /** Lecture des commandes rattachées en échec : les cartes ci-dessous sont incomplètes. */
+  linkedError?: string | null;
 }) {
   if (loadError) {
     return (
@@ -72,6 +75,12 @@ export default function Withdrawals({
 
   return (
     <div className="flex flex-col gap-4">
+      {linkedError && (
+        <p className="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+          ⚠️ Impossible de lire les commandes rattachées ({linkedError}) : montants, remboursements, articles
+          personnalisés et alertes d’e-mail manquent sur les cartes ci-dessous. Recharge la page avant de rembourser.
+        </p>
+      )}
       <p className="text-sm leading-relaxed text-neutral-400">
         Quand un client se rétracte : il renvoie les produits sous 14 jours (frais de retour à sa charge) ; tu le
         rembourses au plus tard 14 jours après sa déclaration (tu peux attendre le retour du colis). S’il se rétracte

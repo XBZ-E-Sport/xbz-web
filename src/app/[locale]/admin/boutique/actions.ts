@@ -109,11 +109,6 @@ async function uniqueProductSlug(
 
 /** Champs communs create/update, dérivés du formulaire. */
 async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
-  // Photo principale : un fichier uploadé est prioritaire ; sinon l'URL saisie.
-  // En modification, elle n'est réécrite que si ce formulaire l'a vraiment
-  // changée (`image_orig` = ce qu'il affichait au chargement). Sans cela, un
-  // formulaire resté ouvert pendant qu'on changeait la photo principale
-  // (« En principale ») la remettait à l'ancienne en enregistrant autre chose.
   // Champs refusables lus AVANT l'envoi de la photo : un refus ne laisse pas d'image
   // orpheline dans le stockage.
   const price = priceField(formData, "price");
@@ -124,6 +119,11 @@ async function buildRow(admin: AdminClient, formData: FormData, slug: string) {
     personalization_price: personalizationPriceField(formData),
   };
 
+  // Photo principale : un fichier uploadé est prioritaire ; sinon l'URL saisie.
+  // En modification, elle n'est réécrite que si ce formulaire l'a vraiment
+  // changée (`image_orig` = ce qu'il affichait au chargement). Sans cela, un
+  // formulaire resté ouvert pendant qu'on changeait la photo principale
+  // (« En principale ») la remettait à l'ancienne en enregistrant autre chose.
   const imageFile = formData.get("image_file");
   const hasFile = imageFile instanceof File && imageFile.size > 0;
   const url = field(formData, "image_url") || null;

@@ -81,6 +81,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
   let withdrawalRows: WithdrawalRow[] = [];
   let linkedOrders = new Map<string, LinkedOrder>();
+  let linkedOrdersError: string | null = null;
   const withdrawalsByOrder = new Map<string, WithdrawalRow>();
   if (!pending.error) {
     if (showWithdrawals) {
@@ -103,8 +104,9 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           .select("id, status, stripe_payment_intent, amount_total, items, customer_email")
           .in("id", ids);
         // Sans les commandes liées, les cartes seraient incomplètes (montant, remboursement,
-        // article personnalisé, e-mail différent) sans que rien ne le dise : on montre l'erreur.
-        if (linkedError) withdrawalsError ??= `commandes liées : ${linkedError.message}`;
+        // article personnalisé, e-mail différent) sans que rien ne le dise : bandeau d'erreur,
+        // la liste des déclarations (pièces légales, actions) restant affichée.
+        if (linkedError) linkedOrdersError = linkedError.message;
         linkedOrders = new Map(((linked ?? []) as LinkedOrder[]).map((o) => [o.id, o]));
       }
     } else if (orders.length) {
@@ -213,7 +215,13 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
       </nav>
 
       {showWithdrawals ? (
-        <Withdrawals rows={withdrawalRows} orders={linkedOrders} tableMissing={tableMissing} loadError={withdrawalsError} />
+        <Withdrawals
+          rows={withdrawalRows}
+          orders={linkedOrders}
+          tableMissing={tableMissing}
+          loadError={withdrawalsError}
+          linkedError={linkedOrdersError}
+        />
       ) : orders.length === 0 ? (
         <p className="text-neutral-400">Aucune commande ici pour le moment.</p>
       ) : (

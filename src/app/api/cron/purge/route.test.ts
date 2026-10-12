@@ -128,7 +128,7 @@ describe("GET /api/cron/purge", () => {
     expect(suspect.eq).toEqual([["suspect", true]]); // JAMAIS une vraie déclaration à 30 jours
   });
 
-  it("table des rétractations absente (migration pas passée) ou en erreur : le reste de la purge continue", async () => {
+  it("table des rétractations absente (migration pas passée) : pas une erreur ; vraie erreur : 500, et le reste de la purge continue", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret");
     vi.spyOn(console, "error").mockImplementation(() => {});
     errorFor.value = "order_withdrawals";
@@ -136,7 +136,9 @@ describe("GET /api/cron/purge", () => {
     errorCode.value = "42P01";
     expect((await call("Bearer s3cret")).status).toBe(200);
     errorCode.value = "XX000";
-    expect((await call("Bearer s3cret")).status).toBe(200);
+    const res = await call("Bearer s3cret");
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("order_withdrawals: boom");
     expect(deleteCalls.value.map((c) => c.table)).toContain("rate_limit_hits");
   });
 
@@ -163,7 +165,7 @@ describe("GET /api/cron/purge", () => {
     expect((await res.json()).error).toContain("support_messages");
   });
 
-  it("une purge en échec ne fait PAS sauter les filets de la boutique (exécutés avant, chacun isolé)", async () => {
+  it("une purge en échec ne fait PAS sauter les filets de la boutique (exécutés ensuite, chacun isolé)", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret");
     for (const table of ["candidatures", "support_messages", "rate_limit_hits"]) {
       errorFor.value = table;

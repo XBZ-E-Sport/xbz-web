@@ -149,16 +149,33 @@ describe("CartView", () => {
     expect(screen.getByRole("button", { name: /obligation de paiement · 104,88/ })).toBeTruthy();
   });
 
-  it("route d'annulation injoignable : le panier s'affiche quand même", async () => {
-    setCart([{ variantId: id(3), quantity: 1 }]);
+  it("route d'annulation injoignable : le panier s'affiche, mais ni rogné ni payable, et l'erreur est dite", async () => {
+    // Stock affiché 1 : il décompte encore les 2 pièces réservées par ce navigateur.
+    const reserved: CartProduct[] = [{ ...products[0], variants: [{ id: id(1), size: "M", stock: 1 }] }];
+    setCart([{ variantId: id(1), quantity: 2 }]);
     document.cookie = "xbz_checkout_open=1; path=/";
     sessionStorage.setItem("xbz-checkout-tab", "1");
     fetchMock.mockRejectedValue(new Error("hors ligne"));
     await act(async () => {
+      renderIntl(<CartView products={reserved} shipping={4.9} open />);
+    });
+    await waitFor(() => expect(screen.getByText(fr.cart.errNetwork)).toBeTruthy());
+    expect(screen.getByText(fr.cart.paymentElsewhere)).toBeTruthy();
+    expect((screen.getByRole("button", { name: /obligation de paiement/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(JSON.parse(localStorage.getItem(CART_STORAGE_KEY)!)).toEqual([{ variantId: id(1), quantity: 2 }]);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("retour « Annuler » de Stripe dont l'annulation échoue : pas de « Paiement annulé », l'erreur est dite, l'adresse est nettoyée", async () => {
+    setCart([{ variantId: id(3), quantity: 1 }]);
+    window.history.replaceState(null, "", "/fr/boutique/panier?annule=1");
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({ ok: false }) });
+    await act(async () => {
       render();
     });
-    await waitFor(() => expect(screen.getByRole("button", { name: /obligation de paiement/ })).toBeTruthy());
-    expect(refresh).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText(fr.cart.errNetwork)).toBeTruthy());
+    expect(screen.queryByText(fr.cart.cancelled)).toBeNull();
+    expect(replace).toHaveBeenCalledWith("/fr/boutique/panier", { scroll: false });
   });
 });
 

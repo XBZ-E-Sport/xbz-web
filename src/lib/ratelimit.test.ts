@@ -288,6 +288,11 @@ describe("purge par route (chaque limite garde sa propre fenêtre)", () => {
     }
   });
 
+  it("une fenêtre de plus d'une heure est refusée (la purge globale et le cron l'effaceraient trop tôt)", async () => {
+    await expect(checkRateLimit("1.1.1.1", "x", { windowSeconds: 7200 })).rejects.toThrow(/au-delà du maximum/);
+    expect(db.rows).toHaveLength(0);
+  });
+
   it("chaque route purge ses PROPRES passages sortis de sa fenêtre", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {

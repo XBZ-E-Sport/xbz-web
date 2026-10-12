@@ -145,6 +145,11 @@ export async function checkRateLimit(
   route: string,
   { limit = 5, windowSeconds = 60, failOpen = false, prefix = 64 }: Options = {},
 ): Promise<{ allowed: boolean; retryAfter: number }> {
+  if (windowSeconds > MAX_WINDOW_SECONDS) {
+    // La purge globale ci-dessous (et le cron, à 1 h) effaceraient les passages de cette
+    // limite avant la fin de sa fenêtre : relever MAX_WINDOW_SECONDS ET la rétention du cron.
+    throw new Error(`[ratelimit] fenêtre de ${windowSeconds} s au-delà du maximum (${MAX_WINDOW_SECONDS} s)`);
+  }
   const admin = createAdminClient();
   const key = rateLimitKey(ip, prefix);
   const since = new Date(Date.now() - windowSeconds * 1000).toISOString();
@@ -190,7 +195,7 @@ export async function checkRateLimit(
   await admin
     .from("rate_limit_hits")
     .delete()
-    .lt("created_at", new Date(Date.now() - Math.max(MAX_WINDOW_SECONDS, windowSeconds) * 1000).toISOString());
+    .lt("created_at", new Date(Date.now() - MAX_WINDOW_SECONDS * 1000).toISOString());
   return { allowed: true, retryAfter: 0 };
 }
 

@@ -199,13 +199,16 @@ export default function CartView({
         .catch(() => ({ httpOk: false, ok: false, released: false }))
         .then((data: { ok?: boolean; released?: boolean; httpOk: boolean }) => {
           if (!data.httpOk || !data.ok) {
-            // Annulation non confirmée (hors ligne…). Retour « Annuler » de Stripe : l'adresse
-            // est quand même nettoyée. Bouton du bandeau : le paiement de l'autre onglet est
-            // peut-être toujours ouvert, on le dit et le bandeau reste.
+            // Annulation non confirmée (hors ligne…) : la réservation tient peut-être encore,
+            // et le stock affiché la décompte. Quel que soit le chemin, on le dit et on passe
+            // en « paiement ouvert ailleurs » : panier ni rogné ni payable, et le bouton du
+            // bandeau permet de réessayer. L'adresse « Annuler » de Stripe est nettoyée.
+            setElsewhere(true);
+            setError(t("errNetwork"));
             if (back) startRefresh(() => router.replace(window.location.pathname, { scroll: false }));
-            else setError(t("errNetwork"));
             return;
           }
+          if (back) setCancelled(true);
           forgetPaymentTab();
           setElsewhere(false);
           setError(null);
@@ -232,7 +235,7 @@ export default function CartView({
   useEffect(() => {
     const check = () => {
       const { back, open, elsewhere: other } = readCheckoutReturn();
-      if (back) setCancelled(true);
+      // « Paiement annulé » n'est annoncé qu'une fois la réservation vraiment rendue.
       if (back || open) releaseReservation(back);
       else setElsewhere(other);
     };

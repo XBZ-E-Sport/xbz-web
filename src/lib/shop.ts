@@ -346,7 +346,7 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
   let tracked = true;
   let read = await admin
     .from("orders")
-    .select("id, status, note, refunded_amount")
+    .select("id, status, note, fulfilled_at, refunded_amount")
     .eq("stripe_payment_intent", paymentIntent)
     .in("status", PAID)
     .maybeSingle();
@@ -355,13 +355,19 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
     tracked = false;
     read = await admin
       .from("orders")
-      .select("id, status, note")
+      .select("id, status, note, fulfilled_at")
       .eq("stripe_payment_intent", paymentIntent)
       .in("status", PAID)
       .maybeSingle();
   }
   if (read.error) throw new Error(read.error.message);
-  const order = read.data as { id: string; status: string; note: string | null; refunded_amount?: number | string | null } | null;
+  const order = read.data as {
+    id: string;
+    status: string;
+    note: string | null;
+    fulfilled_at: string | null;
+    refunded_amount?: number | string | null;
+  } | null;
 
   if (!order) {
     // Aucune commande payée avec ce paiement. Le paiement est-il simplement en retard ?
@@ -400,25 +406,57 @@ export async function recordRefund(admin: Admin, charge: Stripe.Charge): Promise
   // mais une autre alerte déjà posée sur la commande — « Paiement reçu après la fin de la
   // réservation : stock à vérifier… » (shop_mark_paid) — est gardée devant.
   const refunded = formatEuros(amount, "fr");
+  // Commande « Remboursée » dont le remboursement total a échoué ou été annulé chez Stripe :
+  // elle redevient payée (ou expédiée), avec une note qui le dit au staff.
+  const revoked = order.status === "refunded" && !fully;
   const mention = fully
     ? `Remboursée en totalité : ${refunded} (voir Stripe).`
-    : amount > 0
-      ? `Remboursement partiel : ${refunded} (voir Stripe).`
-      : "";
+    : revoked
+      ? `Remboursement total échoué ou annulé chez Stripe : ${refunded} remboursés à ce jour — à vérifier (voir Stripe).`
+      : amount > 0
+        ? `Remboursement partiel : ${refunded} (voir Stripe).`
+        : "";
   const note = [keptNote(order.note), mention].filter(Boolean).join(" ") || null;
   const refundedAt = amount > 0 ? new Date().toISOString() : null;
-  // Un remboursement total échoué ou annulé ne remet pas le statut « payée » : le staff
-  // tranche (la note dit le montant réellement remboursé).
-  const update = fully ? { status: "refunded", refunded_at: refundedAt, note } : { refunded_at: refundedAt, note };
+  const update = fully
+    ? { status: "refunded", refunded_at: refundedAt, note }
+    : revoked
+      ? { status: order.fulfilled_at ? "fulfilled" : "paid", refunded_at: refundedAt, note }
+      : { refunded_at: refundedAt, note };
 
-  const write = (values: Record<string, unknown>) =>
-    admin.from("orders").update(values).eq("id", order.id).in("status", PAID).select("id");
-  let { error } = await write(tracked ? { ...update, refunded_amount: amount } : update);
+  // Écriture CONDITIONNELLE sur l'état lu : deux événements traités en même temps (deux
+  // remboursements rapprochés) ne peuvent pas écraser un état plus récent par un plus
+  // ancien. Si la commande a changé entre-temps, on lève : Stripe rejoue, on relit.
+  const write = (values: Record<string, unknown>, guard: boolean) => {
+    let q = admin.from("orders").update(values).eq("id", order.id).eq("status", order.status);
+    if (guard) {
+      q =
+        order.refunded_amount === null || order.refunded_amount === undefined
+          ? q.is("refunded_amount", null)
+          : q.eq("refunded_amount", order.refunded_amount);
+    }
+    return q.select("id");
+  };
+  let { data, error } = await write(tracked ? { ...update, refunded_amount: amount } : update, tracked);
   // Colonne absente malgré la lecture (schéma en cours de migration) : on enregistre
   // sans le montant plutôt que de perdre l'événement.
-  if (error && SCHEMA_ERRORS.has(error.code ?? "")) ({ error } = await write(update));
+  if (error && SCHEMA_ERRORS.has(error.code ?? "")) ({ data, error } = await write(update, false));
   if (error) throw new Error(error.message);
+  if (!data?.length) {
+    throw new Error(`commande ${orderNumber(order.id)} modifiée pendant l'enregistrement du remboursement : à rejouer`);
+  }
   revalidateLocalizedPath("/admin/commandes");
+}
+
+/**
+ * Remboursement ÉCHOUÉ (`refund.failed` : carte fermée, compte clos…) : Stripe rend l'argent
+ * au solde du compte et le montant remboursé de la charge redescend. On relit la charge et
+ * on enregistre son état courant, comme pour `charge.refunded`.
+ */
+export async function recordRefundFailure(admin: Admin, refund: Stripe.Refund): Promise<void> {
+  const chargeId = typeof refund.charge === "string" ? refund.charge : (refund.charge?.id ?? null);
+  if (!chargeId) return;
+  await recordRefund(admin, await stripe().charges.retrieve(chargeId));
 }
 
 // --- 4. Filet de sécurité ---------------------------------------------------

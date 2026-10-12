@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 
-import { recordPayment, recordRefund, releaseFromSession } from "@/lib/shop";
+import { recordPayment, recordRefund, recordRefundFailure, releaseFromSession } from "@/lib/shop";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -16,6 +16,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 //   checkout.session.async_payment_failed      paiement refusé → stock rendu
 //   checkout.session.expired                   abandonné → stock rendu
 //   charge.refunded                            remboursé depuis Stripe
+//   refund.failed                              remboursement échoué (recommandé)
 //
 // Hors du proxy i18n (le matcher exclut `/api`) : URL fixe, sans langue.
 
@@ -60,6 +61,9 @@ export async function POST(request: Request) {
         break;
       case "charge.refunded":
         await recordRefund(admin, event.data.object);
+        break;
+      case "refund.failed":
+        await recordRefundFailure(admin, event.data.object);
         break;
       default:
         break;

@@ -302,10 +302,14 @@ Sans `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET`, la boutique reste un aperç
   autorité côté base. Détail du parcours : `src/lib/shop.ts`.
 - **Webhook Stripe** — endpoint `https://www.xbz-esport.org/api/stripe/webhook`, cinq
   événements : `checkout.session.completed`, `…async_payment_succeeded`,
-  `…async_payment_failed`, `checkout.session.expired`, `charge.refunded`. Un secret
-  différent par mode (test / live).
+  `…async_payment_failed`, `checkout.session.expired`, `charge.refunded` ; sixième,
+  recommandé : `refund.failed`. Un secret différent par mode (test / live). Clé restreinte
+  (`rk_…`) possible avec Checkout Sessions (écriture), PaymentIntents (lecture) et
+  **Charges (lecture)**.
 - **Remboursements** : faits depuis Stripe, la commande passe seule en « Remboursée »
-  (total) ou reçoit une note (partiel) ; le montant est gardé. Le stock n'est pas remis
+  (total) ou reçoit une note (partiel) ; le montant et la date sont gardés. L'état est
+  relu chez Stripe à chaque événement (ordre, rejeu, remboursement échoué ou annulé : la
+  commande redevient alors payée, avec une note). Le stock n'est pas remis
   automatiquement : un colis remboursé n'est pas forcément revenu.
 - **Rétractation en ligne** (obligatoire depuis le 19 juin 2026, directive 2023/2673 et
   art. L.221-21 du Code de la consommation) — lien « Renoncer au contrat ici » dans le pied
